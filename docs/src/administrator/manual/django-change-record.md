@@ -59,3 +59,38 @@ license: This program is free software; you can redistribute it and/or modify it
 4. **Save and continue editing**: Save the current record while still showing the current record.
 
 5. **Delete**: The administrators can delete the user by clicking on this button. The popup will open for the confirmation to delete the user.
+
+## Change R Model
+
+![Change r model](./img/django-change-record-5.png)
+
+1. **History**: Button to view actions applied to the current record.
+
+2. **Form Fields**: Researchers have the ability to update the values of various fields within the R Model form. The following fields are available for editing:
+
+- Name
+- Version
+- Code
+- Notes
+
+![Change r model](./img/django-change-record-6.png)
+
+- Created On: The date and time the R Model was created. Researchers can select the date from the calendar or set it to the current date by clicking on the `Today` button. The time can be set by clicking on the clock icon or set to the current time by clicking on the `Now` button.
+
+- Created By: A dropdown menu listing the available researchers who can create R Models.
+
+- Updated On: The date and time the R Model was last updated. Researchers can select the date from the calendar or set it to the current date by clicking on the `Today` button. The time can be set by clicking on the clock icon or set to the current time by clicking on the `Now` button.
+
+- Updated By: A dropdown menu listing the available researchers who can update R Models.
+
+3. **Delete Checkbox**: Check mark the checkbox to delete the associated r model outputs.
+
+4. **Save**: This option saves the current r model record and redirects administrators to the Django Admin Table/record list.
+
+5. **Save and Add Another**: This option saves the current rmodel record and redirects administrators to a new page to add another r model record.
+
+6. **Save and Continue Editing**: Choosing this option saves the current r model record while still displaying the current record for further editing.
+
+7. **Delete**: The administrator can delete the r model by clicking on the `Delete` button. It will ask for confirmation to delete the r model object.
+
+    ![Delete r model](./img/django-change-record-7.png)

@@ -36,3 +36,33 @@ The user table within the Django Admin interface allows administrators to manage
 
 5. **Edit User**: Clicking on the object allows the administrators to change or edit a particular record. Click [here](django-change-record.md) to view detailed documentation on editing a user.
 
+
+## R Model Table
+
+The R Model table within the GAP Admin interface allows researchers to manage and track different versions of the R code used to produce plant/no plant signals.
+
+![R Table](./img/django-table-3.png)
+
+1. **Add R Model:** Clicking on the `ADD R MODEL` button allows researchers to add a new version of the R code. Click [here](django-add-record.md) to see detailed documentation on adding a new R model.
+
+2. **R Model Table:** The R Model table with records, displaying information such as the version number, description, and date added.
+
+3. **Action Dropdown:** The Action dropdown of the R Model table and allows researchers to perform various actions on the records. To access the Action Dropdown, click on the dropdown.
+
+    ![Action](./img/django-table-4.png)
+
+    **Performing Actions:** To perform an action on a record, follow these steps:
+
+    - Select Records: Check the box available in front of the records to perform the action on.
+
+    - Choose Action: Select the desired action from the dropdown menu.
+
+    - Go Button: Click on the Go button to execute the chosen action.
+
+    The available actions include:
+
+    - Delete selected r model: Permanently remove the selected record(s) from the R Model table.
+
+    - Restart plumber process: Restarts the plumber process.
+
+4. **Edit R Model:** Clicking on the object allows researchers to change or edit a particular version of the R code. Click [here](django-change-record.md) to view detailed documentation on editing an R model.
