@@ -12,6 +12,8 @@ license: This program is free software; you can redistribute it and/or modify it
 
 ---
 
-# Administrator guide
-<!-- Narrative Instructions on how admin users will use the product/platform -->
-<!-- Replace all of the titles with relevant titles -->
+# Administrator Guide
+
+Welcome to the administrator guide. In this section of the documentation, we aim to show administrators common workflows for managing the platform effectively. Here is a brief overview of the content provided here:
+
+* **[Accessing the Administration Panel:](./access-admin-panel.md)** This section contains a quick description on how administrators can access the administration site of the platform.

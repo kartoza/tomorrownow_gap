@@ -44,6 +44,7 @@ nav:
       - administrator/index.md
 			- Guide:
 							- administrator/guide/index.md
+							- Access Admin Panle: administrator/guide/access-admin-panel.md
 			- Manual:
 							- administrator/manual/index.md
 							- Django Administration: administrator/manual/django-admin.md
