@@ -94,3 +94,24 @@ license: This program is free software; you can redistribute it and/or modify it
 7. **Delete**: The administrator can delete the r model by clicking on the `Delete` button. It will ask for confirmation to delete the r model object.
 
     ![Delete r model](./img/django-change-record-7.png)
+
+
+## Change Auth Token Model
+
+![Change auth model](./img/django-change-record-8.png)
+
+1. **History:** Button to view actions applied to the current record.
+
+2. **Save**: Save the current record, then redirect to the Django Admin Table/record list.
+
+3. **Save and add another**: Save the current record, then redirect to a new page to add a new record.
+
+4. **Save and continue editing**: Save the current record while still showing the current record.
+
+5. **Delete**: The administrators can delete the user by clicking on this button. The popup will open for the confirmation to delete the user.
+
+    ![Delete auth token](./img/django-change-record-9.png)
+
+    1. **Yes, I'm sure**: Delete the current instance.
+
+    2. **No,take me back**: Close the current popup window.
