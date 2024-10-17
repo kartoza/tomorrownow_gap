@@ -44,11 +44,12 @@ class WindBorneSystemsAPI:
         if not self.password:
             raise EnvIsNotSetException(PASSWORD_ENV_NAME)
 
-    def measurements(self, since=None) -> (list, int, bool):
+    def measurements(self, mission_id, since=None) -> (list, int, bool):
         """Return measurements, since and has_next_page."""
         params = {
             'include_ids': True,
-            'include_mission_name': True
+            'include_mission_name': True,
+            'mission_id': mission_id
         }
         if since:
             params['since'] = since
@@ -63,6 +64,18 @@ class WindBorneSystemsAPI:
             return (
                 data['observations'], data['next_since'], data['has_next_page']
             )
+        raise Exception(
+            f'{response.status_code}: {response.text} : {response.url}'
+        )
+
+    def missions(self) -> list:
+        """Return missions."""
+        response = requests.get(
+            f'{self.base_url}/missions.json',
+            auth=HTTPBasicAuth(self.username, self.password)
+        )
+        if response.status_code == 200:
+            return response.json()['missions']
         raise Exception(
             f'{response.status_code}: {response.text} : {response.url}'
         )
@@ -96,68 +109,94 @@ class WindBorneSystemsIngestor(BaseIngestor):
         for dataset_attr in self.dataset.datasetattribute_set.all():
             self.attributes[dataset_attr.source] = dataset_attr
 
+    def mission_ids(self, api: WindBorneSystemsAPI):
+        """Mission ids."""
+        mission_ids = list(
+            Station.objects.filter(
+                provider=self.provider,
+                station_type=self.station_type
+            ).values_list('code', flat=True)
+        )
+        # From API
+        mission_ids.extend([mission['id'] for mission in api.missions()])
+        return list(set(mission_ids))
+
     def run(self):
         """Run the ingestor."""
         api = WindBorneSystemsAPI()
+        additional_config = self.session.additional_config
+        global_since = additional_config.get('since', None)
 
-        has_next_page = True
-        since = self.session.additional_config.get('since', None)
-        while has_next_page:
-            observations, since, has_next_page = api.measurements(since)
+        # Run for every mission id
+        missions = self.mission_ids(api)
+        for mission_id in missions:
+            print(f'Checking mission {mission_id}')
 
-            # Process if it has observations
-            if len(observations):
-                for observation in observations:
-                    # Get date time
-                    date_time = datetime.fromtimestamp(
-                        observation['timestamp']
-                    )
-                    date_time = timezone.make_aware(
-                        date_time, timezone.get_default_timezone()
-                    )
+            mission_since_key = f'since-{mission_id}'
+            mission_since = additional_config.get(
+                mission_since_key, None
+            )
+            since = mission_since if mission_since else global_since
 
-                    # Points
-                    point = Point(
-                        x=observation['longitude'],
-                        y=observation['latitude'],
-                        srid=4326
-                    )
-                    station, _ = Station.objects.update_or_create(
-                        provider=self.provider,
-                        station_type=self.station_type,
-                        code=observation['mission_id'],
-                        defaults={
-                            'name': observation['mission_name'],
-                            'geometry': point,
-                            'altitude': observation['altitude'],
-                        }
-                    )
-                    StationHistory.objects.update_or_create(
-                        station=station,
-                        date_time=date_time,
-                        defaults={
-                            'geometry': point,
-                            'altitude': observation['altitude'],
-                        }
-                    )
+            has_next_page = True
+            while has_next_page:
+                observations, since, has_next_page = api.measurements(
+                    mission_id, since
+                )
 
-                    # Save the measurements
-                    for variable, dataset_attribute in self.attributes.items():
-                        try:
-                            value = observation[variable]
-                            if value is not None:
-                                Measurement.objects.update_or_create(
-                                    station=station,
-                                    dataset_attribute=dataset_attribute,
-                                    date_time=date_time,
-                                    defaults={
-                                        'value': observation[variable]
-                                    }
-                                )
-                        except KeyError:
-                            pass
-                # Save last since
-                self.session.additional_config = {
-                    'since': since,
-                }
-                self.session.save()
+                # Process if it has observations
+                if len(observations):
+                    for observation in observations:
+                        # Get date time
+                        date_time = datetime.fromtimestamp(
+                            observation['timestamp']
+                        )
+                        date_time = timezone.make_aware(
+                            date_time, timezone.get_default_timezone()
+                        )
+
+                        # Points
+                        point = Point(
+                            x=observation['longitude'],
+                            y=observation['latitude'],
+                            srid=4326
+                        )
+                        station, _ = Station.objects.update_or_create(
+                            provider=self.provider,
+                            station_type=self.station_type,
+                            code=observation['mission_id'],
+                            defaults={
+                                'name': observation['mission_name'],
+                                'geometry': point,
+                                'altitude': observation['altitude'],
+                            }
+                        )
+                        StationHistory.objects.update_or_create(
+                            station=station,
+                            date_time=date_time,
+                            defaults={
+                                'geometry': point,
+                                'altitude': observation['altitude'],
+                            }
+                        )
+
+                        # Save the measurements
+                        for variable, attribute in self.attributes.items():
+                            try:
+                                value = observation[variable]
+                                if value is not None:
+                                    Measurement.objects.update_or_create(
+                                        station=station,
+                                        dataset_attribute=attribute,
+                                        date_time=date_time,
+                                        defaults={
+                                            'value': observation[variable]
+                                        }
+                                    )
+                            except KeyError:
+                                pass
+
+                    # Save last since for mission
+                    additional_config[mission_since_key] = since
+                    self.session.additional_config = additional_config
+                    self.session.save()

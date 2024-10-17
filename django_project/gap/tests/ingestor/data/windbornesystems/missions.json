@@ -1,0 +1,10 @@
+{
+  "has_next_page": true,
+  "next_since": 1727308800,
+  "missions": [
+    {
+      "id": "mission-1",
+      "name": "Mission 1"
+    }
+  ]
+}

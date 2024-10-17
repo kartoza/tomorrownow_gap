@@ -1,0 +1,18 @@
+{
+  "has_next_page": false,
+  "next_since": 1727481600,
+  "observations": [
+    {
+      "altitude": 700,
+      "humidity": 3,
+      "latitude": -1.131241,
+      "longitude": 36.756561,
+      "mission_id": "mission-2",
+      "mission_name": "Mission 2",
+      "pressure": 400,
+      "specific_humidity": 30,
+      "temperature": 30,
+      "timestamp": 1727481600
+    }
+  ]
+}
