@@ -39,9 +39,10 @@ from gap.utils.reader import (
 from gap_api.serializers.common import APIErrorSerializer
 from gap_api.utils.helper import ApiTag
 from gap.providers import get_reader_from_dataset
+from gap_api.mixins import GAPAPILoggingMixin
 
 
-class MeasurementAPI(APIView):
+class MeasurementAPI(GAPAPILoggingMixin, APIView):
     """API class for measurement."""
 
     date_format = '%Y-%m-%d'

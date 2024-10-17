@@ -69,3 +69,6 @@ numpy==1.26.4
 salientsdk==0.3.5
 
 python-geohash==0.8.5
+
+# api tracking
+drf-api-tracking==1.8.4

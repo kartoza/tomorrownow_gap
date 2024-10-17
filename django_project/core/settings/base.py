@@ -93,6 +93,7 @@ TEMPLATES = [
         'DIRS': [
             # Put Templates
             absolute_path('core', 'templates'),
+            absolute_path('gap_api', 'templates'),
         ],
         'OPTIONS': {
             'loaders': [

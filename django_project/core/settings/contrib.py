@@ -17,7 +17,8 @@ INSTALLED_APPS = INSTALLED_APPS + (
     'django_cleanup.apps.CleanupConfig',
     'django_celery_beat',
     'django_celery_results',
-    'drf_yasg'
+    'drf_yasg',
+    'rest_framework_tracking'
 )
 
 WEBPACK_LOADER = {
@@ -58,3 +59,6 @@ TEMPLATES[0]['OPTIONS']['context_processors'] += [
 ]
 
 SENTRY_DSN = os.environ.get('SENTRY_DSN', '')
+
+# Disable log API request body
+DRF_TRACKING_DECODE_REQUEST_BODY = False

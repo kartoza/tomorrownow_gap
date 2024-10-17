@@ -9,9 +9,12 @@ from celery.result import AsyncResult
 from celery.schedules import crontab
 from celery.utils.serialization import strtobool
 from celery.worker.control import inspect_command
+from celery.worker import strategy
 from django.utils import timezone
 
 logger = logging.getLogger(__name__)
+# Disable info log from Celery MainProcess
+strategy.logger.setLevel(logging.WARNING)
 
 # set the default Django settings module for the 'celery' program.
 # this is also used in manage.py
@@ -68,6 +71,11 @@ app.conf.beat_schedule = {
         'task': 'run_daily_ingestor',
         # Run everyday at 00:00 UTC
         'schedule': crontab(minute='00', hour='00'),
+    },
+    'store-api-logs': {
+        'task': 'store_api_logs',
+        # Run every 2minutes
+        'schedule': crontab(minute='*/2'),
     }
 }
 

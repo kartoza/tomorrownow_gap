@@ -120,6 +120,12 @@ class Preferences(SingletonModel):
         )
     )
 
+    # api log batch size
+    api_log_batch_size = models.IntegerField(
+        default=500,
+        help_text='Number of API Request logs to be saved in a batch.'
+    )
+
     class Meta:  # noqa: D106
         verbose_name_plural = "preferences"
 

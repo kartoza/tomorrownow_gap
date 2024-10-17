@@ -13,3 +13,7 @@ class GapApiConfig(AppConfig):
 
     default_auto_field = 'django.db.models.BigAutoField'
     name = 'gap_api'
+
+    def ready(self):
+        """App ready handler."""
+        from gap_api.tasks import store_api_logs  # noqa
