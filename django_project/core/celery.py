@@ -68,6 +68,11 @@ app.conf.beat_schedule = {
         'task': 'run_daily_ingestor',
         # Run everyday at 00:00 UTC
         'schedule': crontab(minute='00', hour='00'),
+    },
+    'cleanup-r-execution-logs': {
+        'task': 'cleanup_r_execution_logs',
+        # Run every first day of each month at 00:00 UTC
+        'schedule': crontab(minute=0, hour=0, day_of_month=1),
     }
 }
 

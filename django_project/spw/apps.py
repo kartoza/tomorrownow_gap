@@ -12,3 +12,7 @@ class SpwConfig(AppConfig):
 
     default_auto_field = 'django.db.models.BigAutoField'
     name = 'spw'
+
+    def ready(self):
+        """App ready handler."""
+        from spw.tasks import cleanup_r_execution_logs  # noqa
