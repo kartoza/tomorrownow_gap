@@ -38,7 +38,9 @@ class BaseZarrReader(BaseNetCDFReader):
     def __init__(
             self, dataset: Dataset, attributes: List[DatasetAttribute],
             location_input: DatasetReaderInput,
-            start_date: datetime, end_date: datetime) -> None:
+            start_date: datetime, end_date: datetime,
+            altitudes: (float, float) = None
+    ) -> None:
         """Initialize BaseZarrReader class.
 
         :param dataset: Dataset for reading
@@ -53,7 +55,9 @@ class BaseZarrReader(BaseNetCDFReader):
         :type end_date: datetime
         """
         super().__init__(
-            dataset, attributes, location_input, start_date, end_date)
+            dataset, attributes, location_input, start_date, end_date,
+            altitudes=altitudes
+        )
 
     @classmethod
     def get_s3_variables(cls) -> dict:

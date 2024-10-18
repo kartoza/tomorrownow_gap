@@ -5,18 +5,11 @@ Tomorrow Now GAP.
 .. note:: Measurement APIs
 """
 
-from typing import Dict
-import pytz
 import json
 from datetime import date, datetime, time
-from drf_yasg.utils import swagger_auto_schema
-from drf_yasg import openapi
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-from rest_framework.views import APIView
-from rest_framework.exceptions import ValidationError
-from django.http import StreamingHttpResponse
-from django.db.models.functions import Lower
+from typing import Dict
+
+import pytz
 from django.contrib.gis.geos import (
     GEOSGeometry,
     Point,
@@ -24,11 +17,21 @@ from django.contrib.gis.geos import (
     MultiPolygon,
     Polygon
 )
+from django.db.models.functions import Lower
+from django.db.utils import ProgrammingError
+from django.http import StreamingHttpResponse
+from drf_yasg import openapi
+from drf_yasg.utils import swagger_auto_schema
+from rest_framework.exceptions import ValidationError
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from gap.models import (
     Attribute,
     DatasetAttribute
 )
+from gap.providers import get_reader_from_dataset
 from gap.utils.reader import (
     LocationInputType,
     DatasetReaderInput,
@@ -38,7 +41,32 @@ from gap.utils.reader import (
 )
 from gap_api.serializers.common import APIErrorSerializer
 from gap_api.utils.helper import ApiTag
-from gap.providers import get_reader_from_dataset
+
+
+def attribute_list():
+    """Attribute list."""
+    try:
+        return list(
+            Attribute.objects.all().values_list(
+                'variable_name', flat=True
+            ).order_by('variable_name')
+        )
+    except ProgrammingError:
+        pass
+
+
+def default_attribute_list():
+    """Attribute list."""
+    try:
+        first = Attribute.objects.all().order_by('variable_name').first()
+        if first:
+            return Attribute.objects.all().order_by(
+                'variable_name'
+            ).first().variable_name
+        else:
+            return ''
+    except ProgrammingError:
+        pass
 
 
 class MeasurementAPI(APIView):
@@ -48,8 +76,16 @@ class MeasurementAPI(APIView):
     permission_classes = [IsAuthenticated]
     api_parameters = [
         openapi.Parameter(
-            'attributes', openapi.IN_QUERY,
-            description='List of attribute name', type=openapi.TYPE_STRING
+            'attributes',
+            openapi.IN_QUERY,
+            required=True,
+            description='List of attribute name',
+            type=openapi.TYPE_ARRAY,
+            items=openapi.Items(
+                type=openapi.TYPE_STRING,
+                enum=attribute_list(),
+                default=default_attribute_list()
+            )
         ),
         openapi.Parameter(
             'start_date', openapi.IN_QUERY,
@@ -69,7 +105,8 @@ class MeasurementAPI(APIView):
                 'historical_reanalysis',
                 'shortterm_forecast',
                 'seasonal_forecast',
-                'observations'
+                'observations',
+                'windborne_observational'
             ],
             default='historical_reanalysis'
         ),
@@ -150,6 +187,32 @@ class MeasurementAPI(APIView):
             number_list = [float(a) for a in bbox.split(',')]
             return DatasetReaderInput.from_bbox(number_list)
         return None
+
+    def _get_altitudes_filter(self):
+        """Get list of altitudes in the query parameter.
+
+        :return: altitudes list
+        :rtype: (int, int)
+        """
+        altitudes_str = self.request.GET.get('altitudes', None)
+        if altitudes_str is None:
+            return None, None
+        try:
+            altitudes = [
+                float(altitude) for altitude in altitudes_str.split(',')
+            ]
+        except ValueError:
+            raise ValidationError('altitudes not a float')
+        if len(altitudes) != 2:
+            raise ValidationError(
+                'altitudes needs to be a comma-separated list, '
+                'contains 2 number'
+            )
+        if altitudes[0] > altitudes[1]:
+            raise ValidationError(
+                'First altitude needs to be greater than second altitude'
+            )
+        return altitudes[0], altitudes[1]
 
     def _get_product_filter(self):
         """Get product name filter in the request parameters.
@@ -305,6 +368,7 @@ class MeasurementAPI(APIView):
         """
         attributes = self._get_attribute_filter()
         location = self._get_location_filter()
+        min_altitudes, max_altitudes = self._get_altitudes_filter()
         start_dt = datetime.combine(
             self._get_date_filter('start_date'),
             time.min, tzinfo=pytz.UTC
@@ -314,9 +378,11 @@ class MeasurementAPI(APIView):
             time.max, tzinfo=pytz.UTC
         )
         output_format = self._get_format_filter()
-        data = {}
         if location is None:
-            return data
+            return Response(
+                status=200,
+                data={}
+            )
 
         # validate if json is only available for single location filter
         self.validate_output_format(location, output_format)
@@ -332,7 +398,7 @@ class MeasurementAPI(APIView):
             product_name=Lower('dataset__type__variable_name')
         ).filter(
             product_name__in=product_filter
-        )
+        ).order_by('dataset__type__variable_name')
 
         # validate empty dataset_attributes
         self.validate_dataset_attributes(dataset_attributes, output_format)
@@ -345,9 +411,11 @@ class MeasurementAPI(APIView):
                 try:
                     reader = get_reader_from_dataset(da.dataset)
                     dataset_dict[da.dataset.id] = reader(
-                        da.dataset, [da], location, start_dt, end_dt
+                        da.dataset, [da], location, start_dt, end_dt,
+                        altitudes=(min_altitudes, max_altitudes),
                     )
-                except TypeError:
+                except TypeError as e:
+                    print(e)
                     pass
 
         response = None
@@ -405,12 +473,17 @@ class MeasurementAPI(APIView):
                 'bbox', openapi.IN_QUERY,
                 description='Bounding box: xmin, ymin, xmax, ymax',
                 type=openapi.TYPE_STRING
+            ),
+            openapi.Parameter(
+                'altitudes', openapi.IN_QUERY,
+                description='2 value of altitudes: alt_min, alt_max',
+                type=openapi.TYPE_STRING
             )
         ],
         responses={
             200: openapi.Schema(
                 description=(
-                    'Weather data'
+                        'Weather data'
                 ),
                 type=openapi.TYPE_OBJECT,
                 properties={}

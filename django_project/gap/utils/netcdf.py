@@ -182,7 +182,9 @@ class BaseNetCDFReader(BaseDatasetReader):
     def __init__(
             self, dataset: Dataset, attributes: List[DatasetAttribute],
             location_input: DatasetReaderInput,
-            start_date: datetime, end_date: datetime) -> None:
+            start_date: datetime, end_date: datetime,
+            altitudes: (float, float) = None
+    ) -> None:
         """Initialize BaseNetCDFReader class.
 
         :param dataset: Dataset for reading
@@ -195,9 +197,13 @@ class BaseNetCDFReader(BaseDatasetReader):
         :type start_date: datetime
         :param end_date: End date time filter
         :type end_date: datetime
+        :param altitudes: Altitudes for the reader
+        :type altitudes: (float, float)
         """
         super().__init__(
-            dataset, attributes, location_input, start_date, end_date)
+            dataset, attributes, location_input, start_date, end_date,
+            altitudes=altitudes
+        )
         self.xrDatasets = []
 
     def setup_reader(self):

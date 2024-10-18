@@ -10,7 +10,7 @@ from django.contrib.gis.db import models
 from core.models.common import Definition
 from gap.models.common import Unit
 from gap.models.dataset import Dataset
-from gap.models.station import Station
+from gap.models.station import Station, StationHistory
 
 
 class Attribute(Definition):
@@ -76,6 +76,15 @@ class Measurement(models.Model):
     )
     date_time = models.DateTimeField()
     value = models.FloatField()
+
+    # Specifically measurement is linked to a station history
+    station_history = models.ForeignKey(
+        StationHistory, on_delete=models.CASCADE,
+        help_text=(
+            'Station history of the measurement.'
+        ),
+        null=True, blank=True
+    )
 
     def __str__(self):
         return f'{self.date_time} - {self.value}'

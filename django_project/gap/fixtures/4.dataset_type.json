@@ -43,10 +43,10 @@
     "model": "gap.datasettype",
     "pk": 5,
     "fields": {
-      "name": "Airborne Observational",
+      "name": "WindBorne Observational",
       "description": "",
       "type": "historical",
-      "variable_name": "default"
+      "variable_name": "windborne_observational"
     }
   },
   {

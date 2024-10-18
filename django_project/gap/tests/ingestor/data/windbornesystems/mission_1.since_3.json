@@ -13,18 +13,6 @@
       "specific_humidity": 4,
       "temperature": 40,
       "timestamp": 1727481600
-    },
-    {
-      "altitude": 500,
-      "humidity": 1,
-      "latitude": -1.131241,
-      "longitude": 36.756561,
-      "mission_id": "mission-2",
-      "mission_name": "Mission 2",
-      "pressure": 200,
-      "specific_humidity": 10,
-      "temperature": 10,
-      "timestamp": 1727481600
     }
   ]
 }

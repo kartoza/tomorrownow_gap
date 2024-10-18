@@ -8,17 +8,19 @@ import os
 
 import responses
 from django.contrib.gis.gdal import DataSource
-from django.contrib.gis.geos import GEOSGeometry
+from django.contrib.gis.geos import GEOSGeometry, Point
 from django.test import TestCase
 
 from core.settings.utils import absolute_path
 from gap.ingestor.exceptions import EnvIsNotSetException
 from gap.ingestor.wind_borne_systems import (
     WindBorneSystemsAPI,
-    USERNAME_ENV_NAME, PASSWORD_ENV_NAME
+    USERNAME_ENV_NAME, PASSWORD_ENV_NAME,
+    PROVIDER, STATION_TYPE
 )
 from gap.models import (
-    Country, Station, IngestorSession, IngestorSessionStatus, IngestorType
+    Provider, StationType, Country, Station, IngestorSession,
+    IngestorSessionStatus, IngestorType
 )
 from gap.tests.mock_response import BaseTestWithPatchResponses, PatchRequest
 
@@ -46,32 +48,73 @@ class WindBorneSystemsAPIIngestorTest(BaseTestWithPatchResponses, TestCase):
         base_url = WindBorneSystemsAPI.base_url
         return [
             PatchRequest(
-                (
-                    f'{base_url}/observations.json?'
-                    f'include_ids=True&include_mission_name=True'
-                ),
+                f'{base_url}/missions.json?',
                 file_response=os.path.join(
-                    self.responses_folder, 'since_1.json'
+                    self.responses_folder, 'missions.json'
                 )
             ),
             PatchRequest(
                 (
                     f'{base_url}/observations.json?'
                     f'include_ids=True&include_mission_name=True&'
+                    f'mission_id=mission-1'
+                ),
+                file_response=os.path.join(
+                    self.responses_folder, 'mission_1.since_1.json'
+                )
+            ),
+            PatchRequest(
+                (
+                    f'{base_url}/observations.json?'
+                    f'include_ids=True&include_mission_name=True&'
+                    f'mission_id=mission-1&'
                     f'since=1727308800'
                 ),
                 file_response=os.path.join(
-                    self.responses_folder, 'since_2.json'
+                    self.responses_folder, 'mission_1.since_2.json'
                 )
             ),
             PatchRequest(
                 (
                     f'{base_url}/observations.json?'
                     f'include_ids=True&include_mission_name=True&'
+                    f'mission_id=mission-1&'
                     f'since=1727395200'
                 ),
                 file_response=os.path.join(
-                    self.responses_folder, 'since_3.json'
+                    self.responses_folder, 'mission_1.since_3.json'
+                )
+            ),
+            PatchRequest(
+                (
+                    f'{base_url}/observations.json?'
+                    f'include_ids=True&include_mission_name=True&'
+                    f'mission_id=mission-2'
+                ),
+                file_response=os.path.join(
+                    self.responses_folder, 'mission_2.since_1.json'
+                )
+            ),
+            PatchRequest(
+                (
+                    f'{base_url}/observations.json?'
+                    f'include_ids=True&include_mission_name=True&'
+                    f'mission_id=mission-2&'
+                    f'since=1727308800'
+                ),
+                file_response=os.path.join(
+                    self.responses_folder, 'mission_2.since_2.json'
+                )
+            ),
+            PatchRequest(
+                (
+                    f'{base_url}/observations.json?'
+                    f'include_ids=True&include_mission_name=True&'
+                    f'mission_id=mission-2&'
+                    f'since=1727395200'
+                ),
+                file_response=os.path.join(
+                    self.responses_folder, 'mission_2.since_3.json'
                 )
             )
         ]
@@ -129,6 +172,29 @@ class WindBorneSystemsAPIIngestorTest(BaseTestWithPatchResponses, TestCase):
         os.environ[USERNAME_ENV_NAME] = 'Username'
         os.environ[PASSWORD_ENV_NAME] = 'password'
 
+        # Create mission 2
+        point = Point(
+            x=36.756561,
+            y=-1.131241,
+            srid=4326
+        )
+        provider = Provider.objects.get(
+            name=PROVIDER
+        )
+        station_type = StationType.objects.get(
+            name=STATION_TYPE
+        )
+        Station.objects.update_or_create(
+            provider=provider,
+            station_type=station_type,
+            code='mission-2',
+            defaults={
+                'name': 'mission-2',
+                'geometry': point,
+                'altitude': 500,
+            }
+        )
+
         # First import
         session = IngestorSession.objects.create(
             ingestor_type=self.ingestor_type
@@ -145,14 +211,15 @@ class WindBorneSystemsAPIIngestorTest(BaseTestWithPatchResponses, TestCase):
         session.run()
         self.assertEqual(session.status, IngestorSessionStatus.SUCCESS)
         self.assertEqual(Station.objects.count(), 2)
-        #
-        first_station = Station.objects.get(code='mission-1')
+
+        # First station
+        station = Station.objects.get(code='mission-1')
         self.assertEqual(
-            first_station.stationhistory_set.count(), 3
+            station.stationhistory_set.count(), 3
         )
         self.assertEqual(
             list(
-                first_station.measurement_set.filter(
+                station.measurement_set.filter(
                     dataset_attribute__source='pressure'
                 ).values_list('value', flat=True)
             ),
@@ -160,7 +227,7 @@ class WindBorneSystemsAPIIngestorTest(BaseTestWithPatchResponses, TestCase):
         )
         self.assertEqual(
             list(
-                first_station.measurement_set.filter(
+                station.measurement_set.filter(
                     dataset_attribute__source='humidity'
                 ).values_list('value', flat=True)
             ),
@@ -168,7 +235,7 @@ class WindBorneSystemsAPIIngestorTest(BaseTestWithPatchResponses, TestCase):
         )
         self.assertEqual(
             list(
-                first_station.measurement_set.filter(
+                station.measurement_set.filter(
                     dataset_attribute__source='specific_humidity'
                 ).values_list('value', flat=True)
             ),
@@ -176,18 +243,90 @@ class WindBorneSystemsAPIIngestorTest(BaseTestWithPatchResponses, TestCase):
         )
         self.assertEqual(
             list(
-                first_station.measurement_set.filter(
+                station.measurement_set.filter(
                     dataset_attribute__source='temperature'
                 ).values_list('value', flat=True)
             ),
             [20, 30, 40]
         )
-        self.assertEqual(first_station.altitude, 30)
+        self.assertEqual(station.altitude, 30)
         self.assertEqual(
             list(
-                first_station.stationhistory_set.values_list(
+                station.stationhistory_set.values_list(
                     'altitude', flat=True
                 )
             ),
             [10, 20, 30]
+        )
+
+        # Second station
+        station = Station.objects.get(code='mission-2')
+        self.assertEqual(
+            station.stationhistory_set.count(), 3
+        )
+        self.assertEqual(
+            list(
+                station.measurement_set.filter(
+                    dataset_attribute__source='humidity'
+                ).values_list('value', flat=True)
+            ),
+            [1, 2, 3]
+        )
+        self.assertEqual(
+            list(
+                station.measurement_set.filter(
+                    dataset_attribute__source='pressure'
+                ).values_list('value', flat=True)
+            ),
+            [200, 300, 400]
+        )
+        self.assertEqual(
+            list(
+                station.measurement_set.filter(
+                    dataset_attribute__source='specific_humidity'
+                ).values_list('value', flat=True)
+            ),
+            [10, 20, 30]
+        )
+        self.assertEqual(
+            list(
+                station.measurement_set.filter(
+                    dataset_attribute__source='temperature'
+                ).values_list('value', flat=True)
+            ),
+            [10, 20, 30]
+        )
+        self.assertEqual(station.altitude, 700)
+        self.assertEqual(
+            list(
+                station.stationhistory_set.values_list(
+                    'altitude', flat=True
+                )
+            ),
+            [500, 600, 700]
+        )
+        histories = station.stationhistory_set.all()
+        self.assertEqual(
+            list(
+                histories[0].measurement_set.order_by(
+                    'dataset_attribute__source'
+                ).values_list('value', flat=True)
+            ),
+            [1, 200, 10, 10]
+        )
+        self.assertEqual(
+            list(
+                histories[1].measurement_set.order_by(
+                    'dataset_attribute__source'
+                ).values_list('value', flat=True)
+            ),
+            [2, 300, 20, 20]
+        )
+        self.assertEqual(
+            list(
+                histories[2].measurement_set.order_by(
+                    'dataset_attribute__source'
+                ).values_list('value', flat=True)
+            ),
+            [3, 400, 30, 30]
         )

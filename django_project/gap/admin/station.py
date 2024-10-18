@@ -10,6 +10,7 @@ from core.admin import AbstractDefinitionAdmin
 from gap.models import (
     Station, StationType, StationHistory
 )
+from gap.tasks.station import assign_history_of_stations_to_measurement
 
 
 @admin.register(StationType)
@@ -17,6 +18,14 @@ class StationTypeAdmin(AbstractDefinitionAdmin):
     """Station admin."""
 
     pass
+
+
+@admin.action(description='Assign history to measurement')
+def assign_history_to_measurement(modeladmin, request, queryset):
+    """Assign history to measurement."""
+    assign_history_of_stations_to_measurement.delay(
+        list(queryset.values_list('id', flat=True))
+    )
 
 
 @admin.register(Station)
@@ -28,6 +37,7 @@ class StationAdmin(admin.ModelAdmin):
     )
     list_filter = ('provider', 'station_type', 'country')
     search_fields = ('code', 'name')
+    actions = (assign_history_to_measurement,)
 
 
 @admin.register(StationHistory)

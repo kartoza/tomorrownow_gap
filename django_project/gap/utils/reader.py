@@ -6,15 +6,16 @@ Tomorrow Now GAP.
 """
 
 import json
-from typing import Union, List
-import numpy as np
-from datetime import datetime
-import pytz
 import tempfile
-from xarray.core.dataset import Dataset as xrDataset
+from datetime import datetime
+from typing import Union, List
+
+import numpy as np
+import pytz
 from django.contrib.gis.geos import (
     Point, Polygon, MultiPolygon, GeometryCollection, MultiPoint, GEOSGeometry
 )
+from xarray.core.dataset import Dataset as xrDataset
 
 from gap.models import (
     CastType,
@@ -181,7 +182,8 @@ class DatasetTimelineValue:
 
     def __init__(
             self, datetime: Union[np.datetime64, datetime],
-            values: dict, location: Point) -> None:
+            values: dict, location: Point, altitude: int = None
+    ) -> None:
         """Initialize DatasetTimelineValue object.
 
         :param datetime: datetime of data
@@ -192,6 +194,7 @@ class DatasetTimelineValue:
         self.datetime = datetime
         self.values = values
         self.location = location
+        self.altitude = altitude
 
     def _datetime_as_str(self):
         """Convert datetime object to string."""
@@ -213,8 +216,8 @@ class DatasetTimelineValue:
         dt = self.datetime
         if isinstance(self.datetime, np.datetime64):
             timestamp = (
-                (dt - np.datetime64('1970-01-01T00:00:00')) /
-                np.timedelta64(1, 's')
+                    (dt - np.datetime64('1970-01-01T00:00:00')) /
+                    np.timedelta64(1, 's')
             )
             dt = datetime.fromtimestamp(timestamp, tz=pytz.UTC)
         return dt.strftime(format)
@@ -307,10 +310,19 @@ class DatasetReaderValue:
         ):
             return {}
 
-        return {
+        altitude = None
+        try:
+            altitude = self.values[0].altitude
+        except IndexError:
+            pass
+
+        output = {
             'geometry': json.loads(self.location_input.geometry.json),
-            'data': [result.to_dict() for result in self.values]
         }
+        if altitude is not None:
+            output['altitude'] = altitude
+        output['data'] = [result.to_dict() for result in self.values]
+        return output
 
     def _xr_dataset_to_dict(self) -> dict:
         """Convert xArray Dataset to dictionary.
@@ -398,7 +410,9 @@ class BaseDatasetReader:
             self, dataset: Dataset, attributes: List[DatasetAttribute],
             location_input: DatasetReaderInput,
             start_date: datetime, end_date: datetime,
-            output_type=DatasetReaderOutputType.JSON) -> None:
+            output_type=DatasetReaderOutputType.JSON,
+            altitudes: (float, float) = None
+    ) -> None:
         """Initialize BaseDatasetReader class.
 
         :param dataset: Dataset for reading
@@ -413,6 +427,8 @@ class BaseDatasetReader:
         :type end_date: datetime
         :param output_type: Output type
         :type output_type: str
+        :param altitudes: Altitudes for the reader
+        :type altitudes: (float, float)
         """
         self.dataset = dataset
         self.attributes = attributes
@@ -420,6 +436,7 @@ class BaseDatasetReader:
         self.start_date = start_date
         self.end_date = end_date
         self.output_type = output_type
+        self.altitudes = altitudes
 
     def add_attribute(self, attribute: DatasetAttribute):
         """Add a new attribuute to be read.

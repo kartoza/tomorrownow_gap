@@ -8,33 +8,35 @@ Tomorrow Now GAP.
 import json
 from datetime import datetime
 from typing import List
-from django.urls import reverse
 from unittest.mock import patch
+
 from django.contrib.gis.geos import Polygon, MultiPolygon, Point
+from django.urls import reverse
 
 from core.tests.common import FakeResolverMatchV1, BaseAPIViewTest
-from gap.models import DatasetAttribute, Dataset
-from gap.utils.reader import (
-    DatasetReaderValue,
-    DatasetTimelineValue,
-    DatasetReaderInput,
-    DatasetReaderOutputType
-)
-from gap_api.api_views.measurement import MeasurementAPI
-from gap.utils.reader import BaseDatasetReader, LocationInputType
 from gap.factories import (
     StationFactory,
     MeasurementFactory
 )
+from gap.models import DatasetAttribute, Dataset
+from gap.utils.reader import (
+    DatasetReaderValue, DatasetTimelineValue,
+    DatasetReaderInput, DatasetReaderOutputType, BaseDatasetReader,
+    LocationInputType
+)
+from gap_api.api_views.measurement import MeasurementAPI
 
 
 class MockDatasetReader(BaseDatasetReader):
     """Class to mock a dataset reader."""
 
-    def __init__(self, dataset, attributes: List[DatasetAttribute],
-                 location_input: DatasetReaderInput, start_date: datetime,
-                 end_date: datetime,
-                 output_type=DatasetReaderOutputType.JSON) -> None:
+    def __init__(
+            self, dataset, attributes: List[DatasetAttribute],
+            location_input: DatasetReaderInput, start_date: datetime,
+            end_date: datetime,
+            output_type=DatasetReaderOutputType.JSON,
+            altitudes: (float, float) = None
+    ) -> None:
         """Initialize MockDatasetReader class."""
         super().__init__(
             dataset, attributes, location_input,
@@ -59,9 +61,56 @@ class CommonMeasurementAPITest(BaseAPIViewTest):
     """Common class for Measurement API Test."""
 
     def _get_measurement_request(
+            self, lat=None, lon=None, bbox=None,
+            attributes='max_temperature',
+            start_dt='2024-04-01', end_dt='2024-04-04', product=None,
+            output_type='json', altitudes=None
+    ):
+        """Get request for Measurement API.
+
+        :param lat: latitude, defaults to -2.215
+        :type lat: float, optional
+        :param lon: longitude, defaults to 29.125
+        :type lon: float, optional
+        :param bbox: Bounding box: xmin, ymin, xmax, ymax
+        :type bbox: str, optional
+        :param attributes: comma separated list of attribute,
+            defaults to 'max_temperature'
+        :type attributes: str, optional
+        :param start_dt: start date range, defaults to '2024-04-01'
+        :type start_dt: str, optional
+        :param end_dt: end date range, defaults to '2024-04-04'
+        :type end_dt: str, optional
+        :param product: product type, defaults to None
+        :type product: str, optional
+        :return: Request object
+        :rtype: WSGIRequest
+        """
+        request_params = (
+            f'?attributes={attributes}'
+            f'&start_date={start_dt}&end_date={end_dt}'
+            f'&output_type={output_type}'
+        )
+        if product:
+            request_params = request_params + f'&product={product}'
+        if altitudes:
+            request_params = request_params + f'&altitudes={altitudes}'
+        if bbox:
+            request_params = request_params + f'&bbox={bbox}'
+        if lat is not None and lon is not None:
+            request_params = request_params + f'&lat={lat}&lon={lon}'
+        request = self.factory.get(
+            reverse('api:v1:get-measurement') + request_params
+        )
+        request.user = self.superuser
+        request.resolver_match = FakeResolverMatchV1
+        return request
+
+    def _get_measurement_request_point(
             self, lat=-2.215, lon=29.125, attributes='max_temperature',
             start_dt='2024-04-01', end_dt='2024-04-04', product=None,
-            output_type='json'):
+            output_type='json', altitudes=None
+    ):
         """Get request for Measurement API.
 
         :param lat: latitude, defaults to -2.215
@@ -80,20 +129,39 @@ class CommonMeasurementAPITest(BaseAPIViewTest):
         :return: Request object
         :rtype: WSGIRequest
         """
-        request_params = (
-            f'?lat={lat}&lon={lon}&attributes={attributes}'
-            f'&start_date={start_dt}&end_date={end_dt}'
-            f'&output_type={output_type}'
+        return self._get_measurement_request(
+            lat=lat, lon=lon, attributes=attributes,
+            start_dt=start_dt, end_dt=end_dt, product=product,
+            output_type=output_type, altitudes=altitudes
         )
-        if product:
-            request_params = request_params + f'&product={product}'
-        request = self.factory.get(
-            reverse('api:v1:get-measurement') + request_params
-        )
-        request.user = self.superuser
-        request.resolver_match = FakeResolverMatchV1
-        return request
 
+    def _get_measurement_request_bbox(
+            self, bbox='0,0,10,10', attributes='max_temperature',
+            start_dt='2024-04-01', end_dt='2024-04-04', product=None,
+            output_type='json', altitudes=None
+    ):
+        """Get request for Measurement API.
+
+        :param bbox: Bounding box: xmin, ymin, xmax, ymax,
+            defaults to '0,0,10,10'
+        :type bbox: str, optional
+        :param attributes: comma separated list of attribute,
+            defaults to 'max_temperature'
+        :type attributes: str, optional
+        :param start_dt: start date range, defaults to '2024-04-01'
+        :type start_dt: str, optional
+        :param end_dt: end date range, defaults to '2024-04-04'
+        :type end_dt: str, optional
+        :param product: product type, defaults to None
+        :type product: str, optional
+        :return: Request object
+        :rtype: WSGIRequest
+        """
+        return self._get_measurement_request(
+            bbox=bbox, attributes=attributes,
+            start_dt=start_dt, end_dt=end_dt, product=product,
+            output_type=output_type, altitudes=altitudes
+        )
 
     def _post_measurement_request(
             self, lat=-2.215, lon=29.125, attributes='max_temperature',
@@ -161,7 +229,7 @@ class HistoricalAPITest(CommonMeasurementAPITest):
     def test_read_historical_data_empty(self):
         """Test read historical data that returns empty."""
         view = MeasurementAPI.as_view()
-        request = self._get_measurement_request()
+        request = self._get_measurement_request_point()
         response = view(request)
         self.assertEqual(response.status_code, 404)
 
@@ -183,7 +251,7 @@ class HistoricalAPITest(CommonMeasurementAPITest):
             attribute1.attribute.variable_name,
             attribute2.attribute.variable_name
         ]
-        request = self._get_measurement_request(
+        request = self._get_measurement_request_point(
             attributes=','.join(attribs)
         )
         response = view(request)
@@ -198,7 +266,7 @@ class HistoricalAPITest(CommonMeasurementAPITest):
         self.assertIn('test', result_data[0]['values'])
         self.assertEqual(100, result_data[0]['values']['test'])
         # with product type
-        request = self._get_measurement_request(
+        request = self._get_measurement_request_point(
             attributes=','.join(attribs),
             product='test_empty'
         )
@@ -284,7 +352,7 @@ class HistoricalAPITest(CommonMeasurementAPITest):
             attribute1.attribute.variable_name,
             attribute2.attribute.variable_name
         ]
-        request = self._get_measurement_request(
+        request = self._get_measurement_request_point(
             attributes=','.join(attribs),
             product='seasonal_forecast',
             output_type='csv'
@@ -316,7 +384,7 @@ class HistoricalAPITest(CommonMeasurementAPITest):
         attribs = [
             attribute1.attribute.variable_name
         ]
-        request = self._get_measurement_request(
+        request = self._get_measurement_request_point(
             attributes=','.join(attribs),
             product='tahmo_ground_observation',
             output_type='csv'

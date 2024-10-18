@@ -133,10 +133,14 @@ class TomorrowIODatasetReader(BaseDatasetReader):
     def __init__(
             self, dataset: Dataset, attributes: List[DatasetAttribute],
             location_input: DatasetReaderInput, start_date: datetime,
-            end_date: datetime, verbose = False) -> None:
+            end_date: datetime, verbose = False,
+            altitudes: (float, float) = None
+    ) -> None:
         """Initialize Dataset Reader."""
         super().__init__(
-            dataset, attributes, location_input, start_date, end_date)
+            dataset, attributes, location_input, start_date, end_date,
+            altitudes=altitudes
+        )
         self.errors = None
         self.warnings = None
         self.results = []
@@ -583,10 +587,14 @@ class TioZarrReader(BaseZarrReader):
     def __init__(
             self, dataset: Dataset, attributes: List[DatasetAttribute],
             location_input: DatasetReaderInput, start_date: datetime,
-            end_date: datetime) -> None:
+            end_date: datetime,
+            altitudes: (float, float) = None
+    ) -> None:
         """Initialize TioZarrReader class."""
         super().__init__(
-            dataset, attributes, location_input, start_date, end_date)
+            dataset, attributes, location_input, start_date, end_date,
+            altitudes=altitudes
+        )
         self.latest_forecast_date = None
 
     def read_forecast_data(self, start_date: datetime, end_date: datetime):

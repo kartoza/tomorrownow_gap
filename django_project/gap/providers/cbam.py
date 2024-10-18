@@ -91,7 +91,9 @@ class CBAMNetCDFReader(BaseNetCDFReader):
     def __init__(
             self, dataset: Dataset, attributes: List[DatasetAttribute],
             location_input: DatasetReaderInput, start_date: datetime,
-            end_date: datetime) -> None:
+            end_date: datetime,
+            altitudes: (float, float) = None
+    ) -> None:
         """Initialize CBAMNetCDFReader class.
 
         :param dataset: Dataset from CBAM provider
@@ -104,9 +106,13 @@ class CBAMNetCDFReader(BaseNetCDFReader):
         :type start_date: datetime
         :param end_date: End date time filter
         :type end_date: datetime
+        :param altitudes: Altitudes for the reader
+        :type altitudes: (float, float)
         """
         super().__init__(
-            dataset, attributes, location_input, start_date, end_date)
+            dataset, attributes, location_input, start_date, end_date,
+            altitudes=altitudes
+        )
 
     def read_historical_data(self, start_date: datetime, end_date: datetime):
         """Read historical data from dataset.
@@ -213,10 +219,14 @@ class CBAMZarrReader(BaseZarrReader, CBAMNetCDFReader):
     def __init__(
             self, dataset: Dataset, attributes: List[DatasetAttribute],
             location_input: DatasetReaderInput, start_date: datetime,
-            end_date: datetime) -> None:
+            end_date: datetime,
+            altitudes: (float, float) = None
+    ) -> None:
         """Initialize CBAMZarrReader class."""
         super().__init__(
-            dataset, attributes, location_input, start_date, end_date)
+            dataset, attributes, location_input, start_date, end_date,
+            altitudes=altitudes
+        )
 
     def _read_variables_by_point(
             self, dataset: xrDataset, variables: List[str],

@@ -5,10 +5,11 @@ Tomorrow Now GAP.
 .. note:: Observation Data Reader
 """
 
-from typing import List
 from datetime import datetime
-from django.contrib.gis.geos import Polygon, Point
+from typing import List
+
 from django.contrib.gis.db.models.functions import Distance
+from django.contrib.gis.geos import Polygon, Point
 from rest_framework.exceptions import ValidationError
 
 from gap.models import (
@@ -71,7 +72,8 @@ class ObservationReaderValue(DatasetReaderValue):
         headers = [
             'date',
             'lat',
-            'lon'
+            'lon',
+            'altitude'
         ]
         for attr in self.attributes:
             headers.append(attr.attribute.variable_name)
@@ -81,7 +83,8 @@ class ObservationReaderValue(DatasetReaderValue):
             data = [
                 val.get_datetime_repr('%Y-%m-%d'),
                 str(val.location.y),
-                str(val.location.x)
+                str(val.location.x),
+                str(val.altitude) if val.altitude else '',
             ]
             for attr in self.attributes:
                 var_name = attr.attribute.variable_name
@@ -110,7 +113,10 @@ class ObservationDatasetReader(BaseDatasetReader):
     def __init__(
             self, dataset: Dataset, attributes: List[DatasetAttribute],
             location_input: DatasetReaderInput, start_date: datetime,
-            end_date: datetime) -> None:
+            end_date: datetime,
+            altitudes: (float, float) = None
+
+    ) -> None:
         """Initialize ObservationDatasetReader class.
 
         :param dataset: Dataset from observation provider
@@ -125,8 +131,24 @@ class ObservationDatasetReader(BaseDatasetReader):
         :type end_date: datetime
         """
         super().__init__(
-            dataset, attributes, location_input, start_date, end_date)
+            dataset, attributes, location_input, start_date, end_date,
+            altitudes=altitudes
+        )
         self.results: List[DatasetTimelineValue] = []
+
+    def query_by_altitude(self, qs):
+        """Query by altitude."""
+        altitudes = self.altitudes
+        try:
+            if altitudes[0] is not None and altitudes[1] is not None:
+                qs = qs.filter(
+                    altitude__gte=altitudes[0]
+                ).filter(
+                    altitude__lte=altitudes[1]
+                )
+        except (IndexError, TypeError):
+            pass
+        return qs
 
     def _find_nearest_station_by_point(self, point: Point = None):
         p = point
@@ -172,14 +194,8 @@ class ObservationDatasetReader(BaseDatasetReader):
             results[rs[0].id] = rs[0]
         return results.values()
 
-    def read_historical_data(self, start_date: datetime, end_date: datetime):
-        """Read historical data from dataset.
-
-        :param start_date: start date for reading historical data
-        :type start_date: datetime
-        :param end_date:  end date for reading historical data
-        :type end_date: datetime
-        """
+    def get_nearest_stations(self):
+        """Return nearest stations."""
         nearest_stations = None
         if self.location_input.type == LocationInputType.POINT:
             nearest_stations = self._find_nearest_station_by_point()
@@ -189,9 +205,14 @@ class ObservationDatasetReader(BaseDatasetReader):
             nearest_stations = self._find_nearest_station_by_points()
         elif self.location_input.type == LocationInputType.BBOX:
             nearest_stations = self._find_nearest_station_by_bbox()
+        return nearest_stations
+
+    def get_measurements(self, start_date: datetime, end_date: datetime):
+        """Return measurements data."""
+        nearest_stations = self.get_nearest_stations()
         if nearest_stations is None:
             return
-        measurements = Measurement.objects.select_related(
+        return Measurement.objects.select_related(
             'dataset_attribute', 'dataset_attribute__attribute',
             'station'
         ).filter(
@@ -200,31 +221,63 @@ class ObservationDatasetReader(BaseDatasetReader):
             dataset_attribute__in=self.attributes,
             station__in=nearest_stations
         ).order_by('date_time', 'station', 'dataset_attribute')
+
+    def read_historical_data(self, start_date: datetime, end_date: datetime):
+        """Read historical data from dataset.
+
+        :param start_date: start date for reading historical data
+        :type start_date: datetime
+        :param end_date:  end date for reading historical data
+        :type end_date: datetime
+        """
+        measurements = self.get_measurements(start_date, end_date)
+        if measurements is None:
+            return
+
         # final result, group by datetime
         self.results = []
 
         iter_dt = None
         iter_loc = None
+        iter_alt = None
         # group by location and date_time
         dt_loc_val = {}
         for measurement in measurements:
+            # if it has history, use history location
+            station_history = measurement.station_history
+            if station_history:
+                measurement_loc = station_history.geometry
+                measurement_alt = station_history.altitude
+            else:
+                measurement_loc = measurement.station.geometry
+                measurement_alt = measurement.station.altitude
+
             if iter_dt is None:
                 iter_dt = measurement.date_time
-                iter_loc = measurement.station.geometry
+                iter_loc = measurement_loc
+                iter_alt = measurement_alt
             elif (
-                iter_loc != measurement.station.geometry or
-                iter_dt != measurement.date_time
+                    iter_loc != measurement_loc or
+                    iter_dt != measurement.date_time or
+                    iter_alt != measurement_alt
             ):
                 self.results.append(
-                    DatasetTimelineValue(iter_dt, dt_loc_val, iter_loc))
+                    DatasetTimelineValue(
+                        iter_dt, dt_loc_val, iter_loc, iter_alt
+                    )
+                )
                 iter_dt = measurement.date_time
-                iter_loc = measurement.station.geometry
+                iter_loc = measurement_loc
+                iter_alt = measurement_alt
                 dt_loc_val = {}
             dt_loc_val[
                 measurement.dataset_attribute.attribute.variable_name
             ] = measurement.value
         self.results.append(
-            DatasetTimelineValue(iter_dt, dt_loc_val, iter_loc))
+            DatasetTimelineValue(
+                iter_dt, dt_loc_val, iter_loc, iter_alt
+            )
+        )
 
     def get_data_values(self) -> DatasetReaderValue:
         """Fetch data values from dataset.
