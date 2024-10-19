@@ -66,3 +66,30 @@ The R Model table within the GAP Admin interface allows researchers to manage an
     - Restart plumber process: Restarts the plumber process.
 
 4. **Edit R Model:** Clicking on the object allows researchers to change or edit a particular version of the R code. Click [here](django-change-record.md) to view detailed documentation on editing an R model.
+
+
+## Auth Model Table
+
+![Auth model table](./img/django-table-5.png)
+
+1. **Add Auth Token:** Clicking on the 1️⃣ `ADD Auth Token` button allows researchers to add a new token to auth model. Click [here](django-add-record.md) to see detailed documentation on adding a new Auth Token.
+
+2. **Auth Model Table:** The Auth Model table with records, displaying information such as the Digest, User, Created date and Expiry date.
+
+3. **Action Dropdown:** The Action dropdown of the Auth model table allows user to perform various actions on the records. To access the Action Dropdown, click on the dropdown.
+
+    ![Dropdown menu](./img/django-table-6.png)
+
+    **Perform Action:** To perform an action on a record, follow these steps :
+    
+    - Select Records: Check the box available in front of the records to perform the action on.
+
+    - Choose Action: Select the desired action from the dropdown menu.
+
+    - Go Button: Click on the Go button to execute the chosen action.
+
+    The available actions include:
+
+    - Delete selected auth tokens: Permanently remove the selected record(s) from the Auth Model table.
+
+4. **Edit Auth Model:** Clicking on the object allows user to modify or edit a specific Auth Model table record. Click [here](django-change-record.md) to view detailed documentation on editing an Auth Model.

@@ -67,3 +67,15 @@ Fill all the required fields to save the r model record otherwise it will throw 
 4. **Save and Continue Editing**: Choosing this option saves the new R Model record while still displaying the current record for further editing.
 
 By following these steps, researchers can efficiently create and manage R Model records within the GAP Admin interface.
+
+## Add Auth Token
+
+![Add Auth Token](./img/django-add-record-5.png)
+
+1. **User:** Select the user from the available users for whom you want to create an authentication token.
+
+2. **Save:** This option saves the new Auth Token record and redirects administrators to the Django Admin Table/record list.
+
+3. **Save and Add Another**: This option saves the new Auth Token record and redirects administrators to a new page to add another Auth Model record.
+
+The process of creating the authentication token is completed.
