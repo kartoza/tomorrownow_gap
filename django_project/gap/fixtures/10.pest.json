@@ -1,0 +1,18 @@
+[
+  {
+    "model": "gap.pest",
+    "pk": 1,
+    "fields": {
+      "name": "Beanfly",
+      "description": "Beanfly (On bean)"
+    }
+  },
+  {
+    "model": "gap.pest",
+    "pk": 2,
+    "fields": {
+      "name": "Fall Armyworm",
+      "description": "Fall Armyworm (on maize and other hosts)"
+    }
+  }
+]

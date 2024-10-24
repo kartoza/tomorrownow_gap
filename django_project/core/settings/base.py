@@ -3,6 +3,8 @@
 
 import os
 
+from django.conf.global_settings import gettext_noop
+
 from .utils import absolute_path, ensure_secret_key_file
 
 ensure_secret_key_file()
@@ -122,6 +124,7 @@ STATICFILES_FINDERS = (
 )
 
 INSTALLED_APPS = (
+    'modeltranslation',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -152,3 +155,8 @@ CACHES = {
 
 LOGIN_URL = '/account/login/'
 LOGIN_REDIRECT_URL = '/'
+
+LANGUAGES = (
+    ("en", gettext_noop("English")),
+    ("sw", gettext_noop("Swahili")),
+)

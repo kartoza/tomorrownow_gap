@@ -29,13 +29,16 @@ DATABASES = {
 DEBUG = TEMPLATE_DEBUG = False
 
 # Extra installed apps
-INSTALLED_APPS = INSTALLED_APPS + (
+PROJECT_APPS = (
     'core',
     'frontend',
     'gap',
     'gap_api',
-    'spw'
+    'spw',
+    'message',
+    'prise',
 )
+INSTALLED_APPS = INSTALLED_APPS + PROJECT_APPS
 
 TEMPLATES[0]['DIRS'] += [
     absolute_path('frontend', 'templates'),

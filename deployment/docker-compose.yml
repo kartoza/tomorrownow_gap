@@ -76,6 +76,7 @@ services:
       - django
 
   plumber:
+    image: kartoza/${COMPOSE_PROJECT_NAME:-django_project}_plumber
     build:
       context: ../
       dockerfile: deployment/plumber/Dockerfile

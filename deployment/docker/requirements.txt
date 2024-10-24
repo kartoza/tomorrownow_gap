@@ -33,6 +33,9 @@ django-cleanup==7.0.0
 # Celery result backends for Django.
 django-celery-results==2.5.0
 
+# Translation for model field
+django-modeltranslation==0.19.10
+
 # psycopg2 - Python-PostgreSQL Database Adapter
 # psycopg2-binary==2.9.3
 

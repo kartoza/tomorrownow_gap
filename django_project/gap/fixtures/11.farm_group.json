@@ -1,0 +1,34 @@
+[
+  {
+    "model": "gap.farmgroup",
+    "pk": 1,
+    "fields": {
+      "name": "Regen organics pilot",
+      "description": ""
+    }
+  },
+  {
+    "model": "gap.farmgroup",
+    "pk": 2,
+    "fields": {
+      "name": "Trial site 1",
+      "description": ""
+    }
+  },
+  {
+    "model": "gap.farmgroup",
+    "pk": 3,
+    "fields": {
+      "name": "Trial site 2",
+      "description": ""
+    }
+  },
+  {
+    "model": "gap.farmgroup",
+    "pk": 4,
+    "fields": {
+      "name": "KALRO",
+      "description": ""
+    }
+  }
+]

@@ -41,7 +41,7 @@ class FarmGroupAdmin(AbstractDefinitionAdmin):
     """FarmGroup admin."""
 
     list_display = (
-        'id', 'name', 'description', 'farm_count'
+        'id', 'name', 'description', 'user_count', 'farm_count', 'phone_number'
     )
 
     filter_horizontal = ('farms', 'users')
@@ -50,8 +50,12 @@ class FarmGroupAdmin(AbstractDefinitionAdmin):
     readonly_fields = ('displayed_headers',)
 
     def farm_count(self, obj: FarmGroup):
-        """Return farm list."""
+        """Return farm count."""
         return obj.farms.count()
+
+    def user_count(self, obj: FarmGroup):
+        """Return user count."""
+        return obj.users.count()
 
     def displayed_headers(self, obj: FarmGroup):
         """Display headers as a table."""

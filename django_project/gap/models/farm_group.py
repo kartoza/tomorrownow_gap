@@ -24,6 +24,11 @@ class FarmGroup(Definition):
     users = models.ManyToManyField(
         User, blank=True
     )
+    phone_number = models.CharField(
+        null=True,
+        blank=True,
+        max_length=255
+    )
 
     def email_recipients(self) -> list:
         """Return list of email addresses of farm recipients."""

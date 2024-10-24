@@ -1,0 +1,617 @@
+[
+  {
+    "model": "message.messagetemplate",
+    "pk": 1,
+    "fields": {
+      "code": "prise_pxd_beanfly_1",
+      "name": "feedback",
+      "type": "Feedback",
+      "application": "PRISE",
+      "group": "Start of Season",
+      "note": "",
+      "template": "Welcome to MoA-INFO bean service. Have you seen bean fly on your beans in the past week?\r\nA. Yes\r\nB. No\r\nC. I haven't checked",
+      "template_en": "Welcome to MoA-INFO bean service. Have you seen bean fly on your beans in the past week?\r\nA. Yes\r\nB. No\r\nC. I haven't checked",
+      "template_sw": "Karibu kwa huduma ya maharagwe ya MoA-INFO. Je, umemwona nzi wa maharagwe (bean fly) kwa maharagwe yako wiki iliyopita?\r\nA. Ndio\r\nB. La\r\nC. Sijaangalia"
+    }
+  },
+  {
+    "model": "message.messagetemplate",
+    "pk": 2,
+    "fields": {
+      "code": "prise_pxd_beanfly_2",
+      "name": "identify",
+      "type": "Introduction /Advice /Action",
+      "application": "PRISE",
+      "group": "Start of Season",
+      "note": "",
+      "template": "Bean flies are small black flies. They are 2 mm long and commonly found feeding on leaves and stems. Reply A for more",
+      "template_en": "Bean flies are small black flies. They are 2 mm long and commonly found feeding on leaves and stems. Reply A for more",
+      "template_sw": "Nzi wa maharagwe ni wadogo na weusi. Wana urefu wa milimita mbili na hupatikana kwa kawaida wakila majani na shina. Jibu A kujua zaidi"
+    }
+  },
+  {
+    "model": "message.messagetemplate",
+    "pk": 3,
+    "fields": {
+      "code": "prise_pxd_beanfly_3",
+      "name": "intro2",
+      "type": "Warning /Description",
+      "application": "PRISE",
+      "group": "Start of Season",
+      "note": "",
+      "template": "Bean flies may reach your shamba this season. We are using weather information to predict how bean flies are developing in your area. Reply A for more.",
+      "template_en": "Bean flies may reach your shamba this season. We are using weather information to predict how bean flies are developing in your area. Reply A for more.",
+      "template_sw": "Nzi wa maharagwe wanaweza kufikia shamba lako msimu huu. Tunatumia habari ya hali ya hewa kutabiri jinsi wanavyokua katika eneo lako. Jibu A kujua zaidi."
+    }
+  },
+  {
+    "model": "message.messagetemplate",
+    "pk": 4,
+    "fields": {
+      "code": "prise_pxd_beanfly_4",
+      "name": "intro3",
+      "type": "PRISE overview",
+      "application": "PRISE",
+      "group": "Start of Season",
+      "note": "",
+      "template": "We will send updates over the course of the season, including a message to let you know when is the best time to take action.",
+      "template_en": "We will send updates over the course of the season, including a message to let you know when is the best time to take action.",
+      "template_sw": "Tutatuma ushauri zaidi msimu unapoendelea, ikiwemo ujumbe wa kukujulisha wakati bora wa kuchukua hatua."
+    }
+  },
+  {
+    "model": "message.messagetemplate",
+    "pk": 5,
+    "fields": {
+      "code": "prise_pxd_beanfly_5",
+      "name": "feedback",
+      "type": "Feedback",
+      "application": "PRISE",
+      "group": "PRISE Time To Action 1 - Beginning of the month",
+      "note": "",
+      "template": "Welcome to MoA-INFO bean service. Have you seen bean fly on your beans in the past week?\r\nA. Yes\r\nB. No\r\nC. I haven't checked",
+      "template_en": "Welcome to MoA-INFO bean service. Have you seen bean fly on your beans in the past week?\r\nA. Yes\r\nB. No\r\nC. I haven't checked",
+      "template_sw": "Karibu kwa huduma ya maharagwe ya MoA-INFO. Je, umemwona nzi wa maharagwe (bean fly) kwa maharagwe yako wiki iliyopita?\r\nA. Ndio\r\nB. La\r\nC. Sijaangalia"
+    }
+  },
+  {
+    "model": "message.messagetemplate",
+    "pk": 6,
+    "fields": {
+      "code": "prise_pxd_beanfly_6",
+      "name": "monitor",
+      "type": "Introduction",
+      "application": "PRISE",
+      "group": "PRISE Time To Action 1 - Beginning of the month",
+      "note": "",
+      "template": "Randomly select bean crops per acre to monitor, if 5-10% shows signs of infestation then consider taking action. Reply A for more.",
+      "template_en": "Randomly select bean crops per acre to monitor, if 5-10% shows signs of infestation then consider taking action. Reply A for more.",
+      "template_sw": "Chagua bila mpangilio maalum mimea ya maharagwe kwa kila ekari na ichunguze, ikiwa 5-10% inaonyesha dalili za kuathirika fikiria kuchukua hatua. A kujua zaidi."
+    }
+  },
+  {
+    "model": "message.messagetemplate",
+    "pk": 7,
+    "fields": {
+      "code": "prise_pxd_beanfly_7",
+      "name": "control 1",
+      "type": "Context",
+      "application": "PRISE",
+      "group": "PRISE Time To Action 1 - Beginning of the month",
+      "note": "",
+      "template": "Use neem extract solution (50 ml neem per 15 litres of water and 3 tablespoons of liquid soap) as a spray during early mornings and late evenings.",
+      "template_en": "Use neem extract solution (50 ml neem per 15 litres of water and 3 tablespoons of liquid soap) as a spray during early mornings and late evenings.",
+      "template_sw": "Tumia dawa zilizo na mwarobaini (50 ml Mwarobaini kwa lita 15 za maji na vijiko 3 vya sabuni ya maji) nyunyizia wakati wa asubuhi na mapema jioni sana."
+    }
+  },
+  {
+    "model": "message.messagetemplate",
+    "pk": 8,
+    "fields": {
+      "code": "prise_pxd_beanfly_8",
+      "name": "bestdate",
+      "type": "Warning /Description",
+      "application": "PRISE",
+      "group": "PRISE Time To Action 1 - Beginning of the month",
+      "note": "",
+      "template": "If you planted beans in {{ last_month }} the best time to take action will be {{ day_1 }} to {{ day_2 }} days after planting. Until then use other methods to manage bean fly. A for more",
+      "template_en": "If you planted beans in {{ last_month }} the best time to take action will be {{ day_1 }} to {{ day_2 }} days after planting. Until then use other methods to manage bean fly. A for more",
+      "template_sw": "Ikiwa umepanda maharagwe {{ last_month }} ni bora kuchukua hatua siku {{ day_1 }} hadi {{ day_2 }} baada ya kupanda. Hadi wakati huo tumia mbinu zingine kudhibiti mdudu huyu. A kwa zaidi"
+    }
+  },
+  {
+    "model": "message.messagetemplate",
+    "pk": 9,
+    "fields": {
+      "code": "prise_pxd_beanfly_9",
+      "name": "bestdate",
+      "type": "Warning /Description",
+      "application": "PRISE",
+      "group": "PRISE Time To Action 1 - Beginning of the month",
+      "note": "",
+      "template": "If you planted beans in {{ month }} the best time to take action will be {{ day_1 }} to {{ day_2 }} days after planting. Until then you can use other methods to manage.",
+      "template_en": "If you planted beans in {{ month }} the best time to take action will be {{ day_1 }} to {{ day_2 }} days after planting. Until then you can use other methods to manage.",
+      "template_sw": "Ikiwa umepanda maharagwe {{ month }} ni bora wa kuchukua hatua siku {{ day_1 }} hadi {{ day_2 }} baada ya kupanda. Hadi wakati huo unaweza kutumia mbinu zingine."
+    }
+  },
+  {
+    "model": "message.messagetemplate",
+    "pk": 10,
+    "fields": {
+      "code": "prise_pxd_beanfly_10",
+      "name": "feedback",
+      "type": "Warning /Description /Feedback",
+      "application": "PRISE",
+      "group": "PRISE Time To Action 2 - Second half of the month",
+      "note": "",
+      "template": "It is time to prepare yourself for bean fly! Have you seen bean fly on your beans in the past week?\r\na) Yes\r\nb) No\r\nc) I haven't checked",
+      "template_en": "It is time to prepare yourself for bean fly! Have you seen bean fly on your beans in the past week?\r\na) Yes\r\nb) No\r\nc) I haven't checked",
+      "template_sw": "Ni wakati wa kujiandaa kwa nzi wa maharagwe! Je, umemwona nzi wa maharagwe kwenye maharagwe yako wiki iliyopita?\r\na) Ndio\r\nb) La\r\nc) Sijaangalia"
+    }
+  },
+  {
+    "model": "message.messagetemplate",
+    "pk": 11,
+    "fields": {
+      "code": "prise_pxd_beanfly_11",
+      "name": "advice1",
+      "type": "Warning /Description /Action /Advice1",
+      "application": "PRISE",
+      "group": "PRISE Time To Action 2 - Second half of the month",
+      "note": "",
+      "template": "Based on weather conditions in your area, we will predict the peak bean fly infestation in your area and the best time to take action. Reply A for more.",
+      "template_en": "Based on weather conditions in your area, we will predict the peak bean fly infestation in your area and the best time to take action. Reply A for more.",
+      "template_sw": "Kulingana na hali ya hewa katika eneo lako, tutatabiri uvamizi wa juu wa nzi wa maharagwe kwenye eneo lako na wakati bora wa kuchukua hatua. Jibu A kujua zaidi"
+    }
+  },
+  {
+    "model": "message.messagetemplate",
+    "pk": 12,
+    "fields": {
+      "code": "prise_pxd_beanfly_12",
+      "name": "bestdate",
+      "type": "Warning /Description",
+      "application": "PRISE",
+      "group": "PRISE Time To Action 2 - Second half of the month",
+      "note": "",
+      "template": "If you planted beans in {{ month }} the best time to take action will be {{ day_1 }} to {{ day_2 }} days after planting. Until then you can use other methods to manage.",
+      "template_en": "If you planted beans in {{ month }} the best time to take action will be {{ day_1 }} to {{ day_2 }} days after planting. Until then you can use other methods to manage.",
+      "template_sw": "Ikiwa umepanda maharagwe {{ month }} ni bora wa kuchukua hatua siku {{ day_1 }} hadi {{ day_2 }} baada ya kupanda. Hadi wakati huo unaweza kutumia mbinu zingine."
+    }
+  },
+  {
+    "model": "message.messagetemplate",
+    "pk": 13,
+    "fields": {
+      "code": "prise_pxd_fall_armyworm_1",
+      "name": "feedback",
+      "type": "Feedback",
+      "application": "PRISE",
+      "group": "Start of Season",
+      "note": "Feedback question - SMS response collected and data is passed back to the PRISE team",
+      "template": "Welcome to MoA-INFO Fall Armyworm (FAW) service. Have you seen new Fall Armyworm damage on your maize in the past week?\r\nA. Yes\r\nB. No\r\nC. I haven't checked",
+      "template_en": "Welcome to MoA-INFO Fall Armyworm (FAW) service. Have you seen new Fall Armyworm damage on your maize in the past week?\r\nA. Yes\r\nB. No\r\nC. I haven't checked",
+      "template_sw": "Karibu kwa huduma ya MoA-INFO ya Fall Armyworm (FAW). Je, umeona uharibifu mpya wa FAW kwa mahindi yako wiki iliyopita?\r\nA. Ndio \r\nB. La \r\nC. Sijaangalia"
+    }
+  },
+  {
+    "model": "message.messagetemplate",
+    "pk": 14,
+    "fields": {
+      "code": "prise_pxd_fall_armyworm_2",
+      "name": "intro1",
+      "type": "Introduction /Advice /Action",
+      "application": "PRISE",
+      "group": "Start of Season",
+      "note": "",
+      "template": "Did you know you can use other methods to manage Fall Armyworm before spraying with pesticides? Reply A for more from MoA-INFO.",
+      "template_en": "Did you know you can use other methods to manage Fall Armyworm before spraying with pesticides? Reply A for more from MoA-INFO.",
+      "template_sw": "Je, unajua kwamba unaweza kutumia mbinu kadhaa kudhibiti Fall Armyworm (FAW) kabla ya kunyunyiza dawa? Jibu A kwa ushauri zaidi kutoka MoA-INFO."
+    }
+  },
+  {
+    "model": "message.messagetemplate",
+    "pk": 15,
+    "fields": {
+      "code": "prise_pxd_fall_armyworm_3",
+      "name": "intro2",
+      "type": "Warning /Description",
+      "application": "PRISE",
+      "group": "Start of Season",
+      "note": "",
+      "template": "We use weather information to predict how FAW will develop in your area. We will send you updates on when spraying pesticides should be most effective",
+      "template_en": "We use weather information to predict how FAW will develop in your area. We will send you updates on when spraying pesticides should be most effective",
+      "template_sw": "Tunatumia ujumbe wa hali ya anga kutabiri jinsi FAW itakavyokua kwa eneo lako. Tutakutumia ujumbe wa kunyunyuzia dawa wakati unaofaa ili upate matokeo mema"
+    }
+  },
+  {
+    "model": "message.messagetemplate",
+    "pk": 16,
+    "fields": {
+      "code": "prise_pxd_fall_armyworm_4",
+      "name": "feedback",
+      "type": "Feedback",
+      "application": "PRISE",
+      "group": "PRISE Time To Action 1 - Beginning of the month",
+      "note": "Feedback question - SMS response collected and data is passed back to the PRISE team",
+      "template": "Hello from the MoA-INFO Fall Armyworm service. Have you seen new Fall Armyworm (FAW) damage on your maize in the past week?\r\na) Yes\r\nb) No\r\nc) I haven't checked",
+      "template_en": "Hello from the MoA-INFO Fall Armyworm service. Have you seen new Fall Armyworm (FAW) damage on your maize in the past week?\r\na) Yes\r\nb) No\r\nc) I haven't checked",
+      "template_sw": "Karibu kwa huduma ya MoA-INFO ya Fall Armyworm. Je, umeona uharibifu mpya wa mdudu aina ya FAW kwa mahindi yako wiki iliyopita?\r\na) Ndio \r\nb) La \r\nc) Sijaangalia"
+    }
+  },
+  {
+    "model": "message.messagetemplate",
+    "pk": 17,
+    "fields": {
+      "code": "prise_pxd_fall_armyworm_5",
+      "name": "spray1",
+      "type": "Introduction",
+      "application": "PRISE",
+      "group": "PRISE Time To Action 1 - Beginning of the month",
+      "note": "",
+      "template": "If you spray pesticides, it is most effective when Fall Armyworm are young. Based on your weather conditions, we can predict how FAW will spread. A for more",
+      "template_en": "If you spray pesticides, it is most effective when Fall Armyworm are young. Based on your weather conditions, we can predict how FAW will spread. A for more",
+      "template_sw": "Ikiwa unanyunyuzia dawa, ni bora zaidi wadudu wa Fall Armyworm wakiwa wachanga. Kulingana na hali ya anga kwako, tunaweza tabiri jinsi FAW wataenea. A kwa zaidi"
+    }
+  },
+  {
+    "model": "message.messagetemplate",
+    "pk": 18,
+    "fields": {
+      "code": "prise_pxd_fall_armyworm_6",
+      "name": "spray2",
+      "type": "Context",
+      "application": "PRISE",
+      "group": "PRISE Time To Action 1 - Beginning of the month",
+      "note": "",
+      "template": "If sprayed too early you risk missing the main infestation. If sprayed late, the worms may be too big and hard to kill. Reply A to learn the best time to spray.",
+      "template_en": "If sprayed too early you risk missing the main infestation. If sprayed late, the worms may be too big and hard to kill. Reply A to learn the best time to spray.",
+      "template_sw": "Ukinyunyiza mapema una hatari ya kukosa uvamizi mkuu. Ukinyunyiza kuchelewa, viwavi wanaweza kuwa wakubwa na wagumu kuua. Jibu A kujua wakati bora wa kunyunyiza"
+    }
+  },
+  {
+    "model": "message.messagetemplate",
+    "pk": 19,
+    "fields": {
+      "code": "prise_pxd_fall_armyworm_7",
+      "name": "bestdate1",
+      "type": "Warning /Description",
+      "application": "PRISE",
+      "group": "PRISE Time To Action 1 - Beginning of the month",
+      "note": "",
+      "template": "If you planted in {{ last_month }} the best time to spray with pesticides will be {{ day_1 }} to {{ day_2 }} days after planting. Until then you can use other methods. Reply A for more",
+      "template_en": "If you planted in {{ last_month }} the best time to spray with pesticides will be {{ day_1 }} to {{ day_2 }} days after planting. Until then you can use other methods. Reply A for more",
+      "template_sw": "Ikiwa umepanda {{ last_moth }} wakati bora wa kunyinyiza dawa ni siku {{ day_1 }} hadi {{ day_1 }} baada ya kupanda. Hadi wakati huo tumia mbinu zingine. Jibu A kujua zaidi"
+    }
+  },
+  {
+    "model": "message.messagetemplate",
+    "pk": 20,
+    "fields": {
+      "code": "prise_pxd_fall_armyworm_8",
+      "name": "bestdate2",
+      "type": "Warning /Description",
+      "application": "PRISE",
+      "group": "PRISE Time To Action 1 - Beginning of the month",
+      "note": "",
+      "template": "If you planted in {{ month }} the best time to spray with pesticides will be {{ day_1 }} to {{ day_2 }} days after planting. Until then you can use other methods.",
+      "template_en": "If you planted in {{ month }} the best time to spray with pesticides will be {{ day_1 }} to {{ day_2 }} days after planting. Until then you can use other methods.",
+      "template_sw": "Ikiwa umepanda {{ month }} wakati bora wa kunyinyiza dawa ni siku {{ day_1 }} hadi {{ day_2 }} baada ya kupanda. Hadi wakati huo tumia mbinu zingine."
+    }
+  },
+  {
+    "model": "message.messagetemplate",
+    "pk": 21,
+    "fields": {
+      "code": "prise_pxd_fall_armyworm_9",
+      "name": "feedback",
+      "type": "Feedback",
+      "application": "PRISE",
+      "group": "PRISE Time To Action 2 - Second half of the month",
+      "note": "",
+      "template": "It is time to prepare yourself for Fall Armyworm! Have you seen new FAW damage on your maize in the past week?\r\na) Yes\r\nb) No\r\nc) I haven't checked",
+      "template_en": "It is time to prepare yourself for Fall Armyworm! Have you seen new FAW damage on your maize in the past week?\r\na) Yes\r\nb) No\r\nc) I haven't checked",
+      "template_sw": "Ni wakati wa kujiandaa kwa uvamizi wa Fall Armyworm! Je, umeona uharibu mpya wa FAW kwa mahindi yako wiki iliyopita?\r\na) Ndio \r\nb) La \r\nc) Sijaangalia"
+    }
+  },
+  {
+    "model": "message.messagetemplate",
+    "pk": 22,
+    "fields": {
+      "code": "prise_pxd_fall_armyworm_10",
+      "name": "spray1",
+      "type": "Introduction",
+      "application": "PRISE",
+      "group": "PRISE Time To Action 2 - Second half of the month",
+      "note": "",
+      "template": "If you spray pesticides, it is most effective when Fall Armyworm are young. Based on your weather conditions, we can predict how FAW will spread. A for more",
+      "template_en": "If you spray pesticides, it is most effective when Fall Armyworm are young. Based on your weather conditions, we can predict how FAW will spread. A for more",
+      "template_sw": "Ikiwa unanyunyuzia dawa, ni bora zaidi wadudu wa Fall Armyworm wakiwa wachanga. Kulingana na hali ya anga kwako, tunaweza tabiri jinsi FAW wataenea. A kwa zaidi"
+    }
+  },
+  {
+    "model": "message.messagetemplate",
+    "pk": 23,
+    "fields": {
+      "code": "prise_pxd_fall_armyworm_11",
+      "name": "spray2",
+      "type": "Context",
+      "application": "PRISE",
+      "group": "PRISE Time To Action 2 - Second half of the month",
+      "note": "",
+      "template": "If sprayed too early you risk missing the main infestation. If sprayed late, the worms may be too big and hard to kill. Reply A to learn the best time to spray.",
+      "template_en": "If sprayed too early you risk missing the main infestation. If sprayed late, the worms may be too big and hard to kill. Reply A to learn the best time to spray.",
+      "template_sw": "Ukinyunyiza mapema una hatari ya kukosa uvamizi mkuu. Ukinyunyiza kuchelewa, viwavi wanaweza kuwa wakubwa na wagumu kuua. Jibu A kujua wakati bora wa kunyunyiza"
+    }
+  },
+  {
+    "model": "message.messagetemplate",
+    "pk": 24,
+    "fields": {
+      "code": "prise_pxd_fall_armyworm_12",
+      "name": "advice1",
+      "type": "Warning /Description /Action /Advice1",
+      "application": "PRISE",
+      "group": "PRISE Time To Action 2 - Second half of the month",
+      "note": "",
+      "template": "Based on weather conditions in your area, we will predict the peak Fall Armyworm (FAW) infestation in your area and the best time to take action. A for more.",
+      "template_en": "Based on weather conditions in your area, we will predict the peak Fall Armyworm (FAW) infestation in your area and the best time to take action. A for more.",
+      "template_sw": "Kulingana na hali ya hewa katika eneo lako, tutatabiri kiwango cha juu cha uvamizi wa FAW katika eneo lako na wakati mwafaka wa kuchukua hatua. A kwa zaidi"
+    }
+  },
+  {
+    "model": "message.messagetemplate",
+    "pk": 25,
+    "fields": {
+      "code": "prise_pxd_fall_armyworm_13",
+      "name": "bestdate",
+      "type": "Warning /Description",
+      "application": "PRISE",
+      "group": "PRISE Time To Action 2 - Second half of the month",
+      "note": "",
+      "template": "If you planted in {{ month }} the best time to spray with pesticides will be {{ day_1 }} to {{ day_2 }} days after planting. Until then you can use other methods.",
+      "template_en": "If you planted in {{ month }} the best time to spray with pesticides will be {{ day_1 }} to {{ day_2 }} days after planting. Until then you can use other methods.",
+      "template_sw": "Ikiwa umepanda {{ month }} wakati bora wa kunyinyiza dawa ni siku {{ day_1 }} hadi {{ day_2 }} baada ya kupanda. Hadi wakati huo tumia mbinu zingine."
+    }
+  },
+  {
+    "model": "message.messagetemplate",
+    "pk": 26,
+    "fields": {
+      "code": "prise_karlo_beanfly_1",
+      "name": "Introduction",
+      "type": "Introduction /Advice /Action",
+      "application": "PRISE",
+      "group": "Start of Season",
+      "note": "This message group should be sent once at the start of the season/ before planting",
+      "template": "Dear farmer, you will be receiving updates on when and how to manage beanfly pest in beans.For more call {{ phone }}",
+      "template_en": "Dear farmer, you will be receiving updates on when and how to manage beanfly pest in beans.For more call {{ phone }}",
+      "template_sw": "Mkulima mpendwa, tutakujulisha wakati na jinsi ya kudhibiti nzi wa maharage (Beanfly).Kwa maelezo zaidi piga {{ phone }}."
+    }
+  },
+  {
+    "model": "message.messagetemplate",
+    "pk": 27,
+    "fields": {
+      "code": "prise_karlo_beanfly_2",
+      "name": "Bean Planting and seed selection",
+      "type": "Warning/ Description",
+      "application": "PRISE",
+      "group": "Start of Season",
+      "note": "",
+      "template": "During planting, use certified or seeds treated with pesticides to prevent infestation of bean flies at germination. For more call {{ phone }}",
+      "template_en": "During planting, use certified or seeds treated with pesticides to prevent infestation of bean flies at germination. For more call {{ phone }}",
+      "template_sw": "Tumia mbegu zilizoidhinishwa au kutibiwa kwa dawa ya wadudu wakati wa kupanda kuzuia uharibifu wa maharage kwa nzi. Kwa maelezo, piga {{ phone }}"
+    }
+  },
+  {
+    "model": "message.messagetemplate",
+    "pk": 28,
+    "fields": {
+      "code": "prise_karlo_beanfly_3",
+      "name": "Description and Symptom of beanfly",
+      "type": "Description",
+      "application": "PRISE",
+      "group": "Start of Season",
+      "note": "",
+      "template": "Beanfly is a small shiny black fly, symptoms include wilting and yellowing of whole plant, leaf drop and thick stems. For more call {{ phone }}",
+      "template_en": "Beanfly is a small shiny black fly, symptoms include wilting and yellowing of whole plant, leaf drop and thick stems. For more call {{ phone }}",
+      "template_sw": "Nzi wa maharage ni mdogo mweusi anayeng'aa, dalili ni kunyauka, rangi ya njano, majani kuanguka na mashina yaliyovimba. Maelezo zaidi {{ phone }}"
+    }
+  },
+  {
+    "model": "message.messagetemplate",
+    "pk": 29,
+    "fields": {
+      "code": "prise_karlo_beanfly_4",
+      "name": "Monitoring",
+      "type": "Introduction",
+      "application": "PRISE",
+      "group": "PRISE Time To Action 1 - Beginning of the month",
+      "note": "",
+      "template": "Monitor beans for symptoms of beanfly infestation every 3-4 days after germination upto 2 weeks. Uproot and destroy infested plants.",
+      "template_en": "Monitor beans for symptoms of beanfly infestation every 3-4 days after germination upto 2 weeks. Uproot and destroy infested plants.",
+      "template_sw": "Baada ya maharage kuota,fuatilia dalili za uwepo wa nzi kila baada ya siku 3 hadi 4 kwa muda wa wiki mbili.Ng'oa na kuharibu mimea iliyoharibiwa."
+    }
+  },
+  {
+    "model": "message.messagetemplate",
+    "pk": 30,
+    "fields": {
+      "code": "prise_karlo_beanfly_5",
+      "name": "Management",
+      "type": "Context",
+      "application": "PRISE",
+      "group": "PRISE Time To Action 1 - Beginning of the month",
+      "note": "",
+      "template": "Take action when 5 -10% of plants per acre (100 - 300 plants) are infested with beanfly. For more call {{ phone }}",
+      "template_en": "Take action when 5 -10% of plants per acre (100 - 300 plants) are infested with beanfly. For more call {{ phone }}",
+      "template_sw": "Chukua hatua ya kudhibiti wakati asilimia 5-10 ya mimea ya maharage(mimea 100 - 300 kwa ekari) imeharibiwa na nzi. Kwa maelezo, piga {{ phone }}."
+    }
+  },
+  {
+    "model": "message.messagetemplate",
+    "pk": 31,
+    "fields": {
+      "code": "prise_karlo_beanfly_6",
+      "name": "Time to take action 1",
+      "type": "Warning /Description",
+      "application": "PRISE",
+      "group": "PRISE Time To Action 1 - Beginning of the month",
+      "note": "",
+      "template": "If you planted beans in {{ month }} you may apply Pyrethrin, Acephate and Neem-based products {{ day_1 }} to {{ day_2 }} days after planting. For more call {{ phone }}",
+      "template_en": "If you planted beans in {{ month }} you may apply Pyrethrin, Acephate and Neem-based products {{ day_1 }} to {{ day_2 }} days after planting. For more call {{ phone }}",
+      "template_sw": "Iwapo ulipanda mwezi wa {{ month }}, tumia viua wadudu kama' Pyrethrin na Neem siku {{ day_1 }} hadi {{ day_2 }} baada ya kupanda. Kwa maelezo, piga {{ phone }}"
+    }
+  },
+  {
+    "model": "message.messagetemplate",
+    "pk": 32,
+    "fields": {
+      "code": "prise_karlo_beanfly_7",
+      "name": "Time to take action 2",
+      "type": "Warning /Description",
+      "application": "PRISE",
+      "group": "PRISE Time To Action 2 - Second half of the month",
+      "note": "",
+      "template": "If you planted beans in {{ month }} you may apply Pyrethrin, Acephate and Neem-based products {{ \r\n day_1 }} to {{ day_2 }} days after planting. For more call {{ phone }}",
+      "template_en": "If you planted beans in {{ month }} you may apply Pyrethrin, Acephate and Neem-based products {{ \r\n day_1 }} to {{ day_2 }} days after planting. For more call {{ phone }}",
+      "template_sw": "Iwapo ulipanda mwezi wa {{ month }}, tumia viua wadudu kama' Pyrethrin na Neem siku {{ \r\n day_1 }} hadi {{ day_2 }} baada ya kupanda. Kwa maelezo, piga {{ phone }}"
+    }
+  },
+  {
+    "model": "message.messagetemplate",
+    "pk": 33,
+    "fields": {
+      "code": "prise_karlo_fall_armyworm_1",
+      "name": "Introduction",
+      "type": "Introduction /Advice /Action",
+      "application": "PRISE",
+      "group": "Start of Season",
+      "note": "This message group should be sent once at the start of the season/ before planting",
+      "template": "We will send you updates on when and how to manage Fall Armyworm in maize. For more information call {{ phone }}",
+      "template_en": "We will send you updates on when and how to manage Fall Armyworm in maize. For more information call {{ phone }}",
+      "template_sw": "Tutawafahamisha  jinsi na wakati wa kuzuia viwavi jeshi (Fall Armyworm) kwenye mahindi. Kwa habari zaidi piga {{ phone }}."
+    }
+  },
+  {
+    "model": "message.messagetemplate",
+    "pk": 34,
+    "fields": {
+      "code": "prise_karlo_fall_armyworm_2",
+      "name": "Identify",
+      "type": "Description",
+      "application": "PRISE",
+      "group": "Start of Season",
+      "note": "",
+      "template": "Fall Armyworm caterpillars are brown or black with 4 black dots near the tail. For more information call {{ phone }}",
+      "template_en": "Fall Armyworm caterpillars are brown or black with 4 black dots near the tail. For more information call {{ phone }}",
+      "template_sw": "Viwavi jeshi wana rangi ya kahawia au nyeusi na wana madoadoa manne meusi karibu na mkia. Kwa habari zaidi, piga {{ phone }}."
+    }
+  },
+  {
+    "model": "message.messagetemplate",
+    "pk": 35,
+    "fields": {
+      "code": "prise_karlo_fall_armyworm_3",
+      "name": "Damage",
+      "type": "Description",
+      "application": "PRISE",
+      "group": "Start of Season",
+      "note": "",
+      "template": "Fall Armyworm caterpillars cause tiny and large ragged holes and an orange sawdust like fieces on maize leaves. For more information call {{ phone }}",
+      "template_en": "Fall Armyworm caterpillars cause tiny and large ragged holes and an orange sawdust like fieces on maize leaves. For more information call {{ phone }}",
+      "template_sw": "Viwavi jeshi husababisha mashimo chakavu na kinyesi kama vumbi ya mbao yenye rangi ya chungwa kwenye majani. Kwa habari zaidi piga {{ phone }}."
+    }
+  },
+  {
+    "model": "message.messagetemplate",
+    "pk": 36,
+    "fields": {
+      "code": "prise_karlo_fall_armyworm_4",
+      "name": "Advice",
+      "type": "Introduction",
+      "application": "PRISE",
+      "group": "PRISE Time To Action 1 - Beginning of the month",
+      "note": "",
+      "template": "Early management of Fall Armyworm in maize is more effective and economical when cartepillars are young. For more info call {{ phone }}",
+      "template_en": "Early management of Fall Armyworm in maize is more effective and economical when cartepillars are young. For more info call {{ phone }}",
+      "template_sw": "Unapozuia viwavi jeshi mapema wakiwa wachanga ina mafanikio na ni bora pia kiuchumi. Kwa habari zaidi piga {{ phone }}"
+    }
+  },
+  {
+    "model": "message.messagetemplate",
+    "pk": 37,
+    "fields": {
+      "code": "prise_karlo_fall_armyworm_5",
+      "name": "Time to take action 1",
+      "type": "Warning /Description",
+      "application": "PRISE",
+      "group": "PRISE Time To Action 1 - Beginning of the month",
+      "note": "",
+      "template": "If you planted maize in {{ last_month }} apply PCPB registered products against Fall Armyworm {{ day_1 }} to {{ day_2 }} days after planting .For more info call {{ phone }}",
+      "template_en": "If you planted maize in {{ last_month }} apply PCPB registered products against Fall Armyworm {{ day_1 }} to {{ day_2 }} days after planting .For more info call {{ phone }}",
+      "template_sw": "Ikiwa ulipanda mahindi yako mwezi wa {{ last_month }}, tumia dawa zilizosajiliwa na PCPB siku {{ day_1 }} na {{ day_2 }} baada ya kumea. Kwa habari zaidi piga {{ phone }}"
+    }
+  },
+  {
+    "model": "message.messagetemplate",
+    "pk": 38,
+    "fields": {
+      "code": "prise_karlo_fall_armyworm_6",
+      "name": "Time to take action 2",
+      "type": "Warning /Description",
+      "application": "PRISE",
+      "group": "PRISE Time To Action 1 - Beginning of the month",
+      "note": "",
+      "template": "If you planted maize in {{ month }} apply PCPB registered products against Fall Armyworm {{ day_1 }} to {{ day_2 }} days after planting.For more info call {{ phone }}",
+      "template_en": "If you planted maize in {{ month }} apply PCPB registered products against Fall Armyworm {{ day_1 }} to {{ day_2 }} days after planting.For more info call {{ phone }}",
+      "template_sw": "Ikiwa ulipanda mahindi yako mwezi wa {{ month }}, tumia dawa zilizosajiliwa na PCPB siku {{ day_1 }} na {{ day_2 }} baada ya kumea. Kwa habari zaidi piga {{ phone }}"
+    }
+  },
+  {
+    "model": "message.messagetemplate",
+    "pk": 39,
+    "fields": {
+      "code": "prise_karlo_fall_armyworm_7",
+      "name": "Management 1",
+      "type": "Context",
+      "application": "PRISE",
+      "group": "PRISE Time To Action 1 - Beginning of the month",
+      "note": "",
+      "template": "Apply fungicides (Metarhizium and Fusarium sp.), viruses (NPVs) and bacteria (Bt) based products against Fall Armyworm. For more info call {{ phone }}",
+      "template_en": "Apply fungicides (Metarhizium and Fusarium sp.), viruses (NPVs) and bacteria (Bt) based products against Fall Armyworm. For more info call {{ phone }}",
+      "template_sw": "Tumia dawa za kuvu (Metarhizium and Fusarium sp.,virusi(NPVs) na bidhaa za Bacteria(Bt) kuzuia viwavi jeshi. Kwa habari zaidi piga {{ phone }}"
+    }
+  },
+  {
+    "model": "message.messagetemplate",
+    "pk": 40,
+    "fields": {
+      "code": "prise_karlo_fall_armyworm_8",
+      "name": "Management 2",
+      "type": "Context",
+      "application": "PRISE",
+      "group": "PRISE Time To Action 1 - Beginning of the month",
+      "note": "",
+      "template": "Apply Neem-based, Chlorantraniliprole, Indoxacarb and Alpha-cypermethrin products against Fall Armyworm. For more info call {{ phone }}",
+      "template_en": "Apply Neem-based, Chlorantraniliprole, Indoxacarb and Alpha-cypermethrin products against Fall Armyworm. For more info call {{ phone }}",
+      "template_sw": "Tumia bidhaa za Neem, Chlorantraniliprole, Indoxacarb na Alpha-cypermethrin kuzuia viwavi jeshi. Kwa habari zaidi piga {{ phone }}"
+    }
+  },
+  {
+    "model": "message.messagetemplate",
+    "pk": 41,
+    "fields": {
+      "code": "prise_karlo_fall_armyworm_9",
+      "name": "Time to take action 2",
+      "type": "Warning /Description",
+      "application": "PRISE",
+      "group": "PRISE Time To Action 2 - Second half of the month",
+      "note": "",
+      "template": "If you planted maize in {{ month }} apply second spray against Fall Armyworm {{ day_1 }} to {{ day_2 }} days after planting. For more info call {{ phone }}",
+      "template_en": "If you planted maize in {{ month }} apply second spray against Fall Armyworm {{ day_1 }} to {{ day_2 }} days after planting. For more info call {{ phone }}",
+      "template_sw": "Ikiwa ulipanda mahindi yako mwezi wa {{ month }}, tumia dawa zilizosajiliwa na PCPB siku {{ day_1 }} na {{ day_2 }} baada ya kumea. Kwa habari zaidi piga {{ phone }}"
+    }
+  }
+]
