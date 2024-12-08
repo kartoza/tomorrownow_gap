@@ -86,7 +86,12 @@ app.conf.beat_schedule = {
         'task': 'cleanup_user_locations',
         # Run every week at 00:00 UTC
         'schedule': crontab(minute='0', hour='0', day_of_week='0'),
-    }
+    },
+    'cleanup-user-files': {
+        'task': 'cleanup_user_files',
+        # Run everyday at 00:15 UTC
+        'schedule': crontab(minute='15', hour='00'),
+    },
 }
 
 

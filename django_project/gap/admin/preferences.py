@@ -64,6 +64,8 @@ class PreferencesAdmin(admin.ModelAdmin):
                 'fields': (
                     'dask_threads_num_api',
                     'api_log_batch_size',
+                    'api_use_x_accel_redirect',
+                    'user_file_uploader_config'
                 )
             }
         ),

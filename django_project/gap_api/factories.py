@@ -9,7 +9,10 @@ from factory.django import DjangoModelFactory
 from django.contrib.gis.geos import Polygon, MultiPolygon
 
 from core.factories import UserF
-from gap_api.models import APIRequestLog, Location, APIRateLimiter
+from gap_api.models import (
+    APIRequestLog, Location, APIRateLimiter,
+    UserFile
+)
 
 
 class APIRequestLogFactory(DjangoModelFactory):
@@ -63,3 +66,22 @@ class APIRateLimiterFactory(DjangoModelFactory):
     minute_limit = 10
     hour_limit = 100
     day_limit = 1000
+
+
+class UserFileFactory(DjangoModelFactory):
+    """Factory class for UserFile momdel."""
+
+    class Meta:  # noqa
+        model = UserFile
+
+    user = factory.SubFactory(UserF)
+    name = 'dev/user_data/123.csv'
+    query_params = {
+        'product': 'cbam_historical_analysis_bias_adjust',
+        'attributes': ['max_temperature'],
+        'start_date': '2020-01-01',
+        'end_date': '2020-01-02',
+        'output_type': 'csv',
+        'geom_type': 'point',
+        'geometry': 'POINT (1 1)'
+    }

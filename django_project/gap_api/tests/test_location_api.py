@@ -17,7 +17,7 @@ from gap.utils.reader import LocationInputType
 from gap_api.models.location import Location
 from gap_api.api_views.location import LocationAPI
 from gap_api.factories import LocationFactory
-from gap_api.tasks.cleanup_location import cleanup_user_locations
+from gap_api.tasks.cleanup import cleanup_user_locations
 
 
 class TestAPILocation(BaseAPIViewTest):

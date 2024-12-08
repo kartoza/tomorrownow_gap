@@ -5,6 +5,7 @@ Tomorrow Now GAP.
 .. note:: Measurement APIs
 """
 
+import os
 from datetime import date, datetime, time
 from typing import Dict
 
@@ -21,13 +22,17 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from django.core.files.storage import storages
+from storages.backends.s3boto3 import S3Boto3Storage
+from urllib.parse import urlparse
 
 from gap.models import (
     Dataset,
     DatasetObservationType,
     Attribute,
     DatasetAttribute,
-    DatasetType
+    DatasetType,
+    Preferences
 )
 from gap.providers import get_reader_from_dataset
 from gap.utils.reader import (
@@ -37,7 +42,7 @@ from gap.utils.reader import (
     BaseDatasetReader,
     DatasetReaderOutputType
 )
-from gap_api.models import DatasetTypeAPIConfig, Location
+from gap_api.models import DatasetTypeAPIConfig, Location, UserFile
 from gap_api.serializers.common import APIErrorSerializer
 from gap_api.utils.helper import ApiTag
 from gap_api.mixins import GAPAPILoggingMixin, CounterSlidingWindowThrottle
@@ -186,7 +191,7 @@ class MeasurementAPI(GAPAPILoggingMixin, APIView):
         :rtype: List[Attribute]
         """
         attributes_str = self.request.GET.get('attributes')
-        attributes_str = attributes_str.split(',')
+        attributes_str = [a.strip() for a in attributes_str.split(',')]
         return Attribute.objects.filter(variable_name__in=attributes_str)
 
     def _get_date_filter(self, attr_name):
@@ -333,45 +338,149 @@ class MeasurementAPI(GAPAPILoggingMixin, APIView):
                 data['results'].append(values)
         return data
 
+    def _get_accel_redirect_response(
+            self, presigned_url, file_name, content_type
+    ):
+        parse_result = urlparse(presigned_url)
+        response = Response(
+            status=200
+        )
+        url = presigned_url.replace(
+            f"{parse_result.scheme}://{parse_result.netloc}/", ""
+        )
+        response['X-Accel-Redirect'] = (
+            f'/userfiles/{parse_result.scheme}/{parse_result.netloc}/{url}'
+        )
+        response['Content-Type'] = content_type
+        response['Content-Disposition'] = (
+            f'attachment; filename="{file_name}"'
+        )
+        return response
+
+
     def _read_data_as_netcdf(
             self, reader_dict: Dict[int, BaseDatasetReader],
-            start_dt: datetime, end_dt: datetime) -> Response:
+            start_dt: datetime, end_dt: datetime,
+            user_file: UserFile = None) -> Response:
+        # check if can use UserFile cache
+        if user_file:
+            cache_exist = user_file.find_in_cache()
+            if cache_exist:
+                return self._get_accel_redirect_response(
+                    cache_exist.generate_url(),
+                    os.path.basename(cache_exist.name),
+                    'application/x-netcdf'
+                )
+
         reader: BaseDatasetReader = list(reader_dict.values())[0]
         reader_value = self._read_data(reader)
         if reader_value.is_empty():
             return None
-        response = StreamingHttpResponse(
-            reader_value.to_netcdf_stream(),
-            content_type='application/x-netcdf'
-        )
-        response['Content-Disposition'] = 'attachment; filename="data.nc"'
+
+        file_name = 'data.nc'
+        # check config for using X-Accel-Redirect
+        if user_file is None:
+            response = StreamingHttpResponse(
+                reader_value.to_netcdf_stream(),
+                content_type='application/x-netcdf'
+            )
+            response['Content-Disposition'] = (
+                f'attachment; filename="{file_name}"'
+            )
+        else:
+            s3_storage: S3Boto3Storage = storages["gap_products"]
+            file_path = reader_value.to_netcdf(
+                max_concurrency=(
+                    self._preferences.user_file_uploader_config.get(
+                        'max_concurrency')
+                ),
+                default_block_size=(
+                    self._preferences.user_file_uploader_config.get(
+                        'default_block_size')
+                )
+            ).replace(
+                f's3://{s3_storage.bucket.name}', ''
+            )
+            file_name = os.path.basename(file_path)
+            presigned_link = s3_storage.url(file_path)
+            response = self._get_accel_redirect_response(
+                presigned_link, file_name, 'application/x-netcdf'
+            )
+            # store the user_file
+            user_file.name = file_path
+            user_file.size = s3_storage.size(file_path)
+            user_file.save()
 
         return response
 
     def _read_data_as_csv(
             self, reader_dict: Dict[int, BaseDatasetReader],
-            start_dt: datetime, end_dt: datetime) -> Response:
+            start_dt: datetime, end_dt: datetime,
+            suffix='.csv', separator=',', content_type='text/csv',
+            user_file: UserFile = None) -> Response:
+        # check if can use UserFile cache
+        if user_file:
+            cache_exist = user_file.find_in_cache()
+            if cache_exist:
+                return self._get_accel_redirect_response(
+                    cache_exist.generate_url(),
+                    os.path.basename(cache_exist.name),
+                    content_type
+                )
+
         reader: BaseDatasetReader = list(reader_dict.values())[0]
         reader_value = self._read_data(reader)
         if reader_value.is_empty():
             return None
-        response = StreamingHttpResponse(
-            reader_value.to_csv_stream(), content_type='text/csv')
-        response['Content-Disposition'] = 'attachment; filename="data.csv"'
+
+        file_name = f'data{suffix}'
+        # check config for using X-Accel-Redirect
+        if user_file is None:
+            response = StreamingHttpResponse(
+                reader_value.to_csv_stream(
+                    suffix=suffix,
+                    separator=separator
+                ),
+                content_type=content_type
+            )
+            response['Content-Disposition'] = (
+                f'attachment; filename="{file_name}"'
+            )
+        else:
+            s3_storage: S3Boto3Storage = storages["gap_products"]
+            file_path = reader_value.to_csv(
+                suffix=suffix,
+                separator=separator,
+                max_concurrency=(
+                    self._preferences.user_file_uploader_config.get(
+                        'max_concurrency')
+                ),
+                default_block_size=(
+                    self._preferences.user_file_uploader_config.get(
+                        'default_block_size')
+                )
+            ).replace(
+                f's3://{s3_storage.bucket.name}', ''
+            )
+            file_name = os.path.basename(file_path)
+            presigned_link = s3_storage.url(file_path)
+            response = self._get_accel_redirect_response(
+                presigned_link, file_name, content_type
+            )
+            # store the user_file
+            user_file.name = file_path
+            user_file.size = s3_storage.size(file_path)
+            user_file.save()
+
         return response
 
     def _read_data_as_ascii(
             self, reader_dict: Dict[int, BaseDatasetReader],
             start_dt: datetime, end_dt: datetime) -> Response:
-        reader: BaseDatasetReader = list(reader_dict.values())[0]
-        reader_value = self._read_data(reader)
-        if reader_value.is_empty():
-            return None
-        response = StreamingHttpResponse(
-            reader_value.to_csv_stream('.txt', '\t'),
-            content_type='text/ascii')
-        response['Content-Disposition'] = 'attachment; filename="data.txt"'
-        return response
+        return self._read_data_as_csv(
+            reader_dict, start_dt, end_dt,
+            suffix='.txt', separator='\t', content_type='text/ascii'
+        )
 
     def validate_output_format(
             self, dataset: Dataset, product_type: str,
@@ -465,6 +574,12 @@ class MeasurementAPI(GAPAPILoggingMixin, APIView):
                     )
                 })
 
+    def _get_request_params(self):
+        request_params = {}
+        for k, v in self.request.GET.items():
+            request_params[k] = v
+        return request_params
+
     def get_response_data(self) -> Response:
         """Read data from dataset.
 
@@ -533,6 +648,21 @@ class MeasurementAPI(GAPAPILoggingMixin, APIView):
                     print(e)
                     pass
 
+        # Check UserFile cache if x_accel_redirect is enabled
+        user_file: UserFile = None
+        if self._preferences.api_use_x_accel_redirect:
+            query_params = self._get_request_params()
+            query_params['attributes'] = [
+                a.strip() for a in query_params['attributes'].split(',')
+            ]
+            query_params['geom_type'] = location.type
+            query_params['geometry'] = location.geometry.wkt
+            user_file = UserFile(
+                user=self.request.user,
+                name="",
+                query_params=query_params
+            )
+
         response = None
         if output_format == DatasetReaderOutputType.JSON:
             data_value = self._read_data_as_json(
@@ -544,9 +674,12 @@ class MeasurementAPI(GAPAPILoggingMixin, APIView):
                 )
         elif output_format == DatasetReaderOutputType.NETCDF:
             response = self._read_data_as_netcdf(
-                dataset_dict, start_dt, end_dt)
+                dataset_dict, start_dt, end_dt, user_file=user_file)
         elif output_format == DatasetReaderOutputType.CSV:
-            response = self._read_data_as_csv(dataset_dict, start_dt, end_dt)
+            response = self._read_data_as_csv(
+                dataset_dict, start_dt, end_dt,
+                user_file=user_file
+            )
         elif output_format == DatasetReaderOutputType.ASCII:
             response = self._read_data_as_ascii(dataset_dict, start_dt, end_dt)
         else:
@@ -588,4 +721,6 @@ class MeasurementAPI(GAPAPILoggingMixin, APIView):
     )
     def get(self, request, *args, **kwargs):
         """Fetch weather data by a single point or bounding box."""
+        self._preferences = Preferences.load()
+
         return self.get_response_data()

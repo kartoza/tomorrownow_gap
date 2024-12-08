@@ -16,4 +16,4 @@ class GapApiConfig(AppConfig):
 
     def ready(self):
         """App ready handler."""
-        from gap_api.tasks import store_api_logs, cleanup_user_locations  # noqa
+        from gap_api.tasks import store_api_logs, cleanup_user_locations, cleanup_user_files  # noqa

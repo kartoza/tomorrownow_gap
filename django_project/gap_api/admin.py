@@ -16,12 +16,14 @@ from django.core.serializers.json import DjangoJSONEncoder
 from rest_framework_tracking.admin import APIRequestLogAdmin
 from rest_framework_tracking.models import APIRequestLog as BaseAPIRequestLog
 
+from core.utils.file import format_size
 from gap.models import DatasetType
 from gap_api.models import (
     APIRequestLog,
     DatasetTypeAPIConfig,
     Location,
-    APIRateLimiter
+    APIRateLimiter,
+    UserFile
 )
 
 
@@ -218,7 +220,21 @@ class APIRateLimiterAdmin(admin.ModelAdmin):
     actions = (export_rate_limiter_as_json,)
 
 
+class UserFileAdmin(admin.ModelAdmin):
+    """Admin class for UserFile."""
+
+    list_display = ('name', 'user', 'get_size', 'created_on',)
+
+    def get_size(self, obj: UserFile):
+        """Get the size."""
+        return format_size(obj.size)
+
+    get_size.short_description = 'Size'
+    get_size.admin_order_field = 'size'
+
+
 admin.site.register(APIRequestLog, GapAPIRequestLogAdmin)
 admin.site.register(DatasetTypeAPIConfig, GapAPIDatasetTypeConfigAdmin)
 admin.site.register(Location, LocationAdmin)
 admin.site.register(APIRateLimiter, APIRateLimiterAdmin)
+admin.site.register(UserFile, UserFileAdmin)

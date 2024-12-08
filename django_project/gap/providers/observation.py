@@ -15,6 +15,7 @@ from django.db.models.functions.datetime import TruncDate, TruncTime
 from django.contrib.gis.geos import Polygon, Point
 from django.contrib.gis.db.models.functions import Distance, GeoFunc
 from typing import List, Tuple, Union
+from fsspec.core import OpenFile
 
 from gap.models import (
     Dataset,
@@ -195,20 +196,54 @@ class ObservationReaderValue(DatasetReaderValue):
         :rtype: bytes
         """
         headers, _ = self._get_headers(use_station_id=True)
-
-        # write headers
-        yield bytes(','.join(headers) + '\n', 'utf-8')
-
         # get dataframe
         df_pivot = self._get_data_frame(use_station_id=True)
+
+        # write headers
+        yield bytes(separator.join(headers) + '\n', 'utf-8')
 
         # Write the data in chunks
         for start in range(0, len(df_pivot), self.csv_chunk_size):
             chunk = df_pivot.iloc[start:start + self.csv_chunk_size]
-            yield chunk.to_csv(index=False, header=False, float_format='%g')
+            yield chunk.to_csv(
+                index=False, header=False, float_format='%g',
+                sep=separator
+            )
 
-    def to_netcdf_stream(self):
-        """Generate NetCDF."""
+    def to_csv(self, suffix='.csv', separator=',', **kwargs):
+        """Generate csv file to object storage."""
+        headers, _ = self._get_headers(use_station_id=True)
+
+        # get dataframe
+        df_pivot = self._get_data_frame(use_station_id=True)
+
+        outfile: OpenFile = None
+        outfile, output = self._get_fsspec_remote_url(
+            suffix, mode='w', **kwargs
+        )
+
+        with outfile as tmp_file:
+            # write headers
+            write_headers = True
+
+            # Write the data in chunks
+            for start in range(0, len(df_pivot), self.csv_chunk_size):
+                chunk = df_pivot.iloc[start:start + self.csv_chunk_size]
+                if write_headers:
+                    chunk.columns = headers
+
+                chunk.to_csv(
+                    tmp_file.name, index=False, header=write_headers,
+                    float_format='%g',
+                    sep=separator, mode='a'
+                )
+
+                if write_headers:
+                    write_headers = False
+
+        return output
+
+    def _get_xarray_dataset(self):
         time_col_exists = self.has_time_column
 
         # if time column exists, in netcdf we should use datetime
@@ -234,7 +269,12 @@ class ObservationReaderValue(DatasetReaderValue):
 
         # Convert to xarray Dataset
         df_pivot.set_index(field_indices, inplace=True)
-        ds = df_pivot.to_xarray()
+
+        return df_pivot.to_xarray()
+
+    def to_netcdf_stream(self):
+        """Generate NetCDF."""
+        ds = self._get_xarray_dataset()
 
         # write to netcdf
         with (
@@ -252,6 +292,21 @@ class ObservationReaderValue(DatasetReaderValue):
                     if not chunk:
                         break
                     yield chunk
+
+    def to_netcdf(self, **kwargs):
+        """Generate netcdf file to object storage."""
+        ds = self._get_xarray_dataset()
+
+        outfile, output = self._get_fsspec_remote_url('.nc', **kwargs)
+
+        with outfile as tmp_file:
+            x = ds.to_netcdf(
+                tmp_file.name, format='NETCDF4', engine='h5netcdf',
+                compute=False
+            )
+            execute_dask_compute(x)
+
+        return output
 
     def _to_dict(self) -> dict:
         """Convert into dict.

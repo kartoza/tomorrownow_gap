@@ -72,6 +72,18 @@ STORAGES = {
             "django.contrib.staticfiles.storage.ManifestStaticFilesStorage"
         )
     },
+    "gap_products": {
+        "BACKEND": "storages.backends.s3.S3Storage",
+        "OPTIONS": {
+            "access_key": MINIO_AWS_ACCESS_KEY_ID,
+            "secret_key": MINIO_AWS_SECRET_ACCESS_KEY,
+            "bucket_name": os.environ.get("MINIO_GAP_AWS_BUCKET_NAME"),
+            "file_overwrite": False,
+            "max_memory_size": 500 * MB,  # 500MB
+            "transfer_config": AWS_TRANSFER_CONFIG,
+            "endpoint_url": MINIO_AWS_ENDPOINT_URL
+        },
+    }
 }
 
 STORAGE_DIR_PREFIX = os.environ.get("MINIO_AWS_DIR_PREFIX", "media")

@@ -18,7 +18,7 @@ from gap.factories import (
     StationFactory,
     MeasurementFactory
 )
-from gap.models import DatasetAttribute, Dataset, DatasetType
+from gap.models import DatasetAttribute, Dataset, DatasetType, Preferences
 from gap.utils.reader import (
     DatasetReaderValue, DatasetTimelineValue,
     DatasetReaderInput, DatasetReaderOutputType, BaseDatasetReader,
@@ -61,6 +61,13 @@ class MockDatasetReader(BaseDatasetReader):
 
 class CommonMeasurementAPITest(BaseAPIViewTest):
     """Common class for Measurement API Test."""
+
+    def setUp(self):
+        """Set the test class."""
+        preferences = Preferences.load()
+        preferences.api_use_x_accel_redirect = False
+        preferences.save()
+        super().setUp()
 
     def _get_measurement_request(
             self, lat=None, lon=None, bbox=None,
@@ -389,6 +396,7 @@ class HistoricalAPITest(CommonMeasurementAPITest):
         )
         response = view(request)
         self.assertEqual(response.status_code, 200)
+        print(response.headers)
         self.assertEqual(response['content-type'], 'text/csv')
 
     def test_validate_date_range(self):

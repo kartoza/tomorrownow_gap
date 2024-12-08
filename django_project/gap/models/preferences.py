@@ -59,6 +59,15 @@ def crop_plan_config_default() -> dict:
     }
 
 
+def user_file_uploader_config_default() -> dict:
+    """Return dictionary for user file uploader config."""
+    return {
+        'max_concurrency': 2,
+        # upload chunk size to 500 MB
+        'default_block_size': 500 * 1024 * 1024
+    }
+
+
 class Preferences(SingletonModel):
     """Preference settings specifically for gap."""
 
@@ -132,6 +141,23 @@ class Preferences(SingletonModel):
     api_log_batch_size = models.IntegerField(
         default=500,
         help_text='Number of API Request logs to be saved in a batch.'
+    )
+
+    # api use x-accel-redirect
+    api_use_x_accel_redirect = models.BooleanField(
+        default=True,
+        help_text=(
+            'When set to True, Django will send X-Accel-Redirect header '
+            'to the NGINX to offload the download process to NGINX.'
+        )
+    )
+
+    # UserFile Uploader s3 config
+    user_file_uploader_config = models.JSONField(
+        default=user_file_uploader_config_default,
+        blank=True,
+        null=True,
+        help_text='Config for fsspec uploader to s3 for UserFile.'
     )
 
     class Meta:  # noqa: D106
