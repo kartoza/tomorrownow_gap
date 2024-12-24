@@ -85,3 +85,10 @@ fiona==1.10.1
 
 # django admin inline paginator
 django-admin-inline-paginator==0.4.0
+
+# writing geoparquet
+geopandas==1.0.1
+pyarrow==18.1.0
+
+# duckdb
+duckdb==1.1.3
