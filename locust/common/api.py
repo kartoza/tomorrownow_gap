@@ -92,11 +92,17 @@ class Api:
         )
         attributes_str = ','.join(attributes)
         url = (
-            f'/api/v1/measurement/?lat={lat}&lon={lon}&bbox={bbox}&' +
-            f'location_name={location_name}&attributes={attributes_str}&' +
+            f'/api/v1/measurement/?attributes={attributes_str}&' +
             f'start_date={start_date}&end_date={end_date}&' +
             f'product={product_type}&output_type={output_type}'
         )
+
+        if location_name:
+            url += f'&location_name={location_name}'
+        elif bbox:
+            url += f'&bbox={bbox}'
+        else:
+            url += f'&lat={lat}&lon={lon}'
 
         headers = {
             'Authorization': self.user['auth'],

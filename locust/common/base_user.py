@@ -76,9 +76,11 @@ class BaseUserScenario(HttpUser):
         rand_date = self._random_date(
             self.min_date, self.max_date
         )
+
+        rand_max_date = rand_date + datetime.timedelta(days=10)
         return (
             rand_date,
-            rand_date + datetime.timedelta(days=days_count)
+            rand_max_date if rand_max_date <= self.max_date else self.max_date
         )
 
     def get_random_attributes(self):

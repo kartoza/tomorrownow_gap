@@ -9,7 +9,9 @@ from gap.ingestor.wind_borne_systems import PROVIDER as WINBORNE_PROVIDER
 from gap.models import Dataset, DatasetStore
 from gap.providers.airborne_observation import ObservationAirborneDatasetReader
 from gap.providers.cbam import CBAMZarrReader, CBAMNetCDFReader  # noqa
-from gap.providers.observation import ObservationDatasetReader
+from gap.providers.observation import (
+    ObservationDatasetReader, TahmoParquetReader
+)
 from gap.providers.salient import (
     SalientNetCDFReader, SalientZarrReader
 )  # noqa
@@ -34,6 +36,8 @@ def get_reader_from_dataset(dataset: Dataset):
         return CBAMZarrReader
     elif dataset.provider.name == NetCDFProvider.SALIENT:
         return SalientZarrReader
+    # elif dataset.name == 'Tahmo Ground Observational':
+    #     return TahmoParquetReader
     elif dataset.provider.name in ['Tahmo', 'Arable']:
         return ObservationDatasetReader
     elif dataset.provider.name in [WINBORNE_PROVIDER]:
