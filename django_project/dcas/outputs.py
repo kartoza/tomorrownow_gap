@@ -75,6 +75,12 @@ class DCASPipelineOutput:
         """Return full path to grid with crop data."""
         return self.grid_crop_data_dir_path + '/*.parquet'
 
+    @property
+    def farm_crop_data_path(self):
+        """Return full path to the farm crop data parquet file."""
+        return self._get_directory_path(
+            self.DCAS_OUTPUT_DIR) + '/*.parquet'
+
     def _setup_s3fs(self):
         """Initialize s3fs."""
         self.s3 = self._get_s3_variables()

@@ -10,6 +10,7 @@ import pandas as pd
 from dcas.rules.rule_engine import DCASRuleEngine
 from dcas.rules.variables import DCASData
 from dcas.service import GrowthStageService
+from dcas.utils import read_grid_crop_data
 
 
 def calculate_growth_stage(
@@ -114,3 +115,99 @@ def calculate_message_output(
         var_name = f'message_{idx + 1}' if idx > 0 else 'message'
         row[var_name] = code
     return row
+
+
+def get_last_message_date(
+    farm_id: int,
+    crop_id: int,
+    message_code: str,
+    historical_parquet_path: str
+) -> pd.Timestamp:
+    """
+    Get the last date a message code was sent for a specific farm and crop.
+
+    :param farm_id: ID of the farm
+    :type farm_id: int
+    :param crop_id: ID of the crop
+    :type crop_id: int
+    :param message_code: The message code to check
+    :type message_code: str
+    :param historical_parquet_path: Path to the historical message parquet file
+    :type historical_parquet_path: str
+    :return: Timestamp of the last message occurrence or None if not found
+    :rtype: pd.Timestamp or None
+    """
+    # Read historical messages
+    historical_data = read_grid_crop_data(
+        historical_parquet_path, [], [crop_id], []
+    )
+
+    # Filter messages for the given farm, crop, and message code
+    filtered_data = historical_data[
+        (historical_data['farm_id'] == farm_id) &
+        (historical_data['crop_id'] == crop_id) &
+        (
+            (historical_data['message'] == message_code) |
+            (historical_data['message_2'] == message_code) |
+            (historical_data['message_3'] == message_code) |
+            (historical_data['message_4'] == message_code) |
+            (historical_data['message_5'] == message_code)
+        )
+    ]
+
+    # If no record exists, return None
+    if filtered_data.empty:
+        return None
+
+    # Return the most recent message date
+    return filtered_data['message_date'].max()
+
+
+def filter_messages_by_weeks(
+    df: pd.DataFrame,
+    historical_parquet_path: str,
+    weeks_constraint: int
+) -> pd.DataFrame:
+    """
+    Remove messages that have been sent within the last X weeks.
+
+    :param df: DataFrame containing new messages to be sent
+    :type df: pd.DataFrame
+    :param historical_parquet_path: Path to historical message parquet file
+    :type historical_parquet_path: str
+    :param weeks_constraint: Number of weeks to check for duplicate messages
+    :type weeks_constraint: int
+    :return: DataFrame with duplicate messages removed
+    :rtype: pd.DataFrame
+    """
+    print("Available columns in df:", df.columns)  # Debugging line
+
+    if 'farm_id' not in df.columns:
+        raise KeyError("Column 'farm_id' is missing in the DataFrame!")
+    min_allowed_date = (
+        pd.Timestamp.now() - pd.Timedelta(weeks=weeks_constraint)
+    )
+
+    for idx, row in df.iterrows():
+        for message_column in [
+            'message',
+            'message_2',
+            'message_3',
+            'message_4',
+            'message_5'
+        ]:
+            message_code = row[message_column]
+
+            if pd.isna(message_code):
+                continue  # Skip empty messages
+
+            last_sent_date = get_last_message_date(
+                row['farm_id'],
+                row['crop_id'],
+                message_code,
+                historical_parquet_path)
+
+            if last_sent_date and last_sent_date >= min_allowed_date:
+                df.at[idx, message_column] = None  # Remove duplicate message
+
+    return df
