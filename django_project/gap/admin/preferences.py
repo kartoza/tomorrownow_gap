@@ -69,4 +69,11 @@ class PreferencesAdmin(admin.ModelAdmin):
                 )
             }
         ),
+        (
+            'DCAS Config', {
+                'fields': (
+                    'dcas_config',
+                )
+            }
+        ),
     )

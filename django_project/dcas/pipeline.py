@@ -42,14 +42,15 @@ pd.set_option("mode.copy_on_write", True)
 class DCASDataPipeline:
     """Class for DCAS data pipeline."""
 
-    NUM_PARTITIONS = 10
+    DEFAULT_NUM_PARTITIONS = 10
     # GRID_CROP_NUM_PARTITIONS = 100
-    GRID_CROP_NUM_PARTITIONS = 2
-    LIMIT = 10000
+    DEFAULT_GRID_CROP_NUM_PARTITIONS = 2
+    LIMIT = None
 
     def __init__(
         self, farm_registry_group: FarmRegistryGroup,
-        request_date: datetime.date, duck_db_num_threads=None
+        request_date: datetime.date, farm_num_partitions = None,
+        grid_crop_num_partitions = None, duck_db_num_threads=None
     ):
         """Initialize DCAS Data Pipeline.
 
@@ -72,6 +73,14 @@ class DCASDataPipeline:
             request_date, duck_db_num_threads=duck_db_num_threads
         )
         self.data_input = DCASPipelineInput(request_date)
+        self.NUM_PARTITIONS = (
+            self.DEFAULT_NUM_PARTITIONS if farm_num_partitions is None else
+            farm_num_partitions
+        )
+        self.GRID_CROP_NUM_PARTITIONS = (
+            self.DEFAULT_GRID_CROP_NUM_PARTITIONS if
+            grid_crop_num_partitions is None else grid_crop_num_partitions
+        )
 
     def setup(self):
         """Set the data pipeline."""

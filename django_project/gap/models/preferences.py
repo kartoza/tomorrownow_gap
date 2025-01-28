@@ -69,6 +69,16 @@ def user_file_uploader_config_default() -> dict:
     }
 
 
+def default_dcas_config() -> dict:
+    """Return dictionary for default dcas config."""
+    return {
+        'weekday': 1,  # Monday=0, Sunday=6
+        'override_request_date': None,
+        'farm_npartitions': None,
+        'grid_crop_npartitions': None
+    }
+
+
 class Preferences(SingletonModel):
     """Preference settings specifically for gap."""
 
@@ -159,6 +169,14 @@ class Preferences(SingletonModel):
         blank=True,
         null=True,
         help_text='Config for fsspec uploader to s3 for UserFile.'
+    )
+
+    # DCAS Configuration
+    dcas_config = models.JSONField(
+        default=default_dcas_config,
+        blank=True,
+        null=True,
+        help_text='Config for DCAS module.'
     )
 
     class Meta:  # noqa: D106

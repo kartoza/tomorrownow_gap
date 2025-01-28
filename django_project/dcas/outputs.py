@@ -81,6 +81,15 @@ class DCASPipelineOutput:
         """Return full path to grid with crop data."""
         return self.grid_crop_data_dir_path + '/*.parquet'
 
+    @property
+    def output_csv_file_path(self):
+        """Return full path to output csv file."""
+        dt = self.request_date.strftime('%Y%m%d')
+        return os.path.join(
+            self.TMP_BASE_DIR,
+            f'output_{dt}.csv'
+        )
+
     def _setup_s3fs(self):
         """Initialize s3fs."""
         self.s3 = self._get_s3_variables()
@@ -257,11 +266,7 @@ class DCASPipelineOutput:
 
     def convert_to_csv(self):
         """Convert output to csv file."""
-        dt = self.request_date.strftime('%Y%m%d')
-        file_path = os.path.join(
-            self.TMP_BASE_DIR,
-            f'output_{dt}.csv'
-        )
+        file_path = self.output_csv_file_path
         column_list = [
             'farm_unique_id as farmer_id', 'crop',
             'planting_date as plantingDate', 'growth_stage as growthStage',
