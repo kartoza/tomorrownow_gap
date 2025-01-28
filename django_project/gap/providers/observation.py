@@ -5,7 +5,9 @@ Tomorrow Now GAP.
 .. note:: Observation Data Reader
 """
 
+import os
 import json
+import duckdb
 from _collections_abc import dict_values
 from datetime import datetime
 import pandas as pd
@@ -17,6 +19,7 @@ from django.contrib.gis.db.models.functions import Distance, GeoFunc
 from typing import List, Tuple, Union
 from django.core.files.storage import storages
 from storages.backends.s3boto3 import S3Boto3Storage
+from django.conf import settings
 
 from gap.models import (
     Dataset,
@@ -450,16 +453,12 @@ class ObservationDatasetReader(BaseDatasetReader):
         qs = Station.objects.filter(
             geometry__within=polygon
         ).order_by('id')
-        if not qs.exists():
-            return None
         return qs
 
     def _find_nearest_station_by_polygon(self):
         qs = Station.objects.filter(
             geometry__within=self.location_input.polygon
         ).order_by('id')
-        if not qs.exists():
-            return None
         return qs
 
     def _find_nearest_station_by_points(self):
@@ -531,4 +530,213 @@ class ObservationDatasetReader(BaseDatasetReader):
             self.results, self.location_input, self.attributes,
             self.start_date, self.end_date, self.nearest_stations,
             self.result_count
+        )
+
+
+class TahmoParquetReaderValue(DatasetReaderValue):
+    """Class to generate the query output from Parquet files."""
+
+    def __init__(
+            self, val: duckdb.DuckDBPyConnection,
+            location_input: DatasetReaderInput,
+            attributes: List[DatasetAttribute],
+            start_date: datetime,
+            end_date: datetime,
+            query) -> None:
+        """Initialize TahmoParquetReaderValue class.
+
+        :param val: value that has been read
+        :type val: List[DatasetTimelineValue]
+        :param location_input: location input query
+        :type location_input: DatasetReaderInput
+        :param attributes: list of dataset attributes
+        :type attributes: List[DatasetAttribute]
+        """
+        super().__init__(
+            val, location_input, attributes, result_count=1
+        )
+        self.start_date = start_date
+        self.end_date = end_date
+        self.attributes = sorted(
+            self.attributes, key=lambda x: x.attribute.id
+        )
+        self.query = query
+
+    @property
+    def conn(self) -> duckdb.DuckDBPyConnection:
+        """Get DuckDB Connection."""
+        return self._val
+
+    def to_csv_stream(self, suffix='.csv', separator=','):
+        """Generate csv bytes stream.
+
+        :param suffix: file extension, defaults to '.csv'
+        :type suffix: str, optional
+        :param separator: separator, defaults to ','
+        :type separator: str, optional
+        :yield: bytes of csv file
+        :rtype: bytes
+        """
+        with (
+            tempfile.NamedTemporaryFile(
+                suffix=suffix, delete=True, delete_on_close=False)
+        ) as tmp_file:
+            export_query = (
+                f"""
+                    COPY({self.query})
+                    TO '{tmp_file.name}'
+                    (HEADER, DELIMITER '{separator}');
+                """
+            )
+
+            self.conn.sql(export_query)
+            self.conn.close()
+
+            with open(tmp_file.name, 'r') as f:
+                while True:
+                    chunk = f.read(self.chunk_size_in_bytes)
+                    if not chunk:
+                        break
+                    yield chunk
+
+
+class TahmoParquetReader(ObservationDatasetReader):
+    """Class to read tahmo dataset in GeoParquet."""
+
+    def __init__(
+            self, dataset: Dataset, attributes: List[DatasetAttribute],
+            location_input: DatasetReaderInput, start_date: datetime,
+            end_date: datetime,
+            altitudes: Tuple[float, float] = None
+    ) -> None:
+        """Initialize TahmoParquetReader class.
+
+        :param dataset: Dataset from observation provider
+        :type dataset: Dataset
+        :param attributes: List of attributes to be queried
+        :type attributes: List[DatasetAttribute]
+        :param location_input: Location to be queried
+        :type location_input: DatasetReaderInput
+        :param start_date: Start date time filter
+        :type start_date: datetime
+        :param end_date: End date time filter
+        :type end_date: datetime
+        """
+        super().__init__(
+            dataset, attributes, location_input, start_date, end_date,
+            altitudes=altitudes
+        )
+        self.s3 = self._get_s3_variables()
+
+    def _get_s3_variables(self) -> dict:
+        """Get s3 env variables for product bucket.
+
+        :return: Dictionary of S3 env vars
+        :rtype: dict
+        """
+        prefix = 'MINIO'
+        keys = [
+            'AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY',
+            'AWS_ENDPOINT_URL', 'AWS_REGION_NAME'
+        ]
+        results = {}
+        for key in keys:
+            results[key] = os.environ.get(f'{prefix}_{key}', '')
+        results['AWS_BUCKET_NAME'] = os.environ.get(
+            'MINIO_GAP_AWS_BUCKET_NAME', '')
+        results['AWS_DIR_PREFIX'] = os.environ.get(
+            'MINIO_GAP_AWS_DIR_PREFIX', '')
+        if settings.DEBUG:
+            results['AWS_ENDPOINT_URL'] = results['AWS_ENDPOINT_URL'].replace(
+                'http://', ''
+            )
+        else:
+            results['AWS_ENDPOINT_URL'] = results['AWS_ENDPOINT_URL'].replace(
+                'https://', ''
+            )
+        if results['AWS_ENDPOINT_URL'].endswith('/'):
+            results['AWS_ENDPOINT_URL'] = results['AWS_ENDPOINT_URL'][:-1]
+        return results
+
+    def _get_directory_path(self):
+        return (
+            f"s3://{self.s3['AWS_BUCKET_NAME']}/"
+            f"{self.s3['AWS_DIR_PREFIX']}/tahmo/"
+        )
+
+    def _get_connection(self):
+        conn = duckdb.connect(config={
+            'enable_object_cache': True,
+            's3_access_key_id': self.s3['AWS_ACCESS_KEY_ID'],
+            's3_secret_access_key': self.s3['AWS_SECRET_ACCESS_KEY'],
+            's3_region': 'us-east-1',
+            's3_url_style': 'path',
+            's3_endpoint': self.s3['AWS_ENDPOINT_URL'],
+            's3_use_ssl': not settings.DEBUG
+        })
+        conn.install_extension("httpfs")
+        conn.load_extension("httpfs")
+        conn.install_extension("spatial")
+        conn.load_extension("spatial")
+        return conn
+
+
+    def read_historical_data(self, start_date: datetime, end_date: datetime):
+        """Read historical data from dataset.
+
+        :param start_date: start date for reading historical data
+        :type start_date: datetime
+        :param end_date:  end date for reading historical data
+        :type end_date: datetime
+        """
+        if self.location_input.type != LocationInputType.BBOX:
+            raise NotImplementedError('Only BBOX is supported!')
+
+        attributes = ', '.join(
+            [a.attribute.variable_name for a in self.attributes]
+        )
+        s3_path = self._get_directory_path()
+        points = self.location_input.points
+        self.query = (
+            f"""
+            SELECT date, loc_y as lat, loc_x as lon, st_code as station_id,
+            {attributes}
+            FROM read_parquet('{s3_path}country=*/year=*/month=*/*.parquet',
+            hive_partitioning=true)
+            WHERE year>={start_date.year} AND month>={start_date.month} AND
+            day>={start_date.day} AND
+            year<={end_date.year} AND month<={end_date.month} AND
+            day<={end_date.day} AND
+            ST_Within(ST_GeomFromWKB(geometry), ST_MakeEnvelope(
+            {points[0].x}, {points[0].y}, {points[1].x}, {points[1].y}))
+            ORDER BY date
+            """
+        )
+
+        # nearest_stations = self._find_nearest_station_by_bbox()
+        # station_id_list = [s.id for s in nearest_stations]
+        # self.query = (
+        #     f"""
+        #     SELECT date, loc_y as lat, loc_x as lon, st_code as station_id,
+        #     {attributes}
+        #     FROM read_parquet('{s3_path}country=*/year=*/month=*/*.parquet',
+        #     hive_partitioning=true)
+        #     WHERE year>={start_date.year} AND month>={start_date.month} AND
+        #     day>={start_date.day} AND
+        #     year<={end_date.year} AND month<={end_date.month} AND
+        #     day<={end_date.day} AND
+        #     st_id IN {station_id_list}
+        #     ORDER BY date
+        #     """
+        # )
+
+    def get_data_values(self) -> DatasetReaderValue:
+        """Fetch data values from dataset.
+
+        :return: Data Value.
+        :rtype: DatasetReaderValue
+        """
+        return TahmoParquetReaderValue(
+            self._get_connection(), self.location_input, self.attributes,
+            self.start_date, self.end_date, self.query
         )
