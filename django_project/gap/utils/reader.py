@@ -446,14 +446,7 @@ class DatasetReaderValue:
             raise TypeError('Location input type is not point or polygon!')
         if self._is_xr_dataset:
             return self._xr_dataset_to_dict()
-        data = self._to_dict()
-
-        # Remove "time" field if dataset does not have a time column
-        if not self.has_time_column:
-            for entry in data.get("data", []):
-                entry.pop("time", None)
-
-        return data
+        return self._to_dict()
 
     def _get_s3_variables(self) -> dict:
         """Get s3 env variables for product bucket.
