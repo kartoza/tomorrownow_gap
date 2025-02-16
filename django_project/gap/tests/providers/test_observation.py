@@ -897,7 +897,6 @@ class TestObservationParquetReader(TestCase):
     @patch("gap.providers.observation.duckdb.connect")
     def test_to_json(self, mock_duckdb_connect):
         """Test to_json handles NaN values and removes unnecessary columns."""
-
         # Mock DuckDB connection
         mock_conn = MagicMock()
         mock_duckdb_connect.return_value = mock_conn
