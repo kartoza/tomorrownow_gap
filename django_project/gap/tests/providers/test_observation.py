@@ -9,6 +9,7 @@ from unittest.mock import patch, MagicMock
 import duckdb
 import xarray as xr
 import pandas as pd
+import numpy as np
 
 from django.test import TestCase
 from datetime import datetime
@@ -892,3 +893,53 @@ class TestObservationParquetReader(TestCase):
         # Ensure NetCDF file was saved
         mock_s3_storage.save.assert_called_once()
         self.assertEqual(netcdf_output, "s3://test-bucket/output.nc")
+
+    @patch("gap.providers.observation.duckdb.connect")
+    def test_to_json(self, mock_duckdb_connect):
+        """Test to_json handles NaN values and removes unnecessary columns."""
+        # Mock DuckDB connection
+        mock_conn = MagicMock()
+        mock_duckdb_connect.return_value = mock_conn
+
+        # Mock SQL query result
+        mock_conn.sql.return_value.df.return_value = pd.DataFrame({
+            "date": pd.date_range(start="2023-01-01", periods=3),
+            "time": ["12:00:00", "14:00:00", None],  # Some missing times
+            "lat": [0.5, 0.6, None],  # Drop lat
+            "lon": [36.5, None, 36.7],  # Drop lon
+            "value": [100, np.nan, 300]  # Include NaN
+        })
+
+        # Create reader instance
+        location_input = DatasetReaderInput.from_point(Point(36.8, -1.3))
+        reader_value = ObservationParquetReaderValue(
+            mock_conn,
+            location_input,
+            [],
+            datetime(2023, 1, 1),
+            datetime(2023, 1, 3),
+            "SELECT * FROM test"
+        )
+
+        # Mock has_time_column to avoid modifying it directly
+        with patch.object(
+            ObservationParquetReaderValue,
+            "has_time_column",
+            return_value=True
+        ):
+            output = reader_value.to_json()
+
+        # Ensure 'data' is present
+        self.assertIn("data", output)
+        self.assertEqual(len(output["data"]), 3)
+
+        # Ensure 'datetime' is present and formatted
+        for entry in output["data"]:
+            self.assertIn("datetime", entry)
+            self.assertNotIn("date", entry)  # Ensure 'date' was removed
+            self.assertNotIn("time", entry)  # Ensure 'time' was merged
+            self.assertNotIn("lat", entry)  # Ensure 'lat' was removed
+            self.assertNotIn("lon", entry)  # Ensure 'lon' was removed
+
+        # Validate NaN conversion to None
+        self.assertIsNone(output["data"][1].get("value"))
