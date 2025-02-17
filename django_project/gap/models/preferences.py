@@ -77,6 +77,7 @@ def default_dcas_config() -> dict:
         'farm_npartitions': None,
         'grid_crop_npartitions': None,
         'farm_registries': [],
+        'enable_message_filtering': False,
         'store_csv_to_minio': False,
         'store_csv_to_sftp': False,
     }
@@ -199,6 +200,11 @@ class Preferences(SingletonModel):
             'higher number will use more memory and cpu.'
         )
     )
+
+    @property
+    def enable_message_filtering(self) -> bool:
+        """Check if message filtering should be enabled."""
+        return self.dcas_config.get('enable_message_filtering', True)
 
     class Meta:  # noqa: D106
         verbose_name_plural = "preferences"

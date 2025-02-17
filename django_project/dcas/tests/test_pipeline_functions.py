@@ -239,7 +239,7 @@ class DCASPipelineFunctionTest(DCASPipelineBaseTest):
             'message_4': [None, None, None, None, None, None],
             'message_5': [None, None, None, 'MSG1', None, 'MSG4'],
             'message_date': [
-                now - timedelta(days=15),  # MSG1 - Old
+                now - timedelta(days=15),  # MSG1 - Oldest farm 1, crop 100
                 now - timedelta(days=10),  # MSG2
                 now - timedelta(days=5),   # MSG1 - More recent
                 now - timedelta(days=12),  # MSG3
@@ -248,60 +248,74 @@ class DCASPipelineFunctionTest(DCASPipelineBaseTest):
             ]
         })
 
+        # Simulate `read_grid_crop_data` returning the dataset
         mock_read_grid_crop_data.return_value = mock_data
 
-        # Latest MSG1 should be at index 4 (3 days ago)
-        result = get_last_message_date(2, 101, "MSG1", "/fake/path")
-        assert result == mock_data['message_date'].iloc[4]
+        # Pre-filter messages for farm 2
+        farm_messages_farm_2 = mock_data[mock_data["farm_id"] == 2]
 
-        # Latest MSG3 should be at index 3 (12 days ago)
-        result = get_last_message_date(2, 101, "MSG3", "/fake/path")
-        assert result == mock_data['message_date'].iloc[4]
+        # Latest MSG1 for farm 2, crop 101 should be at index 4 (3 days ago)
+        result = get_last_message_date(farm_messages_farm_2, 101, "MSG1")
+        self.assertEqual(result, mock_data['message_date'].iloc[4])
 
-        # Latest MSG2 should be at index 1 (10 days ago)
-        result = get_last_message_date(1, 100, "MSG2", "/fake/path")
-        assert result == mock_data['message_date'].iloc[1]
+        # Latest MSG3 for farm 2, crop 101 should be at index 3 (12 days ago)
+        result = get_last_message_date(farm_messages_farm_2, 101, "MSG3")
+        self.assertEqual(result, mock_data['message_date'].iloc[4])
+
+        # Pre-filter messages for farm 1
+        farm_messages_farm_1 = mock_data[mock_data["farm_id"] == 1]
+
+        # Latest MSG2 for farm 1, crop 100 should be at index 1 (10 days ago)
+        result = get_last_message_date(farm_messages_farm_1, 100, "MSG2")
+        self.assertEqual(result, mock_data['message_date'].iloc[1])
 
         # Latest MSG1 for farm 1, crop 100 should be at index 2 (5 days ago)
-        result = get_last_message_date(1, 100, "MSG1", "/fake/path")
-        assert result == mock_data['message_date'].iloc[2]
+        result = get_last_message_date(farm_messages_farm_1, 100, "MSG1")
+        self.assertEqual(result, mock_data['message_date'].iloc[2])
 
-        # MSG5 exists only once, at index 3 (12 days ago)
-        result = get_last_message_date(2, 101, "MSG5", "/fake/path")
-        assert result is None  # No MSG5 found
+        # MSG5 does not exist in the dataset for farm 2, crop 101
+        result = get_last_message_date(farm_messages_farm_2, 101, "MSG5")
+        self.assertIsNone(result)
 
     @patch("dcas.functions.read_grid_crop_data")
     def test_get_last_message_date_not_exists(self, mock_read_grid_crop_data):
         """Test when the message does not exist in history."""
+        now = pd.Timestamp(datetime.now())
+
+        # Mock DataFrame with different messages, but not "MSG1"
         mock_data = pd.DataFrame({
             'farm_id': [1, 1, 2],
             'crop_id': [100, 100, 101],
             'message': ['MSG2', 'MSG3', 'MSG4'],
-            'message_2': [None, None, None],
-            'message_3': [None, None, None],
-            'message_4': [None, None, None],
-            'message_5': [None, None, None],
+            'message_2': ['MSG5', None, None],  # Different message
+            'message_3': [None, 'MSG6', None],  # Different message
+            'message_4': [None, None, 'MSG7'],  # Different message
+            'message_5': [None, None, None],  # No relevant messages
             'message_date': [
-                pd.Timestamp(datetime.now() - timedelta(days=10)),
-                pd.Timestamp(datetime.now() - timedelta(days=5)),
-                pd.Timestamp(datetime.now() - timedelta(days=3))
+                now - timedelta(days=10),  # MSG2
+                now - timedelta(days=5),   # MSG3
+                now - timedelta(days=3)    # MSG4
             ]
         })
+
         mock_read_grid_crop_data.return_value = mock_data
 
-        result = get_last_message_date(1, 100, "MSG1", "/fake/path")
+        # Attempting to get "MSG1", which is not present in the history
+        result = get_last_message_date(mock_data, 100, "MSG1")
+
+        # Ensure that the function correctly returns None
         self.assertIsNone(result)
 
     @patch("dcas.functions.read_grid_crop_data")
     def test_get_last_message_date_multiple_messages(
-        self,
-        mock_read_grid_crop_data
+        self, mock_read_grid_crop_data
     ):
         """
         Test when the same message appears multiple times.
 
-        And should return the most recent timestamp.
+        It should return the most recent timestamp.
         """
+        # Mock DataFrame representing historical messages
         mock_data = pd.DataFrame({
             'farm_id': [1, 1, 1],
             'crop_id': [100, 100, 100],
@@ -311,22 +325,38 @@ class DCASPipelineFunctionTest(DCASPipelineBaseTest):
             'message_4': [None, None, None],
             'message_5': [None, None, None],
             'message_date': [
-                pd.Timestamp(datetime.now() - timedelta(days=15)),
-                pd.Timestamp(datetime.now() - timedelta(days=7)),
-                pd.Timestamp(datetime.now() - timedelta(days=2))
+                pd.Timestamp(datetime.now() - timedelta(days=15)),  # Oldest
+                pd.Timestamp(datetime.now() - timedelta(days=7)),   # Middle
+                pd.Timestamp(datetime.now() - timedelta(days=2))    # recent
             ]
         })
+
+        # Mock return value for read_grid_crop_data
         mock_read_grid_crop_data.return_value = mock_data
 
-        result = get_last_message_date(1, 100, "MSG1", "/fake/path")
-        self.assertEqual(result, mock_data['message_date'].iloc[2])
+        # Pre-filter data to simulate getting farm messages
+        farm_messages = mock_data[mock_data["farm_id"] == 1]
 
-    @patch("dcas.functions.get_last_message_date")
-    def test_filter_messages_by_weeks(self, mock_get_last_message_date):
+        # Call function with the updated parameters
+        result = get_last_message_date(farm_messages, 100, "MSG1")
+
+        # Expected result: Most recent message date
+        expected_result = mock_data['message_date'].max()
+
+        # Assertions
+        self.assertEqual(
+            result,
+            expected_result,
+            f"Expected {expected_result}, but got {result}"
+        )
+
+    @patch("dcas.functions.read_grid_crop_data")
+    def test_filter_messages_by_weeks(self, mock_read_grid_crop_data):
         """Test filtering messages based on the time constraint (weeks)."""
         test_weeks = 2  # Remove messages sent within the last 2 weeks
-        current_date = pd.Timestamp(datetime.now())
+        current_date = pd.Timestamp(datetime.now())  # Fixed datetime
 
+        # Mock input DataFrame (new messages)
         df = pd.DataFrame({
             'farm_id': [1, 2, 3],
             'crop_id': [100, 200, 300],
@@ -337,16 +367,30 @@ class DCASPipelineFunctionTest(DCASPipelineBaseTest):
             'message_5': [None, None, None],
         })
 
-        # Simulating last message dates for each row
-        mock_get_last_message_date.side_effect = [
-            current_date - timedelta(weeks=1),  # Should be removed
-            current_date - timedelta(weeks=3),  # Should stay
-            None  # No history, should stay
-        ]
+        # Mock historical messages (Parquet data)
+        historical_df = pd.DataFrame({
+            'farm_id': [1, 2],  # Only farms 1 and 2 have historical messages
+            'crop_id': [100, 200],
+            'message': ['MSG1', 'MSG2'],
+            'message_2': [None, None],
+            'message_3': [None, None],
+            'message_4': [None, None],
+            'message_5': [None, None],
+            'message_date': [
+                current_date - timedelta(weeks=1),  # Recent
+                current_date - timedelta(weeks=3)],  # Older
+        })
 
+        # Mock `read_grid_crop_data` to return the historical messages
+        mock_read_grid_crop_data.return_value = historical_df
+
+        # Run function
         filtered_df = filter_messages_by_weeks(df, "/fake/path", test_weeks)
 
-        # Assert that the correct messages were removed
-        self.assertIsNone(filtered_df.loc[0, 'message'])  # Removed
-        self.assertEqual(filtered_df.loc[1, 'message'], 'MSG2')  # Kept
-        self.assertEqual(filtered_df.loc[2, 'message'], 'MSG3')  # Kept
+        # Assertions
+        self.assertIsNone(filtered_df.loc[0, 'message'])
+        self.assertEqual(filtered_df.loc[1, 'message'], 'MSG2')
+        self.assertEqual(filtered_df.loc[2, 'message'], 'MSG3')
+
+        # Ensure `read_grid_crop_data` was called once
+        mock_read_grid_crop_data.assert_called_once_with("/fake/path", [], [])

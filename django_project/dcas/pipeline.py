@@ -17,7 +17,10 @@ from dask.dataframe.core import DataFrame as dask_df
 from django.contrib.gis.db.models import Union
 from sqlalchemy import create_engine
 
-from gap.models import FarmRegistry, Grid, CropGrowthStage
+from gap.models import (
+    FarmRegistry, Grid, CropGrowthStage,
+    Preferences
+)
 from dcas.models import DCASConfig, DCASConfigCountry
 from dcas.partitions import (
     process_partition_total_gdd,
@@ -442,6 +445,8 @@ class DCASDataPipeline:
             self.duck_db_num_threads,
             meta=farm_df_meta
         )
+        if Preferences.load().enable_message_filtering:
+            self.filter_message_output()
 
         self.data_output.save(OutputType.FARM_CROP_DATA, farm_df)
 
@@ -495,11 +500,14 @@ class DCASDataPipeline:
             "message_5": "object",
             "message_date": "datetime64[ns]",
         }
+        data_parquet_path = self.data_output._get_directory_path(
+            self.data_output.DCAS_OUTPUT_DIR
+        ) + '/iso_a3=*/year=*/month=*/day=*/*.parquet'
 
         # Apply message filtering
         df = df.map_partitions(
             filter_messages_by_weeks,
-            self.data_output.grid_crop_data_path,
+            data_parquet_path,
             2,  # Weeks constraint (default: 2 weeks)
             meta=meta
         )
@@ -522,8 +530,6 @@ class DCASDataPipeline:
         self.data_collection()
         self.process_grid_crop_data()
         self.process_farm_registry_data()
-
-        self.filter_message_output()
 
         self.extract_csv_output()
 
