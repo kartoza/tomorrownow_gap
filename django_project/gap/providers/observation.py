@@ -584,11 +584,20 @@ class ObservationParquetReaderValue(DatasetReaderValue):
         }
         # Convert query results to a DataFrame
         df = self.conn.sql(self.query).df()
-        # Combine date and time columns
-        df['datetime'] = pd.to_datetime(
-            df['date'].dt.strftime('%Y-%m-%d') + ' ' + df['time']
-        )
-        df = df.drop(columns=['date', 'time', 'lat', 'lon'])
+
+        if self.has_time_column and 'time' in df.columns:
+            # Combine date and time columns if time column exists
+            df['datetime'] = pd.to_datetime(
+                df['date'].dt.strftime('%Y-%m-%d') + ' ' + df['time']
+            )
+            drop_columns = ['date', 'time']
+        else:
+            # If dataset lacks time, only use the date
+            df['datetime'] = df['date']
+            drop_columns = ['date']
+        drop_columns.extend(['lat', 'lon'])
+        # Drop unnecessary columns safely
+        df = df.drop(columns=drop_columns, errors='ignore')
         # Replace NaN with None
         df = df.replace({np.nan: None})
         output['data'] = df.to_dict(orient="records")
