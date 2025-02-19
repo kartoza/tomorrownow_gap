@@ -6,6 +6,7 @@ Tomorrow Now GAP.
 """
 
 from datetime import datetime, timezone
+import calendar
 
 
 def find_max_min_epoch_dates(min_epoch, max_epoch, epoch):
@@ -118,3 +119,15 @@ def split_epochs_by_year_month(start_epoch, end_epoch):
             current_month += 1
 
     return results
+
+
+def closest_leap_year(year):
+    """Find the closest past leap year to the given year."""
+    if calendar.isleap(year):
+        return year
+
+    lower = year - 1
+    while True:
+        if calendar.isleap(lower):
+            return lower
+        lower -= 1

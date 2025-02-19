@@ -208,6 +208,30 @@ class TestTomorrowIODatasetReader(TestCase):
         self.reader._read_ltn_data(self.start_date, self.end_date)
         self.assertEqual(len(self.reader.results), 0)
         self.assertEqual(len(self.reader.errors), 1)
+        # test LTN returns 02-29
+        mock_response = {
+            'data': {
+                'timelines': [{
+                    'intervals': [
+                        {
+                            'startDate': '02-29',
+                            'values': {
+                                'rainAccumulationSum': 2.0
+                            }
+                        }
+                    ]
+                }]
+            }
+        }
+        mock_request.post(
+            'https://api.tomorrow.io/v4/historical/'
+            'normals?apikey=dummy_api_key',
+            json=mock_response, status_code=200
+        )
+
+        self.reader._read_ltn_data(self.start_date, self.end_date)
+        # skip the result since requested year is not leap year
+        self.assertEqual(len(self.reader.results), 0)
 
     @patch.object(TomorrowIODatasetReader, 'read_historical_data')
     @patch.object(TomorrowIODatasetReader, 'read_forecast_data')

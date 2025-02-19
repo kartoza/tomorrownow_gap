@@ -39,6 +39,7 @@ from gap.utils.reader import (
     BaseDatasetReader
 )
 from gap.utils.zarr import BaseZarrReader
+from core.utils.date import closest_leap_year
 
 logger = logging.getLogger(__name__)
 PROVIDER_NAME = 'Tomorrow.io'
@@ -434,7 +435,10 @@ class TomorrowIODatasetReader(BaseDatasetReader):
         dt_str = interval.get('startTime')
         if self._is_ltn_request():
             dt_str = interval.get('startDate')
-            dt_str = f'{self.start_date.year}-{dt_str}'
+            year = self.start_date.year
+            if dt_str == '02-29':
+                year = closest_leap_year(year)
+            dt_str = f'{year}-{dt_str}'
             return datetime.strptime(
                 dt_str, '%Y-%m-%d').replace(tzinfo=pytz.utc)
         return datetime.fromisoformat(dt_str)

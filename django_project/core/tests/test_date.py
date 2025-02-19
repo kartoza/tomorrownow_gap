@@ -11,7 +11,8 @@ from django.test import TestCase
 from core.utils.date import (
     find_max_min_epoch_dates,
     split_epochs_by_year,
-    split_epochs_by_year_month
+    split_epochs_by_year_month,
+    closest_leap_year
 )
 
 
@@ -265,3 +266,11 @@ class TestSplitEpochsByYearMonth(TestCase):
             split_epochs_by_year_month(int(start_epoch), int(start_epoch)),
             expected
         )
+
+    def test_closest_leap_year(self):
+        """Test closest_leap_year."""
+        self.assertEqual(closest_leap_year(2023), 2020)
+        self.assertEqual(closest_leap_year(2020), 2020)
+        self.assertEqual(closest_leap_year(2019), 2016)
+        self.assertEqual(closest_leap_year(2001), 2000)
+        self.assertEqual(closest_leap_year(1999), 1996)
