@@ -636,6 +636,10 @@ class TioZarrReader(BaseZarrReader):
                 val = val.drop_vars(self.date_variable).rename({
                     'forecast_date': 'date'
                 })
+                # Subtract 1 day from the date coordinate
+                val = val.assign_coords(
+                    date=val.date - np.timedelta64(1, "D")
+                )
                 self.xrDatasets.append(val)
 
     def get_data_values(self) -> DatasetReaderValue:
@@ -681,8 +685,11 @@ class TioZarrReader(BaseZarrReader):
 
         if start_dt < self.latest_forecast_date:
             return dataset[variables].sel(
-                forecast_date=slice(start_dt, end_dt),
-                **{self.date_variable: 0}
+                forecast_date=slice(
+                    start_dt + np.timedelta64(1, 'D'),
+                    end_dt + np.timedelta64(1, 'D')
+                ),
+                **{self.date_variable: -1}
             ).sel(
                 lat=point.y,
                 lon=point.x, method='nearest')
@@ -721,10 +728,13 @@ class TioZarrReader(BaseZarrReader):
 
         if start_dt < self.latest_forecast_date:
             return dataset[variables].sel(
-                forecast_date=slice(start_dt, end_dt),
+                forecast_date=slice(
+                    start_dt + np.timedelta64(1, 'D'),
+                    end_dt + np.timedelta64(1, 'D')
+                ),
                 lat=slice(lat_min, lat_max),
                 lon=slice(lon_min, lon_max),
-                **{self.date_variable: 0}
+                **{self.date_variable: -1}
             )
 
         min_idx = self._get_forecast_day_idx(start_dt)
@@ -763,8 +773,11 @@ class TioZarrReader(BaseZarrReader):
 
         if start_dt < self.latest_forecast_date:
             return dataset[variables].sel(
-                forecast_date=slice(start_dt, end_dt),
-                **{self.date_variable: 0}
+                forecast_date=slice(
+                    start_dt + np.timedelta64(1, 'D'),
+                    end_dt + np.timedelta64(1, 'D')
+                ),
+                **{self.date_variable: -1}
             ).where(
                 mask == 0,
                 drop=True
@@ -816,8 +829,11 @@ class TioZarrReader(BaseZarrReader):
 
         if start_dt < self.latest_forecast_date:
             return dataset[variables].sel(
-                forecast_date=slice(start_dt, end_dt),
-                **{self.date_variable: 0}
+                forecast_date=slice(
+                    start_dt + np.timedelta64(1, 'D'),
+                    end_dt + np.timedelta64(1, 'D')
+                ),
+                **{self.date_variable: -1}
             ).where(
                 mask_da,
                 drop=True
