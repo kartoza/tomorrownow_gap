@@ -10,10 +10,8 @@ from celery.utils.log import get_task_logger
 from django.core.mail import send_mail
 from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.utils import timezone
 
 from core.celery import app
-from core.models import BackgroundTask, TaskStatus
 from gap.models import (
     Dataset,
     DatasetStore,
@@ -43,6 +41,9 @@ def run_collector_session(_id: int):
     except Exception as e:
         logger.error(f"Error in Collector Session {_id}: {str(e)}")
         notify_collector_failure.delay(_id, str(e))
+    finally:
+        if session and session.status == IngestorSessionStatus.FAILED:
+            notify_collector_failure.delay(_id, session.notes)
 
 
 @app.task(name='cbam_collector_session')
@@ -106,6 +107,9 @@ def _do_run_zarr_collector(
         session.collectors.add(collector_session)
         run_ingestor_session.delay(session.id)
 
+    if collector_session.status == IngestorSessionStatus.FAILED:
+        notify_collector_failure.delay(collector_session.id, session.notes)
+
 
 @app.task(name='salient_collector_session')
 def run_salient_collector_session():
@@ -140,6 +144,7 @@ def notify_collector_failure(session_id: int, exception: str):
     :param exception: Exception message describing the failure
     """
     # Retrieve the collector session
+    session = None
     try:
         session = CollectorSession.objects.get(id=session_id)
         session.status = IngestorSessionStatus.FAILED  # Ensure correct status
@@ -148,35 +153,27 @@ def notify_collector_failure(session_id: int, exception: str):
         logger.warning(f"CollectorSession {session_id} not found.")
         return
 
-    background_task = BackgroundTask.objects.filter(
-        task_name="notify_collector_failure",  # Updated for collectors
-        context_id=str(session_id)
-    ).first()
-
-    if background_task:
-        background_task.status = TaskStatus.STOPPED
-        background_task.errors = exception
-        background_task.last_update = timezone.now()
-        background_task.save(update_fields=["status", "errors", "last_update"])
-    else:
-        logger.warning(
-            f"No BackgroundTask found for collector session {session_id}"
-        )
-
     # Log failure (If needed, adjust this for collectors)
     logger.error(f"CollectorSession {session_id} failed: {exception}")
 
     # Send an email notification to admins
     User = get_user_model()
     admin_emails = list(
-        User.objects.filter(is_superuser=True).values_list('email', flat=True)
+        User.objects.filter(
+            is_superuser=True
+        ).exclude(
+            email__isnull=True
+        ).exclude(
+            email__exact=''
+        ).values_list('email', flat=True)
     )
 
     if admin_emails:
         send_mail(
             subject="Collector Failure Alert",
             message=(
-                f"Collector Session {session_id} has failed.\n\n"
+                f"Collector Session {session_id} - {session.ingestor_type} "
+                "has failed.\n\n"
                 f"Error: {exception}\n\n"
                 "Please check the logs for more details."
             ),
@@ -186,7 +183,7 @@ def notify_collector_failure(session_id: int, exception: str):
         )
         logger.info(f"Sent collector failure email to {admin_emails}")
     else:
-        logger.warning("No admin email found in settings.ADMINS")
+        logger.warning("No admin email found.")
 
     return (
         f"Logged collector {session_id} failed. Admins notified."
