@@ -100,11 +100,11 @@ class DCASPipelineInput:
             },
             'precipitation_and_evapotranspiration': {
                 'attribute_list': [
-                    'precipitation_probability',
+                    'total_rainfall',
                     'total_evapotranspiration_flux'
                 ],
                 'column_mapping': {
-                    'precipitation_probability': 'precipitation',
+                    'total_rainfall': 'precipitation',
                     'total_evapotranspiration_flux': 'evapotranspiration'
                 },
                 'dates': self.precip_dates,
@@ -122,7 +122,7 @@ class DCASPipelineInput:
         - max_temperature, min_temperature, total_rainfall
             from earliest plant date
         - humidity_maximum, humidity_minimum from today to D+3
-        - precipitation_probability, total_evapotranspiration_flux
+        - total_rainfall, total_evapotranspiration_flux
             from D-6 to D+3
         :param bbox: bounding box
         :type bbox: list
