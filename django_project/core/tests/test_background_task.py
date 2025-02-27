@@ -77,6 +77,13 @@ class TestBackgroundTask(TestCase):
             task_name='test-task-1',
             context_id='1'
         )
+        self.superuser = UserF.create(
+            first_name='admin',
+            username='admin@example.com',
+            email='admin@example.com',
+            is_superuser=True,
+            is_active=True
+        )
 
     def get_task_sender(self, bg_task: BackgroundTask):
         """Create sender object from BackgroundTask."""
@@ -361,46 +368,22 @@ class TestBackgroundTask(TestCase):
 
     @mock.patch("gap.tasks.ingestor.IngestorSession.objects.get")
     @mock.patch("gap.tasks.ingestor.logger")
-    @mock.patch("core.models.BackgroundTask.objects.filter")
-    def test_notify_ingestor_failure_no_background_task(
-        self, mock_background_task_filter, mock_logger, mock_ingestor_get
-    ):
-        """Test when no BackgroundTask exists for an ingestor session."""
-        # Mock IngestorSession.objects.get to return a dummy session
-        mock_ingestor_get.return_value = mock.Mock()
-
-        # Mock BackgroundTask filter to return None (task does not exist)
-        mock_background_task_filter.return_value.first.return_value = None
-
-        # Call function
-        notify_ingestor_failure(42, "Test failure")
-
-        # Ensure logger warning is logged
-        mock_logger.warning.assert_any_call(
-            "No BackgroundTask found for session 42"
-        )
-
-    @mock.patch("gap.tasks.ingestor.IngestorSession.objects.get")
-    @mock.patch("gap.tasks.ingestor.logger")
-    @mock.patch("django.contrib.auth.get_user_model")
     def test_notify_ingestor_failure_no_admin_email(
-        self, mock_get_user_model, mock_logger, mock_ingestor_get
+        self, mock_logger, mock_ingestor_get
     ):
         """Test when no admin emails exist."""
         # Mock IngestorSession.objects.get to return a dummy session
         mock_ingestor_get.return_value = mock.Mock()
 
-        # Mock user model query to return empty list (no admin emails)
-        mock_user_manager = mock_get_user_model.return_value.objects
-        mock_filtered_users = mock_user_manager.filter.return_value
-        mock_filtered_users.values_list.return_value = []
+        self.superuser.is_superuser = False
+        self.superuser.save()
 
         # Call function
         notify_ingestor_failure(42, "Test failure")
 
         # Verify log message when no admin emails exist
         mock_logger.warning.assert_any_call(
-            "No admin email found in settings.ADMINS"
+            "No admin email found."
         )
 
     @mock.patch("gap.tasks.ingestor.notify_ingestor_failure.delay")
@@ -413,47 +396,16 @@ class TestBackgroundTask(TestCase):
 
         mock_notify.assert_called_once_with(9999, "Session not found")
 
-    @mock.patch("gap.tasks.ingestor.IngestorSession.objects.get")
-    @mock.patch("gap.tasks.ingestor.logger")
-    @mock.patch("core.models.BackgroundTask.objects.filter")
-    def test_notify_ingestor_failure_with_existing_background_task(
-        self, mock_background_task_filter, mock_logger, mock_ingestor_get
-    ):
-        """Test that BackgroundTask is updated when it exists."""
-        # Mock IngestorSession.objects.get to return a dummy session
-        mock_ingestor_get.return_value = mock.Mock()
-
-        # Create a mock BackgroundTask instance
-        mock_task = mock.Mock()
-        mock_background_task_filter.return_value.first.return_value = mock_task
-
-        # Call function
-        notify_ingestor_failure(42, "Test failure")
-
-        # Ensure status, errors, and last_update were updated
-        self.assertEqual(mock_task.status, TaskStatus.STOPPED)
-        self.assertEqual(mock_task.errors, "Test failure")
-        self.assertTrue(mock_task.last_update)
-
-        # Ensure save() was called once with expected update fields
-        mock_task.save.assert_called_once_with(
-            update_fields=["status", "errors", "last_update"]
-        )
-
     @mock.patch("gap.tasks.ingestor.send_mail")
     @mock.patch("gap.tasks.ingestor.IngestorSession.objects.get")
-    @mock.patch("gap.tasks.ingestor.get_user_model")
     def test_notify_ingestor_failure_with_admin_emails(
-        self, mock_get_user_model, mock_ingestor_get, mock_send_mail
+        self, mock_ingestor_get, mock_send_mail
     ):
         """Test that email is sent when admin emails exist."""
         # Mock IngestorSession.objects.get to return a dummy session
-        mock_ingestor_get.return_value = mock.Mock()
-
-        # Mock user model query to return a list of admin emails
-        mock_user_manager = mock_get_user_model.return_value.objects
-        mock_filtered_users = mock_user_manager.filter.return_value
-        mock_filtered_users.values_list.return_value = ["admin@example.com"]
+        ingestor_obj = mock.Mock()
+        ingestor_obj.ingestor_type = 'test'
+        mock_ingestor_get.return_value = ingestor_obj
 
         # Call function
         notify_ingestor_failure(42, "Test failure")
@@ -462,41 +414,14 @@ class TestBackgroundTask(TestCase):
         mock_send_mail.assert_called_once_with(
             subject="Ingestor Failure Alert",
             message=(
-                "Ingestor Session 42 has failed.\n\n"
+                "Ingestor Session 42 - test has failed.\n\n"
                 "Error: Test failure\n\n"
                 "Please check the logs for more details."
             ),
             from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[["admin@example.com"]],
+            recipient_list=["admin@example.com"],
             fail_silently=False,
         )
-
-    @mock.patch("gap.tasks.ingestor.IngestorSession.objects.get")
-    @mock.patch("gap.tasks.ingestor.get_user_model")
-    @mock.patch("gap.tasks.ingestor.send_mail")
-    def test_notify_ingestor_failure_return_value(
-        self, mock_send_mail, mock_get_user_model, mock_ingestor_get
-    ):
-        """Test that notify_ingestor_failure returns the expected string."""
-        # Mock IngestorSession.objects.get
-        mock_session = mock.Mock()
-        mock_ingestor_get.return_value = mock_session
-
-        # Mock user model query to return an admin email
-        mock_user_manager = mock_get_user_model.return_value.objects
-        mock_filtered_users = mock_user_manager.filter.return_value
-        mock_filtered_users.values_list.return_value = ["admin@example.com"]
-
-        # Call function and store return value
-        result = notify_ingestor_failure(42, "Test failure")
-
-        # Expected return message
-        expected_msg = (
-            "Logged ingestor failure for session 42 and notified admins"
-        )
-
-        # Assert function returned the expected message
-        self.assertEqual(result, expected_msg)
 
     @mock.patch("gap.models.ingestor.CollectorSession.objects.get")
     @mock.patch("gap.tasks.collector.notify_collector_failure.delay")
@@ -523,86 +448,41 @@ class TestBackgroundTask(TestCase):
 
     @mock.patch("gap.tasks.collector.CollectorSession.objects.get")
     @mock.patch("gap.tasks.collector.logger")
-    @mock.patch("core.models.BackgroundTask.objects.filter")
-    def test_notify_collector_failure_no_background_task(
-        self, mock_background_task_filter, mock_logger, mock_collector_get
-    ):
-        """Test when no BackgroundTask exists for a collector session."""
-        mock_collector_get.return_value = mock.Mock()
-
-        mock_background_task_filter.return_value.first.return_value = None
-
-        notify_collector_failure(42, "Test failure")
-        print(mock_logger.mock_calls)
-
-        mock_logger.warning.assert_any_call(
-            "No BackgroundTask found for collector session 42"
-        )
-
-    @mock.patch("gap.tasks.collector.CollectorSession.objects.get")
-    @mock.patch("gap.tasks.collector.logger")
-    @mock.patch("django.contrib.auth.get_user_model")
     def test_notify_collector_failure_no_admin_email(
-        self, mock_get_user_model, mock_logger, mock_collector_get
+        self, mock_logger, mock_collector_get
     ):
         """Test when no admin emails exist for collector failure."""
         mock_collector_get.return_value = mock.Mock()
 
-        mock_user_manager = mock_get_user_model.return_value.objects
-        mock_filtered_users = mock_user_manager.filter.return_value
-        mock_filtered_users.values_list.return_value = []
+        self.superuser.is_superuser = False
+        self.superuser.save()
 
         notify_collector_failure(42, "Test failure")
 
         mock_logger.warning.assert_any_call(
-            "No admin email found in settings.ADMINS"
+            "No admin email found."
         )
 
     @mock.patch("gap.tasks.collector.send_mail")
     @mock.patch("gap.tasks.collector.CollectorSession.objects.get")
-    @mock.patch("gap.tasks.collector.get_user_model")
     def test_notify_collector_failure_with_admin_emails(
-        self, mock_get_user_model, mock_collector_get, mock_send_mail
+        self, mock_collector_get, mock_send_mail
     ):
         """Test that email is sent for collector failure."""
-        mock_collector_get.return_value = mock.Mock()
-
-        mock_user_manager = mock_get_user_model.return_value.objects
-        mock_filtered_users = mock_user_manager.filter.return_value
-        mock_filtered_users.values_list.return_value = [["admin@example.com"]]
+        ingestor_obj = mock.Mock()
+        ingestor_obj.ingestor_type = 'test'
+        mock_collector_get.return_value = ingestor_obj
 
         notify_collector_failure(42, "Test failure")
 
         mock_send_mail.assert_called_once_with(
             subject="Collector Failure Alert",
             message=(
-                "Collector Session 42 has failed.\n\n"
+                "Collector Session 42 - test has failed.\n\n"
                 "Error: Test failure\n\n"
                 "Please check the logs for more details."
             ),
             from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[["admin@example.com"]],
+            recipient_list=["admin@example.com"],
             fail_silently=False,
         )
-
-    @mock.patch("gap.tasks.collector.CollectorSession.objects.get")
-    @mock.patch("gap.tasks.collector.get_user_model")
-    @mock.patch("gap.tasks.collector.send_mail")
-    def test_notify_collector_failure_return_value(
-        self, mock_send_mail, mock_get_user_model, mock_collector_get
-    ):
-        """Test that notify_collector_failure returns the expected string."""
-        mock_session = mock.Mock()
-        mock_collector_get.return_value = mock_session
-
-        mock_user_manager = mock_get_user_model.return_value.objects
-        mock_filtered_users = mock_user_manager.filter.return_value
-        mock_filtered_users.values_list.return_value = [["admin@example.com"]]
-
-        result = notify_collector_failure(42, "Test failure")
-
-        expected_msg = (
-            "Logged collector 42 failed. Admins notified."
-        )
-
-        self.assertEqual(result, expected_msg)

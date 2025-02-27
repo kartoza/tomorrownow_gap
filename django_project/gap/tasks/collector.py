@@ -32,6 +32,7 @@ logger = get_task_logger(__name__)
 @app.task(name='collector_session')
 def run_collector_session(_id: int):
     """Run collector."""
+    session = None
     try:
         session = CollectorSession.objects.get(id=_id)
         session.run()

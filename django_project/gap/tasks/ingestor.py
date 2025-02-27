@@ -107,7 +107,7 @@ def notify_ingestor_failure(session_id: int, exception: str):
                 "Please check the logs for more details."
             ),
             from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[admin_emails],
+            recipient_list=admin_emails,
             fail_silently=False,
         )
         logger.info(f"Sent ingestor failure email to {admin_emails}")
