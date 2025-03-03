@@ -109,7 +109,10 @@ def _do_run_zarr_collector(
         run_ingestor_session.delay(session.id)
 
     if collector_session.status == IngestorSessionStatus.FAILED:
-        notify_collector_failure.delay(collector_session.id, session.notes)
+        notify_collector_failure.delay(
+            collector_session.id,
+            collector_session.notes
+        )
 
 
 @app.task(name='salient_collector_session')
