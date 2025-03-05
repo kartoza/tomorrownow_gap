@@ -519,6 +519,8 @@ class ParquetIngestorAppender(ParquetConverter):
 
     def run(self):
         """Run the converter."""
+        if self.start_date is None or self.end_date is None:
+            return
         s3_path = self._get_directory_path(self.data_source)
         date_list = split_epochs_by_year(
             int(self.start_date.timestamp()),
@@ -582,6 +584,8 @@ class WindborneParquetIngestorAppender(WindborneParquetConverter):
 
     def run(self):
         """Run the converter."""
+        if self.start_date is None or self.end_date is None:
+            return
         s3_path = self._get_directory_path(self.data_source)
         date_list = split_epochs_by_year_month(
             int(self.start_date.timestamp()),
