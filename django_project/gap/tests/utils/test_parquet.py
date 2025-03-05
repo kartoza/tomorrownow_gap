@@ -135,6 +135,7 @@ class ParquetConverterTest(TestCase):
         )
 
     def test_appender_not_run(self):
+        """Test run appender not called."""
         data_source = DataSourceFile(name='tahmo_test_store')
         appender = ParquetIngestorAppender(
             self.dataset,
@@ -158,6 +159,7 @@ class ParquetConverterTest(TestCase):
 
     @override_settings(DEBUG=True)
     def test_appender_run(self):
+        """Test run appender successful."""
         session = IngestorSession.objects.create(
             file=self.correct_file,
             ingestor_type=self.ingestor_type,
