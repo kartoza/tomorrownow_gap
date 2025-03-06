@@ -72,16 +72,20 @@ class Command(BaseCommand):
         )
         reader.setup_reader()
         ds = reader.open_dataset(data_source)
+        # print(ds)
 
-        lat = 0.58588279
-        lon = 35.73590167
+        # lat = 0.58588279
+        # lon = 35.73590167
+
+        lat = 0.15552511
+        lon = 35.91766817
 
         date = '2025-03-04'
-        attributes = ['max_temperature', 'min_temperature', 'humidity_maximum', 'humidity_minimum']
+        attributes = ['max_temperature', 'min_temperature', 'humidity_maximum', 'humidity_minimum', 'total_rainfall', 'total_evapotranspiration_flux']
 
         ds = ds[attributes].sel(
             forecast_date=date,
-            forecast_day_idx=slice(0, 4)
+            forecast_day_idx=slice(0, 3)
         ).sel(
             lat=lat,
             lon=lon, method='nearest'
@@ -95,3 +99,7 @@ class Command(BaseCommand):
         print(ds['humidity_maximum'].values)
         print('humidity_min')
         print(ds['humidity_minimum'].values)
+        print('total_rainfall')
+        print(ds['total_rainfall'].values)
+        print('total_evapotranspiration_flux')
+        print(ds['total_evapotranspiration_flux'].values)
