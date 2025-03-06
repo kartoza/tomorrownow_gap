@@ -71,7 +71,7 @@ def process_partition_total_gdd(
     for epoch in epoch_list:
         c_name = f'gdd_{epoch}'
         gdd_dfs[c_name] = np.where(
-            df['planting_date_epoch'] > epoch,
+            df['planting_date_epoch'] >= epoch,
             np.nan,
             (
                 (

@@ -5,6 +5,8 @@ Tomorrow Now GAP.
 .. note:: Parquet test.
 """
 
+import datetime
+import mock
 from django.test import TestCase, override_settings
 from django.core.files.storage import storages
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -14,7 +16,11 @@ from gap.models import (
     Dataset, IngestorType, IngestorSession, DataSourceFile,
     DatasetStore
 )
-from gap.utils.parquet import ParquetConverter
+from gap.utils.parquet import (
+    ParquetConverter,
+    ParquetIngestorAppender,
+    WindborneParquetIngestorAppender
+)
 from gap.tasks.ingestor import convert_dataset_to_parquet
 
 
@@ -127,3 +133,50 @@ class ParquetConverterTest(TestCase):
             converter._get_s3_variables(),
             2018
         )
+
+    def test_appender_not_run(self):
+        """Test run appender not called."""
+        data_source = DataSourceFile(name='tahmo_test_store')
+        appender = ParquetIngestorAppender(
+            self.dataset,
+            data_source,
+            None,
+            datetime.datetime.now()
+        )
+        appender._process_date_range = mock.MagicMock()
+        appender.run()
+        appender._process_date_range.assert_not_called()
+
+        appender = WindborneParquetIngestorAppender(
+            self.dataset,
+            data_source,
+            None,
+            None
+        )
+        appender._process_date_range = mock.MagicMock()
+        appender.run()
+        appender._process_date_range.assert_not_called()
+
+    @override_settings(DEBUG=True)
+    def test_appender_run(self):
+        """Test run appender successful."""
+        session = IngestorSession.objects.create(
+            file=self.correct_file,
+            ingestor_type=self.ingestor_type,
+            trigger_task=False,
+            trigger_parquet=False
+        )
+        session.run()
+        session.refresh_from_db()
+        data_source = DataSourceFile(name='tahmo_test_store')
+        appender = ParquetIngestorAppender(
+            self.dataset,
+            data_source,
+            datetime.datetime.now(),
+            datetime.datetime.now() + datetime.timedelta(days=2)
+        )
+        appender.setup()
+        appender._process_date_range = mock.MagicMock()
+        appender._process_date_range.return_value = None
+        appender.run()
+        appender._process_date_range.assert_called_once()

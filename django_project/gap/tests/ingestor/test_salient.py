@@ -16,7 +16,8 @@ from gap.models import Dataset, DataSourceFile, DatasetStore
 from gap.models.ingestor import (
     IngestorSession,
     IngestorType,
-    CollectorSession
+    CollectorSession,
+    IngestorSessionStatus
 )
 from gap.ingestor.salient import SalientIngestor, SalientCollector
 from gap.factories import DataSourceFileFactory, DataSourceFileCacheFactory
@@ -173,6 +174,26 @@ class TestSalientCollector(SalientIngestorBaseTest):
         self.assertEqual(session.collectors.count(), 1)
         mock_collector.assert_called_once()
         mock_ingestor.assert_called_once_with(session.id)
+
+    @patch("gap.tasks.collector.notify_collector_failure.delay")
+    @patch('gap.models.ingestor.CollectorSession.objects.create')
+    @patch('gap.tasks.ingestor.run_ingestor_session.delay')
+    def test_run_salient_collector_session_with_notify_failed(
+        self, mock_ingestor, mock_create, mock_notify
+    ):
+        """Test run salient collector session."""
+        mock_session = MagicMock()
+        mock_session.id = 100
+        mock_session.run.return_value = None  # No exception
+        mock_session.status = IngestorSessionStatus.FAILED
+        mock_session.notes = "Failure reason"
+        mock_session.dataset_files.count.return_value = 0
+        mock_create.return_value = mock_session
+
+        run_salient_collector_session()
+        mock_create.assert_called_once()
+        mock_ingestor.assert_not_called()
+        mock_notify.assert_called_once_with(100, "Failure reason")
 
 
 class TestSalientIngestor(SalientIngestorBaseTest):

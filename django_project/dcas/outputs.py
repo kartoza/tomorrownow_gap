@@ -37,7 +37,7 @@ class DCASPipelineOutput:
     DCAS_OUTPUT_DIR = 'dcas_output'
 
     def __init__(
-        self, request_date, extract_additional_columns=False,
+        self, request_date, extract_additional_columns=True,
         duck_db_num_threads=None
     ):
         """Initialize DCASPipelineOutput."""
