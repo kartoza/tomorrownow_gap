@@ -6,6 +6,7 @@ Tomorrow Now GAP.
 """
 
 import os
+import json
 import logging
 from django.core.management.base import BaseCommand
 from django.contrib.gis.geos import Point
@@ -29,77 +30,114 @@ class Command(BaseCommand):
             store_type=DatasetStore.ZARR
         )
         attributes = DatasetAttribute.objects.filter(
-            source__in=['temperatureMax', 'temperatureMin', 'humidityMax', 'humidityMin']
+            source__in=[
+                'temperatureMax',
+                'temperatureMin',
+                'humidityMax',
+                'humidityMin',
+                'rainAccumulationSum',
+                'evapotranspirationSum',
+                'solarGHISum'
+            ]
         )
         # p = Point(x=35.73590167, y=0.58588279)
-        p = Point(x=35.736, y=0.586)
-        start_dt = datetime.datetime(
-            2025, 3, 5, 0, 0, 0, tzinfo=pytz.UTC
-        )
-        end_dt = datetime.datetime(
-            2025, 3, 9, 0, 0, 0, tzinfo=pytz.UTC
-        )
-        reader = TomorrowIODatasetReader(
-            dataset,
-            attributes,
-            DatasetReaderInput.from_point(p),
-            start_dt,
-            end_dt
-        )
-        reader.read()
-        values = reader.get_data_values()
-        print(values.to_json())
+        # p = Point(x=35.736, y=0.586)
+
+        points = [
+            Point(y=-0.27483257, x=37.69897987),
+            Point(y=-0.52587455, x=37.40815347),
+            Point(y=0.19138825, x=35.00883567),
+            Point(y=-0.59760083, x=34.60894937),
+            Point(y=0.40656709, x=34.31812297),
+            Point(y=0.55001965, x=35.59048847),
+            Point(y=-0.70519025, x=37.26274027),
+            Point(y=-0.81277967, x=35.37236867),
+            Point(y=-1.96040015, x=36.75379407),
+            Point(y=-2.28316841, x=37.04462047),
+            Point(y=-1.42245305, x=38.02615957),
+            Point(y=-1.56590561, x=37.19003367),
+            Point(y=-1.35072677, x=37.62627327),
+            Point(y=-2.21144213, x=37.73533317),
+            Point(y=0.08379, x=37.8083),
+            Point(y=-0.6334, x=34.6089),
+        ]
+        for p in points:
+            start_dt = datetime.datetime(
+                2025, 3, 4, 0, 0, 0, tzinfo=pytz.UTC
+            )
+            end_dt = datetime.datetime(
+                2025, 3, 25, 0, 0, 0, tzinfo=pytz.UTC
+            )
+            reader = TomorrowIODatasetReader(
+                dataset,
+                attributes,
+                DatasetReaderInput.from_point(p),
+                start_dt,
+                end_dt
+            )
+            reader.read()
+            values = reader.get_data_values()
+            # print(values.to_json())
+            with open(f'/home/web/project/django_project/lat{p.y}_lon{p.x}.json', 'w') as f:
+                json.dump(values.to_json(), f, indent=4)
 
     def handle(self, *args, **options):
         """Run read tio zarr."""
 
-        # self.read_api()
+        self.read_api()
 
-        dataset = Dataset.objects.get(
-            name='Tomorrow.io Short-term Forecast',
-            store_type=DatasetStore.ZARR
-        )
-        data_source = DataSourceFile.objects.filter(
-            dataset=dataset,
-            is_latest=True
-        ).last()
-        reader = TioZarrReader(
-            dataset,
-            [],
-            None,
-            None,
-            None
-        )
-        reader.setup_reader()
-        ds = reader.open_dataset(data_source)
-        # print(ds)
+        # dataset = Dataset.objects.get(
+        #     name='Tomorrow.io Short-term Forecast',
+        #     store_type=DatasetStore.ZARR
+        # )
+        # data_source = DataSourceFile.objects.filter(
+        #     dataset=dataset,
+        #     is_latest=True
+        # ).last()
+        # reader = TioZarrReader(
+        #     dataset,
+        #     [],
+        #     None,
+        #     None,
+        #     None
+        # )
+        # reader.setup_reader()
+        # ds = reader.open_dataset(data_source)
+        # # print(ds)
 
-        # lat = 0.58588279
-        # lon = 35.73590167
+        # # lat = 0.58588279
+        # # lon = 35.73590167
 
-        lat = 0.15552511
-        lon = 35.91766817
+        # lat = 0.15552511
+        # lon = 35.91766817
 
-        date = '2025-03-04'
-        attributes = ['max_temperature', 'min_temperature', 'humidity_maximum', 'humidity_minimum', 'total_rainfall', 'total_evapotranspiration_flux']
+        # date = '2025-03-04'
+        # attributes = [
+        #     'max_temperature',
+        #     'min_temperature',
+        #     'humidity_maximum',
+        #     'humidity_minimum',
+        #     'total_rainfall',
+        #     'total_evapotranspiration_flux'
+        # ]
 
-        ds = ds[attributes].sel(
-            forecast_date=date,
-            forecast_day_idx=slice(0, 3)
-        ).sel(
-            lat=lat,
-            lon=lon, method='nearest'
-        )
+        # ds = ds[attributes].sel(
+        #     forecast_date=date,
+        #     forecast_day_idx=slice(0, 3)
+        # ).sel(
+        #     lat=lat,
+        #     lon=lon, method='nearest'
+        # )
         
-        print('max_temperature')
-        print(ds['max_temperature'].values)
-        print('min_temperature')
-        print(ds['min_temperature'].values)
-        print('humidity_max')
-        print(ds['humidity_maximum'].values)
-        print('humidity_min')
-        print(ds['humidity_minimum'].values)
-        print('total_rainfall')
-        print(ds['total_rainfall'].values)
-        print('total_evapotranspiration_flux')
-        print(ds['total_evapotranspiration_flux'].values)
+        # print('max_temperature')
+        # print(ds['max_temperature'].values)
+        # print('min_temperature')
+        # print(ds['min_temperature'].values)
+        # print('humidity_max')
+        # print(ds['humidity_maximum'].values)
+        # print('humidity_min')
+        # print(ds['humidity_minimum'].values)
+        # print('total_rainfall')
+        # print(ds['total_rainfall'].values)
+        # print('total_evapotranspiration_flux')
+        # print(ds['total_evapotranspiration_flux'].values)
