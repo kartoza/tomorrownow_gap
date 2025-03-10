@@ -1050,7 +1050,7 @@
     "fields": {
       "dataset": 6,
       "attribute": 6,
-      "source": "solarGHI",
+      "source": "solarGHISum",
       "source_unit": 7,
       "ensembles": false
     }
@@ -1151,6 +1151,61 @@
       "attribute": 64,
       "source": "pr_total_flag_CHIRPS",
       "source_unit": 21,
+      "ensembles": false
+    }
+  },
+  {
+    "model": "gap.datasetattribute",
+    "pk": 106,
+    "fields": {
+      "dataset": 5,
+      "attribute": 36,
+      "source": "precipitationProbability",
+      "source_unit": 6,
+      "ensembles": false
+    }
+  },
+  {
+    "model": "gap.datasetattribute",
+    "pk": 107,
+    "fields": {
+      "dataset": 5,
+      "attribute": 54,
+      "source": "humidityMax",
+      "source_unit": 6,
+      "ensembles": false
+    }
+  },
+  {
+    "model": "gap.datasetattribute",
+    "pk": 108,
+    "fields": {
+      "dataset": 5,
+      "attribute": 55,
+      "source": "humidityMin",
+      "source_unit": 6,
+      "ensembles": false
+    }
+  },
+  {
+    "model": "gap.datasetattribute",
+    "pk": 109,
+    "fields": {
+      "dataset": 5,
+      "attribute": 56,
+      "source": "windSpeedAvg",
+      "source_unit": 8,
+      "ensembles": false
+    }
+  },
+  {
+    "model": "gap.datasetattribute",
+    "pk": 110,
+    "fields": {
+      "dataset": 5,
+      "attribute": 6,
+      "source": "solarGHISum",
+      "source_unit": 7,
       "ensembles": false
     }
   }
