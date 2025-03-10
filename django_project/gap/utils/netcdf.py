@@ -209,6 +209,8 @@ class BaseNetCDFReader(BaseDatasetReader):
     def setup_reader(self):
         """Initialize s3fs."""
         self.s3 = NetCDFProvider.get_s3_variables(self.dataset.provider)
+        self.s3['AWS_BUCKET_NAME'] = 'tngap-products'
+        self.s3['AWS_DIR_PREFIX'] = 'dev/2.1'
         self.fs = fsspec.filesystem(
             's3',
             key=self.s3.get('AWS_ACCESS_KEY_ID'),

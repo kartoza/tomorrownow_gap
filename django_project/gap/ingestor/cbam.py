@@ -41,6 +41,8 @@ class CBAMCollector(BaseIngestor):
         super().__init__(session, working_dir)
         self.dataset = Dataset.objects.get(name='CBAM Climate Reanalysis')
         self.s3 = NetCDFProvider.get_s3_variables(self.dataset.provider)
+        self.s3['AWS_BUCKET_NAME'] = 'tngap-products'
+        self.s3['AWS_DIR_PREFIX'] = 'dev/2.1'
         self.fs = s3fs.S3FileSystem(
             key=self.s3.get('AWS_ACCESS_KEY_ID'),
             secret=self.s3.get('AWS_SECRET_ACCESS_KEY'),
@@ -147,6 +149,8 @@ class CBAMIngestor(BaseIngestor):
         super().__init__(session, working_dir)
         self.dataset = self._init_dataset()
         self.s3 = BaseZarrReader.get_s3_variables()
+        # self.s3['AWS_BUCKET_NAME'] = 'tngap-products'
+        # self.s3['AWS_DIR_PREFIX'] = 'dev/2.1'
         self.s3_options = {
             'key': self.s3.get('AWS_ACCESS_KEY_ID'),
             'secret': self.s3.get('AWS_SECRET_ACCESS_KEY'),
