@@ -180,12 +180,16 @@ class SalientCollector(BaseIngestor):
             os.environ.get("SALIENT_SDK_PASSWORD")
         )
 
+        # no need to upload new shapefile
         # create the requested locations
-        loc = sk.Location(shapefile=sk.upload_shapefile(
-            coords=self._get_coords(),
-            geoname="gap-1",
-            force=False)
-        )
+        # loc = sk.Location(shapefile=sk.upload_shapefile(
+        #     coords=self._get_coords(),
+        #     geoname="gap-1",
+        #     force=False)
+        # )
+        # use existing gap-1.geojson
+        # note: i'm unable to upload new shapefile, but gap-1 exists
+        loc = sk.Location(shapefile='gap-1.geojson')
 
         # request data
         fcst_file = sk.downscale(
