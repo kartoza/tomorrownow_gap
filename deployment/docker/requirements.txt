@@ -69,7 +69,7 @@ openpyxl==3.1.5
 
 # salient sdk
 numpy==1.26.4
-salientsdk==0.3.5
+salientsdk==0.3.20
 
 python-geohash==0.8.5
 
