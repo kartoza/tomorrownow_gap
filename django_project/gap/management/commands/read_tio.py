@@ -37,7 +37,9 @@ class Command(BaseCommand):
                 'humidityMin',
                 'rainAccumulationSum',
                 'evapotranspirationSum',
-                'solarGHISum'
+                'solarGHISum',
+                'weatherCode',
+                'floodIndex'
             ]
         )
         # p = Point(x=35.73590167, y=0.58588279)
@@ -80,6 +82,7 @@ class Command(BaseCommand):
             # print(values.to_json())
             with open(f'/home/web/project/django_project/lat{p.y}_lon{p.x}.json', 'w') as f:
                 json.dump(values.to_json(), f, indent=4)
+            break
 
     def handle(self, *args, **options):
         """Run read tio zarr."""
