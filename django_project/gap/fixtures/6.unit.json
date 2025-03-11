@@ -158,5 +158,21 @@
       "name": "Quality Flag",
       "description": ""
     }
+  },
+  {
+    "model": "gap.unit",
+    "pk": 22,
+    "fields": {
+      "name": "code",
+      "description": "Categorical value"
+    }
+  },
+  {
+    "model": "gap.unit",
+    "pk": 23,
+    "fields": {
+      "name": "Flood Index",
+      "description": ""
+    }
   }
 ]

@@ -1208,5 +1208,49 @@
       "source_unit": 7,
       "ensembles": false
     }
+  },
+  {
+    "model": "gap.datasetattribute",
+    "pk": 111,
+    "fields": {
+      "dataset": 4,
+      "attribute": 65,
+      "source": "weather_code",
+      "source_unit": 22,
+      "ensembles": false
+    }
+  },
+  {
+    "model": "gap.datasetattribute",
+    "pk": 112,
+    "fields": {
+      "dataset": 4,
+      "attribute": 66,
+      "source": "flood_index",
+      "source_unit": 23,
+      "ensembles": false
+    }
+  },
+  {
+    "model": "gap.datasetattribute",
+    "pk": 113,
+    "fields": {
+      "dataset": 6,
+      "attribute": 65,
+      "source": "weatherCode",
+      "source_unit": 22,
+      "ensembles": false
+    }
+  },
+  {
+    "model": "gap.datasetattribute",
+    "pk": 114,
+    "fields": {
+      "dataset": 6,
+      "attribute": 66,
+      "source": "floodIndex",
+      "source_unit": 23,
+      "ensembles": false
+    }
   }
 ]

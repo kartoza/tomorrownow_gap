@@ -195,7 +195,9 @@ class TioShortTermIngestor(BaseZarrIngestor):
         'humidity_maximum',
         'humidity_minimum',
         'wind_speed_avg',
-        'solar_radiation'
+        'solar_radiation',
+        'weather_code',
+        'flood_index'
     ]
 
     def __init__(self, session: IngestorSession, working_dir: str = '/tmp'):
