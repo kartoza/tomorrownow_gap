@@ -724,5 +724,16 @@
       "unit": 23,
       "is_active": true
     }
+  },
+  {
+    "model": "gap.attribute",
+    "pk": 67,
+    "fields": {
+      "name": "Average Vapor Pressure",
+      "description": "Average Vapor Pressure",
+      "variable_name": "average_vapor_pressure",
+      "unit": 24,
+      "is_active": true
+    }
   }
 ]

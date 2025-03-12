@@ -1252,5 +1252,49 @@
       "source_unit": 23,
       "ensembles": false
     }
+  },
+  {
+    "model": "gap.datasetattribute",
+    "pk": 115,
+    "fields": {
+      "dataset": 2,
+      "attribute": 67,
+      "source": "average_vapor_pressure",
+      "source_unit": 24,
+      "ensembles": false
+    }
+  },
+  {
+    "model": "gap.datasetattribute",
+    "pk": 116,
+    "fields": {
+      "dataset": 2,
+      "attribute": 56,
+      "source": "average_windspeed",
+      "source_unit": 8,
+      "ensembles": false
+    }
+  },
+  {
+    "model": "gap.datasetattribute",
+    "pk": 117,
+    "fields": {
+      "dataset": 2,
+      "attribute": 4,
+      "source": "min_relhumid",
+      "source_unit": 6,
+      "ensembles": false
+    }
+  },
+  {
+    "model": "gap.datasetattribute",
+    "pk": 118,
+    "fields": {
+      "dataset": 2,
+      "attribute": 5,
+      "source": "max_relhumid",
+      "source_unit": 6,
+      "ensembles": false
+    }
   }
 ]
