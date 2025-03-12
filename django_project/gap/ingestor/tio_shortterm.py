@@ -632,7 +632,9 @@ class TioHistoricalBackfillCollector(BaseIngestor):
         )
         self.start_date = start_date
         self.end_date = end_date
-        self.attributes = self.dataset.datasetattribute_set.all()
+        self.attributes = self.dataset.datasetattribute_set.exclude(
+            source__in=['floodIndex', 'weatherCode']
+        )
         self.error_status_codes = {}
         self.num_threads = num_threads
         if session.dataset_files.count() > 0:
@@ -678,8 +680,7 @@ class TioHistoricalBackfillCollector(BaseIngestor):
         return conn
 
     def _init_table(self, conn):
-        local_con = conn.cursor()
-        local_con.execute("""
+        conn.execute("""
             CREATE SEQUENCE IF NOT EXISTS id_sequence;
             CREATE TABLE IF NOT EXISTS weather (
                 id BIGINT PRIMARY KEY DEFAULT nextval('id_sequence'),
@@ -768,22 +769,23 @@ class TioHistoricalBackfillCollector(BaseIngestor):
             for item in data:
                 # insert into table
                 values = item['values']
+                param = (
+                    grid_id, lat, lon, datetime.fromisoformat(item['datetime']).date(),
+                    values['total_rainfall'], values['total_evapotranspiration_flux'],
+                    values['max_temperature'], values['min_temperature'],
+                    values['humidity_maximum'], values['humidity_minimum'],
+                    values['wind_speed_avg'], values['solar_radiation'],
+                    values['precipitation_probability'],
+                )
                 local_con.execute("""
                     INSERT INTO weather (grid_id, lat, lon, date,
                         total_rainfall, total_evapotranspiration_flux,
                         max_temperature, min_temperature,
                         humidity_maximum, humidity_minimum,
                         wind_speed_avg, solar_radiation, precipitation_probability
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    grid_id, lat, lon, datetime.fromisoformat(item['datetime']).date(),
-                    values['total_rainfall'], values['total_evapotranspiration_flux'],
-                    values['max_temperature'], values['min_temperature'],
-                    values['humidity_maximum'], values['humidity_minimum'],
-                    values['wind_speed_avg'], values['solar_radiation'],
-                    values['precipitation_probability']
-                ))
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, param
+                )
             count_processed += 1
         return {
             'total_grid': total_grid,
@@ -807,6 +809,7 @@ class TioHistoricalBackfillCollector(BaseIngestor):
         print(f'Total grids {grids.count()}')
         grids = list(grids)
         chunks = list(self._chunk_list(grids))
+        print(len(chunks))
         with ThreadPoolExecutor(max_workers=self.num_threads) as executor:
             results = list(executor.map(self._process_chunk, chunks))
 
