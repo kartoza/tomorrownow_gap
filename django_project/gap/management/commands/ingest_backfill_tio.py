@@ -14,7 +14,7 @@ import duckdb
 from gap.models import (
     CollectorSession, IngestorSession, IngestorType
 )
-from gap.ingestor.tio_shortterm import TioHistoricalBackfillIngestor
+from gap.ingestor.tio_shortterm import TioHistoricalBackfillIngestor, TioShorttermDuckDBIngestor
 
 
 logger = logging.getLogger(__name__)
@@ -25,12 +25,12 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         """Run backfill tio."""
-        collector = CollectorSession.objects.get(id=96)
+        collector = CollectorSession.objects.get(id=108)
 
         ingestor = IngestorSession.objects.create(
             ingestor_type=IngestorType.TOMORROWIO,
             additional_config={
-                'datasourcefile_name': 'tio_20250227.zarr',
+                'datasourcefile_name': 'tio_final_20250311.zarr',
                 'datasourcefile_id': 4573,
                 'datasourcefile_exists': True
             },
@@ -38,7 +38,7 @@ class Command(BaseCommand):
         )
         ingestor.collectors.set([collector])
 
-        runner = TioHistoricalBackfillIngestor(
+        runner = TioShorttermDuckDBIngestor(
             ingestor
         )
         runner.run()

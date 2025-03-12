@@ -799,22 +799,25 @@ class TioHistoricalBackfillCollector(BaseIngestor):
         """Run TomorrowIO ingestor."""
         self.conn = self._get_connection()
         self._init_table(self.conn)
+        try:
+            grids = Grid.objects.annotate(
+                centroid=Centroid('geometry')
+            ).annotate(
+                lat=ST_Y('centroid'),
+                lon=ST_X('centroid')
+            ).values('id', 'lat', 'lon')
+            print(f'Total grids {grids.count()}')
+            grids = list(grids)
+            chunks = list(self._chunk_list(grids))
+            print(len(chunks))
+            with ThreadPoolExecutor(max_workers=self.num_threads) as executor:
+                results = list(executor.map(self._process_chunk, chunks))
 
-        grids = Grid.objects.annotate(
-            centroid=Centroid('geometry')
-        ).annotate(
-            lat=ST_Y('centroid'),
-            lon=ST_X('centroid')
-        ).values('id', 'lat', 'lon')
-        print(f'Total grids {grids.count()}')
-        grids = list(grids)
-        chunks = list(self._chunk_list(grids))
-        print(len(chunks))
-        with ThreadPoolExecutor(max_workers=self.num_threads) as executor:
-            results = list(executor.map(self._process_chunk, chunks))
-
-        for item in results:
-            print(item)
+            for item in results:
+                print(item)
+        except Exception as ex:
+            print(ex)
+            print('Failed!')
 
         self.conn.close()
 
@@ -1047,3 +1050,175 @@ class TioHistoricalBackfillIngestor(TioShortTermIngestor):
             else:
                 self.session.status = IngestorSessionStatus.FAILED
             self.session.save()
+
+
+class TioShorttermDuckDBIngestor(TioShortTermIngestor):
+
+    def _get_connection(self, data_source: DataSourceFile):
+        temp_filepath = os.path.join(
+            '/tmp', 'tio_backfill'
+        )
+        os.makedirs(temp_filepath, exist_ok=True)
+        duckdb_filepath = os.path.join(
+            temp_filepath,
+            data_source.name
+        )
+
+        conn = duckdb.connect(duckdb_filepath, config={
+            'threads': 2
+        })
+        return conn
+
+    def _fetch_data(self, conn):
+        df = conn.sql(
+            f"SELECT * FROM weather ORDER BY grid_id asc, date asc"
+        ).to_df()
+        if df.shape[0] > 0:
+            return df
+        return None
+
+    def _run(self):
+        """Process the tio shortterm data into Zarr."""
+        collector = self.session.collectors.first()
+        if not collector:
+            raise MissingCollectorSessionException(self.session.id)
+        data_source = collector.dataset_files.first()
+        if not data_source:
+            raise FileNotFoundException()
+
+        # find forecast date
+        if 'forecast_date' not in data_source.metadata:
+            raise AdditionalConfigNotFoundException('metadata.forecast_date')
+        self.metadata['forecast_date'] = data_source.metadata['forecast_date']
+        forecast_date = date.fromisoformat(
+            data_source.metadata['forecast_date'])
+        if not self._is_date_in_zarr(forecast_date):
+            self._append_new_forecast_date(forecast_date, self.created)
+
+        # get lat and lon array from grids
+        lat_arr = set()
+        lon_arr = set()
+        grid_dict = {}
+
+        # query grids
+        grids = Grid.objects.annotate(
+            centroid=Centroid('geometry')
+        )
+        for grid in grids:
+            lat = round(grid.centroid.y, 8)
+            lon = round(grid.centroid.x, 8)
+            grid_hash = geohash.encode(lat, lon, precision=8)
+            lat_arr.add(lat)
+            lon_arr.add(lon)
+            grid_dict[grid_hash] = grid.id
+        lat_arr = sorted(lat_arr)
+        lon_arr = sorted(lon_arr)
+
+        # transform lat lon arrays
+        lat_arr = self._transform_coordinates_array(lat_arr, 'lat')
+        lon_arr = self._transform_coordinates_array(lon_arr, 'lon')
+
+        lat_indices = [lat.nearest_idx for lat in lat_arr]
+        lon_indices = [lon.nearest_idx for lon in lon_arr]
+        assert self._is_sorted_and_incremented(lat_indices)
+        assert self._is_sorted_and_incremented(lon_indices)
+
+        # create slices for chunks
+        lat_slices = self._find_chunk_slices(
+            len(lat_arr), self.default_chunks['lat'])
+        lon_slices = self._find_chunk_slices(
+            len(lon_arr), self.default_chunks['lon'])
+
+        # load all data
+        conn = self._get_connection(data_source)
+        weather_df = self._fetch_data(conn)
+
+        # process the data by chunks
+        for lat_slice in lat_slices:
+            for lon_slice in lon_slices:
+                lat_chunks = lat_arr[lat_slice]
+                lon_chunks = lon_arr[lon_slice]
+                warnings, count = self._process_tio_shortterm_data_from_conn(
+                    forecast_date, lat_chunks, lon_chunks,
+                    grid_dict, weather_df
+                )
+                self.metadata['chunks'].append({
+                    'lat_slice': str(lat_slice),
+                    'lon_slice': str(lon_slice),
+                    'warnings': warnings
+                })
+                self.metadata['total_json_processed'] += count
+
+    def _process_tio_shortterm_data_from_conn(
+            self, forecast_date: date, lat_arr: List[CoordMapping],
+            lon_arr: List[CoordMapping], grids: dict,
+            weather_df) -> dict:
+        """Process Tio data and update into zarr.
+
+        :param forecast_date: forecast date
+        :type forecast_date: date
+        :param lat_arr: list of latitude
+        :type lat_arr: List[CoordMapping]
+        :param lon_arr: list of longitude
+        :type lon_arr: List[CoordMapping]
+        :param grids: dictionary for geohash and grid id
+        :type grids: dict
+        :return: dictionary of warnings
+        :rtype: dict
+        """
+        count = 0
+        data_shape = (
+            1,
+            self.default_chunks['forecast_day_idx'],
+            len(lat_arr),
+            len(lon_arr)
+        )
+        warnings = {
+            'missing_hash': 0,
+            'missing_json': 0,
+            'invalid_json': 0
+        }
+
+        # initialize empty new data for each variable
+        new_data = {}
+        for variable in self.variables:
+            new_data[variable] = np.full(data_shape, np.nan, dtype='f8')
+
+        for idx_lat, lat in enumerate(lat_arr):
+            for idx_lon, lon in enumerate(lon_arr):
+                # find grid id by geohash of lat and lon
+                grid_hash = geohash.encode(lat.value, lon.value, precision=8)
+                if grid_hash not in grids:
+                    warnings['missing_hash'] += 1
+                    continue
+
+                grid_id = grids[grid_hash]
+                df = weather_df[weather_df["grid_id"] == grid_id].sort_values(by="date")
+                # open the grid json file using grid id from grid_hash
+                if df.shape[0] == 0:
+                    warnings['missing_json'] += 1
+                    continue
+
+                # iterate for each item in data
+                assert (
+                    df.shape[0] ==
+                    self.default_chunks['forecast_day_idx']
+                )
+                forecast_day_idx = 0
+                for index, item in df.iterrows():
+                    for var in self.variables:
+                        if var not in df.columns:
+                            continue
+                        # assign the variable value into new data
+                        new_data[var][
+                            0, forecast_day_idx, idx_lat, idx_lon] = (
+                                item[var]
+                        )
+                    forecast_day_idx += 1
+                count += 1
+
+        # update new data to zarr using region
+        self._update_by_region(forecast_date, lat_arr, lon_arr, new_data)
+        del new_data
+
+        return warnings, count

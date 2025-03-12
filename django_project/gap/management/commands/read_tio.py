@@ -44,6 +44,24 @@ class Command(BaseCommand):
         )
         # p = Point(x=35.73590167, y=0.58588279)
         # p = Point(x=35.736, y=0.586)
+        names = [
+            "SE03769900275",
+            "SE03740800526",
+            "NE03500900191",
+            "SE03460900598",
+            "NE03431800407",
+            "NE03559000550",
+            "SE03726300705",
+            "SE03537200813",
+            "SE03675401960",
+            "SE03704502283",
+            "SE03802601422",
+            "SE03719001566",
+            "SE03762601351",
+            "SE03773502211",
+            "NE03780800084",
+            "SE03460900633"
+        ]
 
         points = [
             Point(y=-0.27483257, x=37.69897987),
@@ -63,12 +81,12 @@ class Command(BaseCommand):
             Point(y=0.08379, x=37.8083),
             Point(y=-0.6334, x=34.6089),
         ]
-        for p in points:
+        for idx, p in enumerate(points):
             start_dt = datetime.datetime(
-                2025, 3, 4, 0, 0, 0, tzinfo=pytz.UTC
+                2025, 3, 6, 0, 0, 0, tzinfo=pytz.UTC
             )
             end_dt = datetime.datetime(
-                2025, 3, 25, 0, 0, 0, tzinfo=pytz.UTC
+                2025, 3, 27, 0, 0, 0, tzinfo=pytz.UTC
             )
             reader = TomorrowIODatasetReader(
                 dataset,
@@ -80,9 +98,8 @@ class Command(BaseCommand):
             reader.read()
             values = reader.get_data_values()
             # print(values.to_json())
-            with open(f'/home/web/project/django_project/lat{p.y}_lon{p.x}.json', 'w') as f:
+            with open(f'/home/web/project/django_project/{names[idx]}_lat{p.y}_lon{p.x}.json', 'w') as f:
                 json.dump(values.to_json(), f, indent=4)
-            break
 
     def handle(self, *args, **options):
         """Run read tio zarr."""

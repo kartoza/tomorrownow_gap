@@ -35,7 +35,7 @@ class Command(BaseCommand):
 
     def read_data(self):
         path = os.path.join(
-            '/tmp', 'tio_backfill', 'd192a141-6ad7-4fc0-af27-5299cd418ba3.duckdb'
+            '/tmp', 'tio_backfill', 'c1d7bb1b-b9cd-404e-94c4-ceaa874e2a83.duckdb'
         )
         conn = duckdb.connect(path)
         conn.sql(
@@ -44,9 +44,9 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         """Run backfill tio."""
-        session = CollectorSession.objects.get(id=99)
+        session = CollectorSession.objects.get(id=106)
         collector = TioHistoricalBackfillCollector(
-            session, date(2024, 10, 1), date(2024, 10, 31),
+            session, date(2025, 3, 1), date(2025, 3, 5),
             num_threads=10
         )
         collector._run()
