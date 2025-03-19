@@ -88,5 +88,15 @@
       "type": "historical",
       "variable_name": "cbam_historical_analysis_bias_adjust"
     }
+  },
+  {
+    "model": "gap.datasettype",
+    "pk": 10,
+    "fields": {
+      "name": "Tomorrow.io Historical",
+      "description": "",
+      "type": "historical",
+      "variable_name": "default"
+    }
   }
 ]

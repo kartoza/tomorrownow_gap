@@ -62,7 +62,7 @@
       "name": "Tomorrow.io Historical Reanalysis",
       "description": "",
       "provider": 4,
-      "type": 1,
+      "type": 10,
       "time_step": "DAILY",
       "store_type": "EXT_API",
       "is_internal_use": true,

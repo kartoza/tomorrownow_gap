@@ -101,6 +101,7 @@
                                 // trigger attribute change for first product
                                 if (productTypeList && productTypeList.length > 0) {
                                     change_item_list(productTypeList[0].variable_name);
+                                    $productSelect.val(productTypeList[0].variable_name);
                                 }
                                 
                                 $productSelect.on('change', function() {

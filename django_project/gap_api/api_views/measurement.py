@@ -101,6 +101,7 @@ class MeasurementAPI(GAPAPILoggingMixin, APIView):
             description='Product type',
             type=openapi.TYPE_STRING,
             enum=[
+                'cbam_historical_analysis_bias_adjust',
                 'cbam_historical_analysis',
                 'arable_ground_observation',
                 'disdrometer_ground_observation',
@@ -109,7 +110,7 @@ class MeasurementAPI(GAPAPILoggingMixin, APIView):
                 'cbam_shortterm_forecast',
                 'salient_seasonal_forecast'
             ],
-            default='cbam_historical_analysis'
+            default='cbam_historical_analysis_bias_adjust'
         ),
         openapi.Parameter(
             'attributes',

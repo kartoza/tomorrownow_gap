@@ -148,36 +148,8 @@ class TomorrowIODatasetReader(BaseDatasetReader):
     @classmethod
     def init_provider(cls):
         """Init Tomorrow.io provider and variables."""
-        provider, _ = Provider.objects.get_or_create(name='Tomorrow.io')
-        dt_historical = DatasetType.objects.get(
-            variable_name='cbam_historical_analysis',
-            type=CastType.HISTORICAL
-        )
-        ds_historical, _ = Dataset.objects.get_or_create(
-            name='Tomorrow.io Historical Reanalysis',
-            provider=provider,
-            type=dt_historical,
-            store_type=DatasetStore.EXT_API,
-            defaults={
-                'time_step': DatasetTimeStep.DAILY,
-                'is_internal_use': True
-            }
-        )
+        _, _ = Provider.objects.get_or_create(name='Tomorrow.io')
         tomorrowio_shortterm_forecast_dataset()
-        dt_ltn = DatasetType.objects.get(
-            name=cls.LONG_TERM_NORMALS_TYPE,
-            type=CastType.HISTORICAL
-        )
-        ds_ltn, _ = Dataset.objects.get_or_create(
-            name='Tomorrow.io Long Term Normals (20 years)',
-            provider=provider,
-            type=dt_ltn,
-            store_type=DatasetStore.EXT_API,
-            defaults={
-                'time_step': DatasetTimeStep.DAILY,
-                'is_internal_use': True
-            }
-        )
 
     def _is_ltn_request(self):
         """Check if the request is for Long Term Normal (LTN) request."""
