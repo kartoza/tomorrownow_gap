@@ -5,8 +5,11 @@ Tomorrow Now GAP.
 .. note:: Farm ingestor.
 """
 
+import json
 import pandas as pd
 from django.contrib.gis.geos import Point
+from django.core.files.base import ContentFile
+from django.core.files.storage import default_storage
 
 from gap.ingestor.base import BaseIngestor
 from gap.ingestor.exceptions import (
@@ -17,6 +20,7 @@ from gap.models import (
     IngestorSession, Farm, FarmGroup, Crop, FarmCategory, FarmRSVPStatus,
     Village
 )
+from gap.models.ingestor import ingestor_file_path
 from gap.utils.dms import dms_string_to_point
 
 COLUMN_COUNT = 9
@@ -50,6 +54,10 @@ class FarmIngestor(BaseIngestor):
             raise AdditionalConfigNotFoundException('farm_group_id')
         except FarmGroup.DoesNotExist:
             raise Exception('Farm group does not exist')
+        self.skip_existing_farm_id = session.additional_config.get(
+            'skip_existing_farm_id', False
+        )
+        self.duplicate_ids = []
 
     def is_not_empty(self, value):
         """Check data is empty."""
@@ -71,6 +79,10 @@ class FarmIngestor(BaseIngestor):
         for idx, row in enumerate(data):
             try:
                 farm_id = row[Keys.FARM_ID]
+                if self.skip_existing_farm_id:
+                    if Farm.objects.filter(unique_id=farm_id).exists():
+                        self.duplicate_ids.append(farm_id)
+                        continue
 
                 phone_number = None
                 if self.is_not_empty(row[Keys.PHONE_NUMBER]):
@@ -137,3 +149,20 @@ class FarmIngestor(BaseIngestor):
             self._run()
         except Exception as e:
             raise Exception(e)
+        finally:
+            if self.duplicate_ids:
+                # store it in the minio
+                file_path = ingestor_file_path(
+                    None,
+                    f'farm_duplicate_session_{self.session.id}.json'
+                )
+                content = ContentFile(
+                    json.dumps(self.duplicate_ids, separators=(',', ':')))
+                default_storage.save(file_path, content)
+                # store the path in the additional_config
+                self.session.additional_config['duplicate_ids_path'] = (
+                    file_path
+                )
+                self.session.additional_config['duplicate_ids_count'] = (
+                    len(self.duplicate_ids)
+                )

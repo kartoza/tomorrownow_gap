@@ -15,7 +15,10 @@ from core.admin import AbstractDefinitionAdmin
 from gap.models import (
     FarmCategory, FarmRSVPStatus, Farm
 )
-from gap.models.farm_group import FarmGroup, FarmGroupCropInsightField
+from gap.models.farm_group import (
+    FarmGroup, FarmGroupCropInsightField,
+    FarmGroupMembership
+)
 from gap.tasks.crop_insight import generate_spw, generate_crop_plan
 
 
@@ -149,3 +152,12 @@ class FarmAdmin(admin.ModelAdmin):
     def longitude(self, obj: Farm):
         """Longitude of farm."""
         return obj.geometry.x
+
+
+@admin.register(FarmGroupMembership)
+class FarmGroupMembershipAdmin(admin.ModelAdmin):
+    """Admin for FarmGroupMembership."""
+
+    list_display = ('id', 'farm_id', 'farmgroup_id',)
+    search_fields = ('farm_id',)
+    list_filter = ('farmgroup_id',)
