@@ -166,9 +166,11 @@ class FarmGroupCropInsightField(models.Model):
 
 
 class FarmGroupMembership(models.Model):
+    """Model to manage farm group membership."""
     farm_id = models.BigIntegerField()
     farmgroup_id = models.BigIntegerField()
 
     class Meta:
+        """Meta class for FarmGroupMembership."""
         managed = False
         db_table = 'gap_farmgroup_farms'
