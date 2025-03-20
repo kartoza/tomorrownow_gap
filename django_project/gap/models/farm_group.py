@@ -163,3 +163,12 @@ class FarmGroupCropInsightField(models.Model):
         if self.label:
             return self.label
         return self.field
+
+
+class FarmGroupMembership(models.Model):
+    farm_id = models.BigIntegerField()
+    farmgroup_id = models.BigIntegerField()
+
+    class Meta:
+        managed = False
+        db_table = 'gap_farmgroup_farms'
