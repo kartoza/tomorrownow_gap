@@ -22,7 +22,8 @@ from spw.models import RModel, RModelExecutionLog, RModelExecutionStatus
 from spw.utils.plumber import (
     execute_spw_model,
     write_plumber_data,
-    remove_plumber_data
+    remove_plumber_data,
+    PLUMBER_PORT
 )
 
 logger = logging.getLogger(__name__)
@@ -83,11 +84,11 @@ def calculate_from_point_attrs():
 
 
 def _calculate_from_point(
-        point: Point, location_input
+        point: Point, location_input, port=PLUMBER_PORT
 ) -> Tuple[SPWOutput, dict]:
     """Calculate from point."""
     today = datetime.now(tz=pytz.UTC)
-    start_dt = today - timedelta(days=38)
+    start_dt = today - timedelta(days=6)
     end_dt = today + timedelta(days=13)
     logger.info(
         f'Calculate SPW for {point} at Today: {today} - '
@@ -121,10 +122,12 @@ def _calculate_from_point(
                 continue
             row.append(val.get(c, 0))
         rows.append(row)
-    return _execute_spw_model(rows, point), historical_dict
+    return _execute_spw_model(rows, point, port), historical_dict
 
 
-def calculate_from_point(point: Point) -> Tuple[SPWOutput, dict]:
+def calculate_from_point(
+    point: Point, port=PLUMBER_PORT
+) -> Tuple[SPWOutput, dict]:
     """Calculate SPW from given point.
 
     :param point: Location to be queried
@@ -134,10 +137,12 @@ def calculate_from_point(point: Point) -> Tuple[SPWOutput, dict]:
     """
     TomorrowIODatasetReader.init_provider()
     location_input = DatasetReaderInput.from_point(point)
-    return _calculate_from_point(point, location_input)
+    return _calculate_from_point(point, location_input, port)
 
 
-def calculate_from_polygon(polygon: Polygon) -> Tuple[SPWOutput, dict]:
+def calculate_from_polygon(
+    polygon: Polygon, port=PLUMBER_PORT
+) -> Tuple[SPWOutput, dict]:
     """Calculate SPW from given point.
 
     :param polygon: Location to be queried
@@ -146,11 +151,13 @@ def calculate_from_polygon(polygon: Polygon) -> Tuple[SPWOutput, dict]:
     :rtype: Tuple[SPWOutput, dict]
     """
     TomorrowIODatasetReader.init_provider()
-    location_input = DatasetReaderInput.from_polygon(polygon)
-    return _calculate_from_point(polygon.centroid, location_input)
+    location_input = DatasetReaderInput.from_point(polygon.centroid)
+    return _calculate_from_point(polygon.centroid, location_input, port)
 
 
-def _execute_spw_model(rows: List, point: Point) -> SPWOutput:
+def _execute_spw_model(
+    rows: List, point: Point, port=PLUMBER_PORT
+) -> SPWOutput:
     """Execute SPW Model and return the output.
 
     :param rows: Data rows
@@ -172,7 +179,8 @@ def _execute_spw_model(rows: List, point: Point) -> SPWOutput:
         execution_log.input_file.save(filename, output_file)
     remove_plumber_data(data_file_path)
     success, data = execute_spw_model(
-        execution_log.input_file.url, filename, point.y, point.x, 'gap_place'
+        execution_log.input_file.url, filename, point.y, point.x, 'gap_place',
+        port=port
     )
     if isinstance(data, dict):
         execution_log.output = data
@@ -220,6 +228,10 @@ def _fetch_timelines_data(
     reader = TomorrowIODatasetReader(
         dataset, attrs, location_input, start_dt, end_dt)
     reader.read()
+    # if not reader.is_success():
+    #     raise Exception(
+    #         f'Failed to fetch Tomorrow.io API! {str(reader.errors)}'
+    #     )
     results = {}
     for val in reader.get_raw_results():
         month_day = val.get_datetime_repr('%m-%d')
@@ -263,6 +275,10 @@ def _fetch_ltn_data(
         dataset, attrs, location_input, start_dt, end_dt
     )
     reader.read()
+    # if not reader.is_success():
+    #     raise Exception(
+    #         f'Failed to fetch Tomorrow.io API! {str(reader.errors)}'
+    #     )
     for val in reader.get_raw_results():
         month_day = val.get_datetime_repr('%m-%d')
         if month_day in historical_dict:
