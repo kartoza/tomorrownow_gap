@@ -125,7 +125,9 @@ def _calculate_from_point(
     return _execute_spw_model(rows, point, port), historical_dict
 
 
-def calculate_from_point(point: Point, port=PLUMBER_PORT) -> Tuple[SPWOutput, dict]:
+def calculate_from_point(
+    point: Point, port=PLUMBER_PORT
+) -> Tuple[SPWOutput, dict]:
     """Calculate SPW from given point.
 
     :param point: Location to be queried
@@ -138,7 +140,9 @@ def calculate_from_point(point: Point, port=PLUMBER_PORT) -> Tuple[SPWOutput, di
     return _calculate_from_point(point, location_input, port)
 
 
-def calculate_from_polygon(polygon: Polygon, port=PLUMBER_PORT) -> Tuple[SPWOutput, dict]:
+def calculate_from_polygon(
+    polygon: Polygon, port=PLUMBER_PORT
+) -> Tuple[SPWOutput, dict]:
     """Calculate SPW from given point.
 
     :param polygon: Location to be queried
@@ -151,7 +155,9 @@ def calculate_from_polygon(polygon: Polygon, port=PLUMBER_PORT) -> Tuple[SPWOutp
     return _calculate_from_point(polygon.centroid, location_input, port)
 
 
-def _execute_spw_model(rows: List, point: Point, port=PLUMBER_PORT) -> SPWOutput:
+def _execute_spw_model(
+    rows: List, point: Point, port=PLUMBER_PORT
+) -> SPWOutput:
     """Execute SPW Model and return the output.
 
     :param rows: Data rows

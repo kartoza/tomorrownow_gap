@@ -660,7 +660,7 @@ class CropInsightRequest(models.Model):
 
     def _chunk_list(self, data):
         """Split the list into smaller chunks."""
-        chunk_size = max(1, len(data) // self.num_threads)  # Ensure at least one element per thread
+        chunk_size = max(1, len(data) // self.num_threads)
         for i in range(0, len(data), chunk_size):
             yield data[i:i + chunk_size]
 
