@@ -41,8 +41,11 @@ write_plumber_file()
 
 print('-----------------------------------------------------')
 print('3. Spawn initial plumber process')
-plumber_process = spawn_r_plumber()
-if plumber_process:
-    print(f'plumber process pid {plumber_process.pid}')
-else:
-    raise RuntimeError('Cannot execute plumber process!')
+ports = [8282, 8283, 8284, 8285]
+for index, port in enumerate(ports):
+    print(f'Spawn plumber {index+1} with port {port}')
+    plumber_process = spawn_r_plumber(index=index+1, port=port)
+    if plumber_process:
+        print(f'plumber process pid {plumber_process.pid}')
+    else:
+        raise RuntimeError('Cannot execute plumber process!')

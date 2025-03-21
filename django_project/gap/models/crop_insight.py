@@ -7,6 +7,7 @@ Tomorrow Now GAP.
 import os.path
 import uuid
 from datetime import date, timedelta, datetime, tzinfo
+from concurrent.futures import ThreadPoolExecutor
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
@@ -610,6 +611,9 @@ class CropInsightRequest(models.Model):
         """Run the generate report."""
         if self.skip_run:
             return
+        # fetch and generate spw using parallel
+        self.generate_spw_by_grid()
+        # generate the report
         self._generate_report()
 
     @property
@@ -643,6 +647,41 @@ class CropInsightRequest(models.Model):
             f"{group} {east_africa_time.strftime('%Y-%m-%d')} "
             f'({self.unique_id}).csv'
         )
+
+    def _process_chunk(self, chunk, port):
+        from spw.generator.crop_insight import CropInsightFarmGenerator
+        farms = self.farm_group.farms.filter(
+            grid_id__in=chunk
+        )
+        print(f'Farms in port {port} count {farms.count()}')
+        for farm in farms:
+            if farm.pk:
+                CropInsightFarmGenerator(farm, port=port).generate_spw()
+
+    def _chunk_list(self, data):
+        """Split the list into smaller chunks."""
+        chunk_size = max(1, len(data) // self.num_threads)  # Ensure at least one element per thread
+        for i in range(0, len(data), chunk_size):
+            yield data[i:i + chunk_size]
+
+    def generate_spw_by_grid(self):
+        """Generate spw by grid."""
+        self.num_threads = 4
+        farms = self.farm_group.farms.all()
+
+        # get distinct grid from farms
+        grids = farms.values('grid').distinct()
+        grid_ids = list(grids.values_list('grid', flat=True))
+        chunks = list(self._chunk_list(grid_ids))
+        ports = [8282, 8283, 8284, 8285]
+        with ThreadPoolExecutor(max_workers=self.num_threads) as executor:
+            results = list(
+                executor.map(
+                    lambda args: self._process_chunk(*args), zip(chunks, ports)
+                )
+            )
+        for result in results:
+            print(result)
 
     def _generate_report(self):
         """Generate reports."""

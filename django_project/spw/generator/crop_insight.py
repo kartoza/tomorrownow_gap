@@ -20,12 +20,13 @@ from spw.generator.main import (
     calculate_from_point, calculate_from_polygon, VAR_MAPPING_REVERSE,
     calculate_from_point_attrs
 )
+from spw.utils.plumber import PLUMBER_PORT
 
 
 class CropInsightFarmGenerator:
     """Insight Farm Generator."""
 
-    def __init__(self, farm: Farm):
+    def __init__(self, farm: Farm, port=PLUMBER_PORT):
         """Init Generator."""
         self.farm = farm
         self.today = timezone.now()
@@ -34,6 +35,7 @@ class CropInsightFarmGenerator:
 
         self.tomorrow = self.today + timedelta(days=1)
         self.attributes = calculate_from_point_attrs()
+        self.port = port
 
     def return_float(self, value):
         """Return float value."""
@@ -112,15 +114,15 @@ class CropInsightFarmGenerator:
         generated = False
         retry = 1
         while not generated:
-            print('Generating Farm SPW...')
+            print(f'Generating Farm SPW... {self.farm.grid.id} - {self.port}')
             try:
                 if self.farm.grid:
                     output, historical_dict = calculate_from_polygon(
-                        self.farm.grid.geometry
+                        self.farm.grid.geometry, port=self.port
                     )
                 else:
                     output, historical_dict = calculate_from_point(
-                        self.farm.geometry
+                        self.farm.geometry, port=self.port
                     )
                 generated = True
             except Exception as e:
