@@ -667,7 +667,11 @@ class CropInsightRequest(models.Model):
     def generate_spw_by_grid(self):
         """Generate spw by grid."""
         self.num_threads = 4
-        farms = self.farm_group.farms.all()
+        # If farm is empty, put empty farm
+        if self.farm_group:
+            farms = self.farm_group.farms.all()
+        else:
+            raise FarmGroupIsNotSetException()
 
         # get distinct grid from farms
         grids = farms.values('grid').distinct()
