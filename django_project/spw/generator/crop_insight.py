@@ -114,7 +114,6 @@ class CropInsightFarmGenerator:
         generated = False
         retry = 1
         while not generated:
-            print(f'Generating Farm SPW... {self.farm.grid.id} - {self.port}')
             try:
                 if self.farm.grid:
                     output, historical_dict = calculate_from_polygon(

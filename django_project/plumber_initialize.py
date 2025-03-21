@@ -41,7 +41,7 @@ write_plumber_file()
 
 print('-----------------------------------------------------')
 print('3. Spawn initial plumber process')
-ports = [8282, 8283, 8284, 8285]
+ports = [8282]
 for index, port in enumerate(ports):
     print(f'Spawn plumber {index + 1} with port {port}')
     plumber_process = spawn_r_plumber(index=index + 1, port=port)

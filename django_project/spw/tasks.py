@@ -26,15 +26,19 @@ def start_plumber_process():
     """Start plumber process when there is R code change."""
     logger.info('Starting plumber process')
     # kill existing process
-    kill_r_plumber_process()
+    ports = [8282]
+    for index, port in enumerate(ports):
+        kill_r_plumber_process(index=index)
     # Generate plumber.R file
     write_plumber_file()
     # spawn the process
-    plumber_process = spawn_r_plumber()
-    if plumber_process:
-        logger.info(f'plumber process pid {plumber_process.pid}')
-    else:
-        raise RuntimeError('Cannot execute plumber process!')
+    for index, port in enumerate(ports):
+        print(f'Spawn plumber {index + 1} with port {port}')
+        plumber_process = spawn_r_plumber(index=index + 1, port=port)
+        if plumber_process:
+            print(f'plumber process pid {plumber_process.pid}')
+        else:
+            raise RuntimeError('Cannot execute plumber process!')
 
 
 @shared_task(name="cleanup_r_execution_logs")

@@ -228,6 +228,10 @@ def _fetch_timelines_data(
     reader = TomorrowIODatasetReader(
         dataset, attrs, location_input, start_dt, end_dt)
     reader.read()
+    # if not reader.is_success():
+    #     raise Exception(
+    #         f'Failed to fetch Tomorrow.io API! {str(reader.errors)}'
+    #     )
     results = {}
     for val in reader.get_raw_results():
         month_day = val.get_datetime_repr('%m-%d')
@@ -271,6 +275,10 @@ def _fetch_ltn_data(
         dataset, attrs, location_input, start_dt, end_dt
     )
     reader.read()
+    # if not reader.is_success():
+    #     raise Exception(
+    #         f'Failed to fetch Tomorrow.io API! {str(reader.errors)}'
+    #     )
     for val in reader.get_raw_results():
         month_day = val.get_datetime_repr('%m-%d')
         if month_day in historical_dict:

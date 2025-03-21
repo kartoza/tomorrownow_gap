@@ -653,10 +653,16 @@ class CropInsightRequest(models.Model):
         farms = self.farm_group.farms.filter(
             grid_id__in=chunk
         )
-        print(f'Farms in port {port} count {farms.count()}')
+        print(f'{timezone.now()} Farms in port {port} count {farms.count()}')
+        count = 0
         for farm in farms:
             if farm.pk:
                 CropInsightFarmGenerator(farm, port=port).generate_spw()
+            count += 1
+            if count % 500 == 0:
+                print(
+                    f'{timezone.now()} Farms in port {port} processed {count}'
+                )
 
     def _chunk_list(self, data):
         """Split the list into smaller chunks."""
@@ -677,7 +683,7 @@ class CropInsightRequest(models.Model):
         grids = farms.values('grid').distinct()
         grid_ids = list(grids.values_list('grid', flat=True))
         chunks = list(self._chunk_list(grid_ids))
-        ports = [8282, 8283, 8284, 8285]
+        ports = [8282, 8282, 8282, 8282]
         with ThreadPoolExecutor(max_workers=self.num_threads) as executor:
             results = list(
                 executor.map(
@@ -706,7 +712,7 @@ class CropInsightRequest(models.Model):
         for farm in farms:
             # If it has farm id, generate spw
             if farm.pk:
-                self.update_note('Generating SPW for farm: {}'.format(farm))
+                # self.update_note('Generating SPW for farm: {}'.format(farm))
                 CropInsightFarmGenerator(farm).generate_spw()
 
             data = CropPlanData(
