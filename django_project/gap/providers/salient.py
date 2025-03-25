@@ -300,7 +300,7 @@ class SalientZarrReader(BaseZarrReader, SalientNetCDFReader):
         # get latest forecast date
         self.latest_forecast_date = ds['forecast_date'][-1].values
         if np.datetime64(start_date) < self.latest_forecast_date:
-            return
+            start_date = self.latest_forecast_date
         val = self.read_variables(ds, start_date, end_date)
         if val is None:
             return
