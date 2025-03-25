@@ -67,7 +67,7 @@ class FarmGroupAdmin(AbstractDefinitionAdmin):
     list_display = (
         'id', 'name', 'description', 'user_count', 'farm_count', 'phone_number'
     )
-
+    exclude = ('farms',)
     filter_horizontal = ('farms', 'users')
     inlines = (FarmGroupCropInsightFieldInline,)
     actions = (
