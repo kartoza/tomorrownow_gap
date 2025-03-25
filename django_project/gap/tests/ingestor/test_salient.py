@@ -101,17 +101,14 @@ class TestSalientCollector(SalientIngestorBaseTest):
         result = self.collector._convert_forecast_date('2024-08-28')
         self.assertEqual(result, date(2024, 8, 28))
 
-    @patch('xarray.open_dataset')
     @patch('os.stat')
     @patch('uuid.uuid4')
     @patch('gap.utils.netcdf.NetCDFMediaS3.get_netcdf_base_url')
     def test_store_as_netcdf_file(
         self, mock_get_netcdf_base_url, mock_uuid4,
-        mock_os_stat, mock_open_dataset
+        mock_os_stat
     ):
         """Test storing the downscaled Salient NetCDF as a file."""
-        mock_dataset = MagicMock()
-        mock_open_dataset.return_value = mock_dataset
         mock_uuid4.return_value = '1234-5678'
         mock_get_netcdf_base_url.return_value = 's3://fake-bucket/'
         mock_os_stat.return_value.st_size = 1048576
@@ -123,7 +120,7 @@ class TestSalientCollector(SalientIngestorBaseTest):
         self.assertEqual(self.collector.metadata['filesize'], 1048576)
         self.assertEqual(
             self.collector.metadata['forecast_date'], '2024-08-28')
-        self.assertEqual(self.collector.metadata['end_date'], '2024-11-26')
+        self.assertEqual(self.collector.metadata['end_date'], '2025-05-30')
 
     @patch('gap.ingestor.salient.sk')
     def test_run(self, mock_sk):
