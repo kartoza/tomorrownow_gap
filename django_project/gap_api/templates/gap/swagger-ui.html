@@ -109,8 +109,8 @@
                                 });
 
                                 // check if has mode=full
-                                let searchParams = new URLSearchParams(window.location.search);
-                                let mode = searchParams.get('mode');
+                                var searchParams = new URLSearchParams(window.location.search);
+                                var mode = searchParams.get('mode');
                                 if (mode !== 'full') {
                                     // hide id get_measurement__responses
                                     $('#get_measurement__responses').hide();
@@ -119,6 +119,18 @@
                                     .html('.response-col_description div:nth-of-type(2) { display: none; } .curl-command { display: none; } div.responses-inner > div > h4 { display: none; }')
                                     .appendTo('head');
                                 }
+                                var startDateSelector = '#operations-Weather_\\\\\\&_Climate_Data-get-measurement > div.no-margin > div > div.opblock-section > div.parameters-container > div > table > tbody > tr[data-param-name="start_date"] > td.parameters-col_description > div:nth-child(1)';
+                                $(startDateSelector).after('<div class="markdown"><p><i>Example</i>: 2020-01-01</p></div>');
+                                var endDateSelector = '#operations-Weather_\\\\\\&_Climate_Data-get-measurement > div.no-margin > div > div.opblock-section > div.parameters-container > div > table > tbody > tr[data-param-name="end_date"] > td.parameters-col_description > div:nth-child(1)';
+                                $(endDateSelector).after('<div class="markdown"><p><i>Example</i>: 2020-01-10</p></div>');
+                                var latSelector = '#operations-Weather_\\\\\\&_Climate_Data-get-measurement > div.no-margin > div > div.opblock-section > div.parameters-container > div > table > tbody > tr[data-param-name="lat"] > td.parameters-col_description > div:nth-child(1)';
+                                $(latSelector).after('<div class="markdown"><p><i>Example</i>: 0.5878374</p></div>');
+                                var lonSelector = '#operations-Weather_\\\\\\&_Climate_Data-get-measurement > div.no-margin > div > div.opblock-section > div.parameters-container > div > table > tbody > tr[data-param-name="lon"] > td.parameters-col_description > div:nth-child(1)';
+                                $(lonSelector).after('<div class="markdown"><p><i>Example</i>: 35.8560798</p></div>');
+                                var bboxSelector = '#operations-Weather_\\\\\\&_Climate_Data-get-measurement > div.no-margin > div > div.opblock-section > div.parameters-container > div > table > tbody > tr[data-param-name="bbox"] > td.parameters-col_description > div:nth-child(1)';
+                                $(bboxSelector).after('<div class="markdown"><p><i>Example</i>: 37.09,0.44,39.35,2.41</p></div>');
+                                var altitudesSelector = '#operations-Weather_\\\\\\&_Climate_Data-get-measurement > div.no-margin > div > div.opblock-section > div.parameters-container > div > table > tbody > tr[data-param-name="altitudes"] > td.parameters-col_description > div:nth-child(1)';
+                                $(altitudesSelector).after('<div class="markdown"><p><i>Example</i>: 0,20000</p></div>');
                             }, 200);
                           }
                       }
