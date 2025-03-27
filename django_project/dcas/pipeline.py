@@ -10,15 +10,23 @@ import datetime
 import time
 import numpy as np
 import pandas as pd
-from django.db import connection
+from django.db import connection, transaction
 from django.db.models import Min
 import dask.dataframe as dd
 from dask.dataframe.core import DataFrame as dask_df
 from django.contrib.gis.db.models import Union
 from sqlalchemy import create_engine
 
-from gap.models import FarmRegistry, Grid, CropGrowthStage
-from dcas.models import DCASConfig, DCASConfigCountry
+from gap.models import (
+    FarmRegistry,
+    Grid,
+    CropGrowthStage,
+    Farm
+)
+from dcas.models import (
+    DCASConfig,
+    DCASConfigCountry,
+)
 from dcas.partitions import (
     process_partition_total_gdd,
     process_partition_growth_stage,
@@ -434,13 +442,101 @@ class DCASDataPipeline:
             self.duck_db_num_threads,
             meta=farm_df_meta
         )
+        self.update_farm_registry_growth_stage()
 
         self.data_output.save(OutputType.FARM_CROP_DATA, farm_df)
 
+    def update_farm_registry_growth_stage(self):
+        """Update growth stage in FarmRegistry."""
+        self.data_output._setup_s3fs()
+
+        # Construct the Parquet file path based on the requested date
+        parquet_path = (
+            self.data_output._get_directory_path(
+                self.data_output.DCAS_OUTPUT_DIR
+            ) + "/iso_a3=*/year=*/month=*/day=*/*.parquet"
+        )
+
+        # Query Parquet files in chunks using grid_data_with_crop_meta
+        for chunk in self.data_query.read_grid_data_crop_meta_parquet(
+            parquet_path
+        ):
+            if chunk.empty:
+                continue
+
+            # Ensure required columns exist
+            required_columns = {
+                "grid_id",
+                "growth_stage_id",
+                "growth_stage_start_date"
+            }
+            missing_columns = required_columns - set(chunk.columns)
+            if missing_columns:
+                raise ValueError(
+                    f"Missing columns in grid_crop_df: {missing_columns}"
+                )
+
+            # Convert `growth_stage_start_date` safely
+            chunk["growth_stage_start_date"] = pd.to_datetime(
+                chunk["growth_stage_start_date"], errors="coerce"
+            ).dt.date
+
+            # Create mapping of `grid_id` to `farm_id`
+            farm_mapping = {
+                row["grid_id"]: row["id"]
+                for row in Farm.objects.values("id", "grid_id")
+            }
+
+            # Fetch existing FarmRegistry Records using registry_id
+            registry_ids = list(chunk["registry_id"].dropna().unique())
+            existing_farm_registry = {
+                fr.id: fr for fr in FarmRegistry.objects.filter(
+                    id__in=registry_ids
+                )
+            }
+
+            updates = []
+            for row in chunk.itertuples(index=False):
+                farm_id = farm_mapping.get(row.grid_id)
+                if farm_id:
+                    # Ensure we're updating an existing record
+                    farm_registry_instance = (
+                        existing_farm_registry.get(farm_id)
+                    )
+                    if farm_registry_instance:
+                        farm_registry_instance.crop_growth_stage_id = (
+                            row.growth_stage_id
+                        )
+                        farm_registry_instance.growth_stage_start_date = (
+                            row.growth_stage_start_date
+                        )
+                        updates.append(
+                            farm_registry_instance
+                        )
+
+            # Bulk Update in DB
+            if updates:
+                with transaction.atomic():
+                    FarmRegistry.objects.bulk_update(
+                        updates, [
+                            "crop_growth_stage_id",
+                            "growth_stage_start_date"
+                        ]
+                    )
+
     def _append_grid_crop_meta(self, farm_df_meta: pd.DataFrame):
         # load from grid_crop data
-        grid_crop_df_meta = self.data_query.read_grid_data_crop_meta_parquet(
-            self.data_output.grid_crop_data_dir_path
+        grid_crop_df_meta_chunks = (
+            self.data_query.read_grid_data_crop_meta_parquet(
+                self.data_output.grid_crop_data_dir_path
+            )
+        )
+        # Convert iterator to a single DataFrame
+        grid_crop_df_meta = pd.concat(
+            list(
+                grid_crop_df_meta_chunks
+            ),
+            ignore_index=True
         )
 
         # adding new columns:
@@ -472,6 +568,12 @@ class DCASDataPipeline:
         self.data_collection()
         self.process_grid_crop_data()
         self.process_farm_registry_data()
+        csv_file = self.extract_csv_output()
+
+        self.send_csv_to_sftp(csv_file)
+
+        self.cleanup_gdd_matrix()
+
         print(f'Finished {time.time() - start_time} seconds.')
 
     def cleanup(self):
