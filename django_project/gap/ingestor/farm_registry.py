@@ -140,10 +140,12 @@ class DCASFarmRegistryIngestor(BaseIngestor):
     def _execute_query(self, query, query_name):
         """Execute a query on the database."""
         start_time = time.time()
+        print(f'starting {query_name}')
         with connection.cursor() as cursor:
             cursor.execute(query)
         total_time = time.time() - start_time
         self.execution_times[query_name] = total_time
+        print(f'finished {query_name} in {total_time} seconds')
 
     def _run(self):
         """Run the ingestion logic."""
@@ -328,7 +330,8 @@ class DCASFarmRegistryIngestor(BaseIngestor):
         # insert into gap_farm
         self._execute_query(f"""
             INSERT INTO public.gap_farm (unique_id, geometry, grid_id)
-            SELECT tfrs.farmer_id, tfrs.wkb_geometry, tfrs.grid_id
+            SELECT DISTINCT ON (tfrs.farmer_id) 
+            tfrs.farmer_id, tfrs.wkb_geometry, tfrs.grid_id
             FROM {self.table_name_sql} tfrs
             WHERE tfrs.farm_id IS NULL;
         """, 'insert_farm')
