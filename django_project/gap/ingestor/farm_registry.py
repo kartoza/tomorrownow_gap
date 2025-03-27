@@ -10,7 +10,6 @@ import tempfile
 import zipfile
 import subprocess
 import time
-import json
 from datetime import datetime, timezone
 from django.db import connection
 import logging
@@ -140,12 +139,10 @@ class DCASFarmRegistryIngestor(BaseIngestor):
     def _execute_query(self, query, query_name):
         """Execute a query on the database."""
         start_time = time.time()
-        print(f'starting {query_name}')
         with connection.cursor() as cursor:
             cursor.execute(query)
         total_time = time.time() - start_time
         self.execution_times[query_name] = total_time
-        print(f'finished {query_name} in {total_time} seconds')
 
     def _run(self):
         """Run the ingestion logic."""
@@ -230,8 +227,8 @@ class DCASFarmRegistryIngestor(BaseIngestor):
         with connection.cursor() as cursor:
             cursor.execute(f"""
                 SELECT EXISTS (
-                    SELECT FROM information_schema.tables 
-                    WHERE table_schema = 'temp' 
+                    SELECT FROM information_schema.tables
+                    WHERE table_schema = 'temp'
                     AND table_name = 'farm_registry_session_{self.session.id}'
                 );
             """)
@@ -257,13 +254,13 @@ class DCASFarmRegistryIngestor(BaseIngestor):
             cursor.execute(
                 f'CREATE INDEX ON {self.table_name_sql} (crop_stage_txt)'
             )
-        
+
         # update grid_id using spatial join
         self._execute_query(f"""
             WITH matched AS (
                 SELECT tfrs.ogc_fid, g.id as grid_id
                 FROM {self.table_name_sql} tfrs
-                JOIN gap_grid g 
+                JOIN gap_grid g
                 ON ST_Intersects(g.geometry, tfrs.wkb_geometry)
             )
             UPDATE {self.table_name_sql} tfrs
@@ -312,7 +309,7 @@ class DCASFarmRegistryIngestor(BaseIngestor):
             FROM matched m
             WHERE tfrs.ogc_fid = m.ogc_fid;
         """, 'update_crop_id')
-        
+
         # update crop_stage_id
         self._execute_query(f"""
             WITH matched AS (
@@ -330,7 +327,7 @@ class DCASFarmRegistryIngestor(BaseIngestor):
         # insert into gap_farm
         self._execute_query(f"""
             INSERT INTO public.gap_farm (unique_id, geometry, grid_id)
-            SELECT DISTINCT ON (tfrs.farmer_id) 
+            SELECT DISTINCT ON (tfrs.farmer_id)
             tfrs.farmer_id, tfrs.wkb_geometry, tfrs.grid_id
             FROM {self.table_name_sql} tfrs
             WHERE tfrs.farm_id IS NULL;
@@ -391,7 +388,6 @@ class DCASFarmRegistryIngestor(BaseIngestor):
             tfrs.planting_date IS NOT NULL AND tfrs.grid_id IS NOT NULL;
         """, 'insert_farmregistry')
 
-
     def run(self):
         """Run the ingestion process."""
         if not self.session.file:
@@ -407,4 +403,9 @@ class DCASFarmRegistryIngestor(BaseIngestor):
                 f'DROP TABLE IF EXISTS {self.table_name_sql}',
                 'drop_temp_table'
             )
-            self.session.notes = json.dumps(self.execution_times)
+
+            # store execution times in session
+            if self.session.additional_config:
+                self.session.additional_config.update(self.execution_times)
+            else:
+                self.session.additional_config = self.execution_times
