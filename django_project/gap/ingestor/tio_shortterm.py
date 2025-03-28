@@ -771,7 +771,7 @@ class TioShortTermDuckDBCollector(BaseIngestor):
         """)
 
     def _process_chunk(self, chunk, data_source_id):
-        """Function to process each chunk."""
+        """Process chunk of grid."""
         # retrieve data source object
         data_source = DataSourceFile.objects.get(id=data_source_id)
         # create connection
