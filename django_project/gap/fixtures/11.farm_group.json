@@ -38,5 +38,21 @@
       "name": "PXD",
       "description": ""
     }
+  },
+  {
+    "model": "gap.farmgroup",
+    "pk": 6,
+    "fields": {
+      "name": "Meru Trial Site",
+      "description": ""
+    }
+  },
+  {
+    "model": "gap.farmgroup",
+    "pk": 7,
+    "fields": {
+      "name": "Laikipia Trial Site",
+      "description": ""
+    }
   }
 ]
