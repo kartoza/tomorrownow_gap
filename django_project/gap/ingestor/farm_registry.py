@@ -19,7 +19,9 @@ from gap.ingestor.exceptions import (
 )
 from gap.models import (
     FarmRegistryGroup,
-    IngestorSession
+    IngestorSession,
+    IngestorSessionStatus,
+    IngestorSessionProgress
 )
 
 logger = logging.getLogger(__name__)
@@ -91,6 +93,12 @@ class Keys:
             raise KeyError(f"No valid farmer ID key found in row: {row}")
 
 
+class FarmRegistryException(Exception):
+    """Custom exception for FarmRegistry."""
+
+    pass
+
+
 class DCASFarmRegistryIngestor(BaseIngestor):
     """Ingestor for DCAS Farmer Registry data."""
 
@@ -136,13 +144,37 @@ class DCASFarmRegistryIngestor(BaseIngestor):
             is_latest=True
         )
 
+    def _add_progress(self, progress_name):
+        """Add progress to the session."""
+        return IngestorSessionProgress.objects.create(
+            session=self.session,
+            filename=progress_name,
+            row_count=0
+        )
+
     def _execute_query(self, query, query_name):
         """Execute a query on the database."""
+        progress = self._add_progress(query_name)
         start_time = time.time()
         with connection.cursor() as cursor:
             cursor.execute(query)
         total_time = time.time() - start_time
         self.execution_times[query_name] = total_time
+        progress.notes = f"Execution time: {total_time}"
+        progress.status = IngestorSessionStatus.SUCCESS
+        progress.save()
+
+    def _check_table_exists(self):
+        with connection.cursor() as cursor:
+            cursor.execute(f"""
+                SELECT EXISTS (
+                    SELECT FROM information_schema.tables
+                    WHERE table_schema = 'temp'
+                    AND table_name = 'farm_registry_session_{self.session.id}'
+                );
+            """)
+            table_exists = cursor.fetchone()[0]
+        return table_exists
 
     def _run(self):
         """Run the ingestion logic."""
@@ -157,7 +189,9 @@ class DCASFarmRegistryIngestor(BaseIngestor):
                 break
 
         if file_path is None:
-            raise ValueError('No CSV file found in the extracted ZIP.')
+            raise FarmRegistryException(
+                'No CSV file found in the extracted ZIP.'
+            )
 
         # rename csv file
         new_file_path = os.path.join(
@@ -202,6 +236,7 @@ class DCASFarmRegistryIngestor(BaseIngestor):
             cursor.execute('CREATE SCHEMA IF NOT EXISTS temp;')
 
         # run ogr2ogr command
+        progress = self._add_progress('ogr2ogr')
         ogr2_start_time = time.time()
         conn_str = (
             'PG:dbname={NAME} user={USER} password={PASSWORD} '
@@ -224,26 +259,38 @@ class DCASFarmRegistryIngestor(BaseIngestor):
         self.execution_times['ogr2ogr'] = ogr2_total_time
 
         # Check if the table exists in the database
-        with connection.cursor() as cursor:
-            cursor.execute(f"""
-                SELECT EXISTS (
-                    SELECT FROM information_schema.tables
-                    WHERE table_schema = 'temp'
-                    AND table_name = 'farm_registry_session_{self.session.id}'
-                );
-            """)
-            table_exists = cursor.fetchone()[0]
+        table_exists = self._check_table_exists()
 
         if not table_exists:
-            raise Exception(
+            progress.notes = (
+                f"Table farm_registry_session_{self.session.id} "
+                "is failed to be created!"
+            )
+            progress.status = IngestorSessionStatus.FAILED
+            progress.save()
+            raise FarmRegistryException(
                 f"Temporary table {self.table_name} does not exist."
             )
         # Get total row count in the temporary table
         with connection.cursor() as cursor:
             cursor.execute(f"SELECT COUNT(*) FROM {self.table_name_sql};")
             self.execution_times['total_rows'] = cursor.fetchone()[0]
+            progress.row_count = self.execution_times['total_rows']
+
+        if progress.row_count == 0:
+            progress.notes = "No rows found in the CSV file."
+            progress.status = IngestorSessionStatus.FAILED
+            progress.save()
+            raise FarmRegistryException(
+                "No rows found in the CSV file."
+            )
+
+        progress.notes = f"Execution time: {ogr2_total_time}"
+        progress.status = IngestorSessionStatus.SUCCESS
+        progress.save()
 
         # create index on columns: farmer_id, crop_txt, crop_stage_txt
+        progress = self._add_progress('create_index')
         with connection.cursor() as cursor:
             cursor.execute(
                 f'CREATE INDEX ON {self.table_name_sql} (farmer_id)'
@@ -254,6 +301,22 @@ class DCASFarmRegistryIngestor(BaseIngestor):
             cursor.execute(
                 f'CREATE INDEX ON {self.table_name_sql} (crop_stage_txt)'
             )
+        progress.status = IngestorSessionStatus.SUCCESS
+        progress.save()
+
+        # update farm_id using join on unique_id
+        self._execute_query(f"""
+            WITH matched AS (
+                SELECT gf.unique_id, gf.id as farm_id, gf.grid_id,
+                tfrs.farmer_id, tfrs.ogc_fid
+                FROM {self.table_name_sql} tfrs
+                JOIN gap_farm gf ON gf.unique_id = tfrs.farmer_id
+            )
+            UPDATE {self.table_name_sql} tfrs
+            SET farm_id = m.farm_id, grid_id = m.grid_id
+            FROM matched m
+            WHERE tfrs.ogc_fid = m.ogc_fid;
+        """, 'update_farm_id')
 
         # update grid_id using spatial join
         self._execute_query(f"""
@@ -262,26 +325,13 @@ class DCASFarmRegistryIngestor(BaseIngestor):
                 FROM {self.table_name_sql} tfrs
                 JOIN gap_grid g
                 ON ST_Intersects(g.geometry, tfrs.wkb_geometry)
+                WHERE tfrs.grid_id IS NULL
             )
             UPDATE {self.table_name_sql} tfrs
             SET grid_id = m.grid_id
             FROM matched m
             WHERE tfrs.ogc_fid = m.ogc_fid;
         """, 'update_grid_id')
-
-        # update farm_id using join on unique_id
-        self._execute_query(f"""
-            WITH matched AS (
-                SELECT gf.unique_id, gf.id as farm_id,
-                tfrs.farmer_id, tfrs.ogc_fid
-                FROM {self.table_name_sql} tfrs
-                JOIN gap_farm gf ON gf.unique_id = tfrs.farmer_id
-            )
-            UPDATE {self.table_name_sql} tfrs
-            SET farm_id = m.farm_id
-            FROM matched m
-            WHERE tfrs.ogc_fid = m.ogc_fid;
-        """, 'update_farm_id')
 
         # split crop into crop_txt and crop_stage_txt
         self._execute_query(f"""
@@ -368,7 +418,7 @@ class DCASFarmRegistryIngestor(BaseIngestor):
             self.execution_times['farmregistry_insert_count'] !=
             self.execution_times['total_rows']
         ):
-            raise Exception(
+            raise FarmRegistryException(
                 "Mismatch in row counts: "
                 "farmregistry_insert_count "
                 f"({self.execution_times['farmregistry_insert_count']}) "
@@ -396,7 +446,7 @@ class DCASFarmRegistryIngestor(BaseIngestor):
             self._extract_zip_file()
             self._run()
         except Exception as e:
-            raise Exception(e)
+            raise e
         finally:
             # remove temporary table
             self._execute_query(
