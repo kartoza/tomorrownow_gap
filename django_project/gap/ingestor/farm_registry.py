@@ -5,26 +5,24 @@ Tomorrow Now GAP.
 .. note:: Ingestor for DCAS Farmer Registry data
 """
 
-import csv
 import os
-import shutil
-import uuid
 import tempfile
 import zipfile
+import subprocess
+import time
 from datetime import datetime, timezone
-from django.contrib.gis.geos import Point
+from django.db import connection
 import logging
 from gap.ingestor.base import BaseIngestor
 from gap.ingestor.exceptions import (
     FileNotFoundException, FileIsNotCorrectException,
 )
 from gap.models import (
-    Farm, Crop, FarmRegistry, FarmRegistryGroup,
-    IngestorSession, CropStageType,
-    IngestorSessionStatus
+    FarmRegistryGroup,
+    IngestorSession,
+    IngestorSessionStatus,
+    IngestorSessionProgress
 )
-from django.db import transaction
-from django.db.models import Q
 
 logger = logging.getLogger(__name__)
 
@@ -95,10 +93,14 @@ class Keys:
             raise KeyError(f"No valid farmer ID key found in row: {row}")
 
 
+class FarmRegistryException(Exception):
+    """Custom exception for FarmRegistry."""
+
+    pass
+
+
 class DCASFarmRegistryIngestor(BaseIngestor):
     """Ingestor for DCAS Farmer Registry data."""
-
-    BATCH_SIZE = 100000
 
     def __init__(self, session: IngestorSession, working_dir='/tmp'):
         """Initialize the ingestor with session and working directory.
@@ -110,27 +112,16 @@ class DCASFarmRegistryIngestor(BaseIngestor):
         """
         super().__init__(session, working_dir)
 
-        # Initialize the FarmRegistryGroup model
-        self.group_model = FarmRegistryGroup
-
         # Placeholder for the group created during this session
         self.group = None
-
-        self.farm_list = []
-        self.registry_list = []
-        # Initialize lookup dictionaries
-        self.crop_lookup = {
-            c.name.lower(): c for c in Crop.objects.all()
-        }
-        self.stage_lookup = {
-            s.name.lower(): s for s in CropStageType.objects.all()
-        }
+        self.execution_times = {}
+        self.table_name = f'temp.farm_registry_session_{self.session.id}'
+        self.table_name_sql = (
+            f'"temp"."farm_registry_session_{self.session.id}"'
+        )
 
     def _extract_zip_file(self):
         """Extract the ZIP file to a temporary directory."""
-        dir_path = os.path.join(self.working_dir, str(uuid.uuid4()))
-        os.makedirs(dir_path, exist_ok=True)
-
         with self.session.file.open('rb') as zip_file:
             with tempfile.NamedTemporaryFile(
                 delete=False, dir=self.working_dir) as tmp_file:
@@ -139,207 +130,332 @@ class DCASFarmRegistryIngestor(BaseIngestor):
                 tmp_file_path = tmp_file.name
 
         with zipfile.ZipFile(tmp_file_path, 'r') as zip_ref:
-            zip_ref.extractall(dir_path)
+            zip_ref.extractall(self.working_dir)
 
         os.remove(tmp_file_path)
-        return dir_path
 
     def _create_registry_group(self):
         """Create a new FarmRegistryGroup."""
         group_name = "farm_registry_" + \
             datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M')
-        self.group = self.group_model.objects.create(
+        self.group = FarmRegistryGroup.objects.create(
             name=group_name,
             date_time=datetime.now(timezone.utc),
             is_latest=True
         )
 
-    def _parse_planting_date(self, date_str):
-        """Try multiple date formats for planting date."""
-        formats = ['%m/%d/%Y', '%Y-%m-%d', '%d-%m-%Y']
+    def _add_progress(self, progress_name):
+        """Add progress to the session."""
+        return IngestorSessionProgress.objects.create(
+            session=self.session,
+            filename=progress_name,
+            row_count=0
+        )
 
-        for fmt in formats:
-            try:
-                return datetime.strptime(date_str, fmt).date()
-            except ValueError:
-                continue
+    def _execute_query(self, query, query_name):
+        """Execute a query on the database."""
+        progress = self._add_progress(query_name)
+        start_time = time.time()
+        with connection.cursor() as cursor:
+            cursor.execute(query)
+        total_time = time.time() - start_time
+        self.execution_times[query_name] = total_time
+        progress.notes = f"Execution time: {total_time}"
+        progress.status = IngestorSessionStatus.SUCCESS
+        progress.save()
 
-        # If no format worked, log an error
-        logger.error(f"Invalid date format: {date_str}")
-        return None  # Return None for invalid dates
+    def _check_table_exists(self):
+        with connection.cursor() as cursor:
+            cursor.execute(f"""
+                SELECT EXISTS (
+                    SELECT FROM information_schema.tables
+                    WHERE table_schema = 'temp'
+                    AND table_name = 'farm_registry_session_{self.session.id}'
+                );
+            """)
+            table_exists = cursor.fetchone()[0]
+        return table_exists
 
-    def _bulk_insert_farms_and_registries(self):
-        """Bulk insert Farms first, then FarmRegistry."""
-        if not self.farm_list:
-            return
-
-        try:
-            with transaction.atomic():  # Ensure database consistency
-                # Step 1: Bulk insert farms and retrieve saved instances
-                Farm.objects.bulk_create(
-                    [Farm(**data) for data in self.farm_list],
-                    ignore_conflicts=True
-                )
-
-                # Step 2: Fetch inserted farms with primary keys
-                farm_map = {
-                    farm.unique_id: farm
-                    for farm in Farm.objects.filter(
-                        unique_id__in=[
-                            data["unique_id"] for data in self.farm_list
-                        ]
-                    )
-                }
-
-                # Step 3: Prepare FarmRegistry objects using mapped farms
-                registries = []
-                for data in self.registry_list:
-                    farm_instance = farm_map.get(data["farm_unique_id"])
-                    if not farm_instance:
-                        continue  # Skip if farm does not exist
-
-                    registries.append(FarmRegistry(
-                        group=data["group"],
-                        farm=farm_instance,
-                        crop=data["crop"],
-                        crop_stage_type=data["crop_stage_type"],
-                        planting_date=data["planting_date"],
-                    ))
-
-                # Step 4: Bulk insert FarmRegistry only if valid records exist
-                if registries:
-                    FarmRegistry.objects.bulk_create(
-                        registries, ignore_conflicts=True
-                    )
-
-                # Clear batch lists
-                self.farm_list.clear()
-                self.registry_list.clear()
-
-        except Exception as e:
-            logger.error(f"Bulk insert failed due to {e}")
-            self.session.status = IngestorSessionStatus.FAILED
-            self.session.notes = str(e)
-            self.session.save()
-
-    def _process_row(self, row):
-        """Process a single row from the CSV file."""
-        try:
-            latitude = float(row[Keys.FINAL_LATITUDE])
-            longitude = float(row[Keys.FINAL_LONGITUDE])
-            point = Point(x=longitude, y=latitude, srid=4326)
-
-            crop_key = Keys.get_crop_key(row)
-            crop_name = row[crop_key].lower().split('_')[0]
-
-            crop = self.crop_lookup.get(crop_name)
-            if not crop:
-                crop, _ = Crop.objects.get_or_create(name__iexact=crop_name)
-                self.crop_lookup[crop_name] = crop
-
-            stage_type = self.stage_lookup.get(
-                row[crop_key].lower().split('_')[1]
-            )
-            if not stage_type:
-                stage_type = CropStageType.objects.filter(
-                    Q(name__iexact=row[crop_key]) | Q(
-                        alias__iexact=row[crop_key])
-                ).first()
-                self.stage_lookup[row[crop_key]] = stage_type
-
-            farmer_id_key = Keys.get_farm_id_key(row)
-            # Store farm data as a dictionary
-            farm_data = {
-                "unique_id": row[farmer_id_key].strip(),
-                "geometry": point,
-                "crop": crop
-            }
-            self.farm_list.append(farm_data)
-
-            planting_date = self._parse_planting_date(
-                row[Keys.get_planting_date_key(row)]
-            )
-
-            registry_data = {
-                "group": self.group,
-                "farm_unique_id": row[farmer_id_key].strip(),
-                "crop": crop,
-                "crop_stage_type": stage_type,
-                "planting_date": planting_date,
-            }
-            self.registry_list.append(registry_data)
-
-            # Batch process every BATCH_SIZE records
-            if len(self.farm_list) >= self.BATCH_SIZE:
-                self._bulk_insert_farms_and_registries()
-
-        except Exception as e:
-            logger.error(f"Error processing row: {row} - {e}")
-
-    def _run(self, dir_path):
+    def _run(self):
         """Run the ingestion logic."""
+        dir_path = self.working_dir
         self._create_registry_group()
         logger.debug(f"Created new registry group: {self.group.id}")
-        file_found = False
-        has_failures = False
 
+        file_path = None
         for file_name in os.listdir(dir_path):
             if file_name.endswith('.csv'):
-                file_found = True
                 file_path = os.path.join(dir_path, file_name)
-                try:
-                    with open(file_path, 'r') as file:
-                        reader = csv.DictReader(file)
-                        with transaction.atomic():
-                            for row in reader:
-                                try:
-                                    self._process_row(row)
-                                except KeyError as e:
-                                    logger.error(f"{e} in file {file_name}")
-                                    has_failures = True
-                except Exception as e:
-                    logger.error(f"Failed to process {file_name}: {e}")
-                    self.session.status = IngestorSessionStatus.FAILED
-                    self.session.notes = str(e)
-                    self.session.save()
-                    return  # Stop execution if we can't process the file
-
                 break
 
-        if not file_found:
-            logger.error("No CSV file found in the extracted ZIP.")
-            self.session.status = IngestorSessionStatus.FAILED
-            self.session.notes = "No CSV file found."
-        elif has_failures:
-            self.session.status = IngestorSessionStatus.FAILED
-            self.session.notes = "Some rows failed to process."
-        else:
-            self.session.status = IngestorSessionStatus.SUCCESS
-            logger.info(
-                f"Ingestor session {self.session.id} completed successfully."
+        if file_path is None:
+            raise FarmRegistryException(
+                'No CSV file found in the extracted ZIP.'
             )
 
-        self.session.save()  # Save session **only once**
+        # rename csv file
+        new_file_path = os.path.join(
+            dir_path, f'farm_{self.session.id}.csv'
+        )
+        os.rename(file_path, new_file_path)
+        # Ensure the CSV file has read permissions
+        os.chmod(new_file_path, 0o644)
+        file_path = new_file_path
+        layer_name = os.path.basename(file_path).replace('.csv', '')
+
+        # create vrt file
+        vrt_content = (
+            f"""<OGRVRTDataSource>
+                <OGRVRTLayer name="{layer_name}">
+                    <SrcDataSource relativeToVRT="1">
+                    {os.path.basename(file_path)}</SrcDataSource>
+                    <GeometryType>wkbPoint</GeometryType>
+                    <LayerSRS>EPSG:4326</LayerSRS>
+                    <GeometryField encoding="PointFromColumns"
+                        x="FinalLongitude" y="FinalLatitude"/>
+                    <Field name="farmer_id" type="String"/>
+                    <Field name="crop" type="String"/>
+                    <Field name="planting_date"
+                        src="plantingDate" type="Date"/>
+                    <Field name="grid_id" type="Integer"/>
+                    <Field name="farm_id" type="Integer"/>
+                    <Field name="crop_txt" type="String"/>
+                    <Field name="crop_stage_txt" type="String"/>
+                    <Field name="crop_id" type="Integer"/>
+                    <Field name="crop_stage_id" type="Integer"/>
+                </OGRVRTLayer>
+            </OGRVRTDataSource>"""
+        )
+        vrt_file_path = os.path.join(dir_path, f'{layer_name}.vrt')
+        with open(vrt_file_path, 'w') as vrt_file:
+            vrt_file.write(vrt_content)
+        os.chmod(vrt_file_path, 0o644)
+
+        # create temp schema if not exist
+        with connection.cursor() as cursor:
+            cursor.execute('CREATE SCHEMA IF NOT EXISTS temp;')
+
+        # run ogr2ogr command
+        progress = self._add_progress('ogr2ogr')
+        ogr2_start_time = time.time()
+        conn_str = (
+            'PG:dbname={NAME} user={USER} password={PASSWORD} '
+            'host={HOST} port={PORT}'.format(
+                **connection.settings_dict
+            )
+        )
+        cmd_list = [
+            'ogr2ogr',
+            '-f',
+            'PostgreSQL',
+            conn_str,
+            vrt_file_path,
+            '-nln',
+            self.table_name,
+            '-overwrite'
+        ]
+        subprocess.run(cmd_list, check=True)
+        ogr2_total_time = time.time() - ogr2_start_time
+        self.execution_times['ogr2ogr'] = ogr2_total_time
+
+        # Check if the table exists in the database
+        table_exists = self._check_table_exists()
+
+        if not table_exists:
+            progress.notes = (
+                f"Table farm_registry_session_{self.session.id} "
+                "is failed to be created!"
+            )
+            progress.status = IngestorSessionStatus.FAILED
+            progress.save()
+            raise FarmRegistryException(
+                f"Temporary table {self.table_name} does not exist."
+            )
+        # Get total row count in the temporary table
+        with connection.cursor() as cursor:
+            cursor.execute(f"SELECT COUNT(*) FROM {self.table_name_sql};")
+            self.execution_times['total_rows'] = cursor.fetchone()[0]
+            progress.row_count = self.execution_times['total_rows']
+
+        if progress.row_count == 0:
+            progress.notes = "No rows found in the CSV file."
+            progress.status = IngestorSessionStatus.FAILED
+            progress.save()
+            raise FarmRegistryException(
+                "No rows found in the CSV file."
+            )
+
+        progress.notes = f"Execution time: {ogr2_total_time}"
+        progress.status = IngestorSessionStatus.SUCCESS
+        progress.save()
+
+        # create index on columns: farmer_id, crop_txt, crop_stage_txt
+        progress = self._add_progress('create_index')
+        with connection.cursor() as cursor:
+            cursor.execute(
+                f'CREATE INDEX ON {self.table_name_sql} (farmer_id)'
+            )
+            cursor.execute(
+                f'CREATE INDEX ON {self.table_name_sql} (crop_txt)'
+            )
+            cursor.execute(
+                f'CREATE INDEX ON {self.table_name_sql} (crop_stage_txt)'
+            )
+        progress.status = IngestorSessionStatus.SUCCESS
+        progress.save()
+
+        # update farm_id using join on unique_id
+        self._execute_query(f"""
+            WITH matched AS (
+                SELECT gf.unique_id, gf.id as farm_id, gf.grid_id,
+                tfrs.farmer_id, tfrs.ogc_fid
+                FROM {self.table_name_sql} tfrs
+                JOIN gap_farm gf ON gf.unique_id = tfrs.farmer_id
+            )
+            UPDATE {self.table_name_sql} tfrs
+            SET farm_id = m.farm_id, grid_id = m.grid_id
+            FROM matched m
+            WHERE tfrs.ogc_fid = m.ogc_fid;
+        """, 'update_farm_id')
+
+        # update grid_id using spatial join
+        self._execute_query(f"""
+            WITH matched AS (
+                SELECT tfrs.ogc_fid, g.id as grid_id
+                FROM {self.table_name_sql} tfrs
+                JOIN gap_grid g
+                ON ST_Intersects(g.geometry, tfrs.wkb_geometry)
+                WHERE tfrs.grid_id IS NULL
+            )
+            UPDATE {self.table_name_sql} tfrs
+            SET grid_id = m.grid_id
+            FROM matched m
+            WHERE tfrs.ogc_fid = m.ogc_fid;
+        """, 'update_grid_id')
+
+        # split crop into crop_txt and crop_stage_txt
+        self._execute_query(f"""
+            UPDATE {self.table_name_sql}
+            SET crop_txt = split_part(crop, '_', 1),
+                crop_stage_txt = split_part(crop, '_', 2);
+        """, 'split_crop')
+
+        # fix Medium stage
+        self._execute_query(f"""
+            UPDATE {self.table_name_sql}
+            SET crop_stage_txt = 'Mid'
+            WHERE crop_stage_txt = 'Medium';
+        """, 'fix_medium_stage')
+
+        # update crop_id
+        self._execute_query(f"""
+            WITH matched AS (
+                SELECT gc.id as crop_id, tfrs.ogc_fid
+                FROM {self.table_name_sql} tfrs
+                JOIN gap_crop gc ON LOWER(gc.name) = LOWER(tfrs.crop_txt)
+            )
+            UPDATE {self.table_name_sql} tfrs
+            SET crop_id = m.crop_id
+            FROM matched m
+            WHERE tfrs.ogc_fid = m.ogc_fid;
+        """, 'update_crop_id')
+
+        # update crop_stage_id
+        self._execute_query(f"""
+            WITH matched AS (
+                SELECT gc.id as stage_id, tfrs.ogc_fid
+                FROM {self.table_name_sql} tfrs
+                JOIN gap_cropstagetype gc ON
+                LOWER(gc.name) = LOWER(tfrs.crop_stage_txt)
+            )
+            UPDATE {self.table_name_sql} tfrs
+            SET crop_stage_id = m.stage_id
+            FROM matched m
+            WHERE tfrs.ogc_fid = m.ogc_fid;
+        """, 'update_crop_stage_id')
+
+        # insert into gap_farm
+        self._execute_query(f"""
+            INSERT INTO public.gap_farm (unique_id, geometry, grid_id)
+            SELECT DISTINCT ON (tfrs.farmer_id)
+            tfrs.farmer_id, tfrs.wkb_geometry, tfrs.grid_id
+            FROM {self.table_name_sql} tfrs
+            WHERE tfrs.farm_id IS NULL;
+        """, 'insert_farm')
+
+        # update back the farm_id
+        self._execute_query(f"""
+            WITH matched AS (
+                SELECT gf.unique_id, gf.id as farm_id,
+                tfrs.farmer_id, tfrs.ogc_fid
+                FROM {self.table_name_sql} tfrs
+                JOIN gap_farm gf ON gf.unique_id = tfrs.farmer_id
+                WHERE tfrs.farm_id IS NULL
+            )
+            UPDATE {self.table_name_sql} tfrs
+            SET farm_id = m.farm_id
+            FROM matched m
+            WHERE tfrs.ogc_fid = m.ogc_fid;
+        """, 'update_farm_id_2')
+
+        # Count rows that will be inserted into gap_farmregistry
+        with connection.cursor() as cursor:
+            cursor.execute(f"""
+                SELECT COUNT(*)
+                FROM {self.table_name_sql} tfrs
+                WHERE tfrs.farm_id IS NOT NULL AND
+                tfrs.crop_id IS NOT NULL AND
+                tfrs.crop_stage_id IS NOT NULL AND
+                tfrs.planting_date IS NOT NULL AND
+                tfrs.grid_id IS NOT NULL;
+            """)
+            self.execution_times['farmregistry_insert_count'] = (
+                cursor.fetchone()[0]
+            )
+
+        # Check if farmregistry_insert_count matches total_rows
+        if (
+            self.execution_times['farmregistry_insert_count'] !=
+            self.execution_times['total_rows']
+        ):
+            raise FarmRegistryException(
+                "Mismatch in row counts: "
+                "farmregistry_insert_count "
+                f"({self.execution_times['farmregistry_insert_count']}) "
+                "does not match total_rows "
+                f"({self.execution_times['total_rows']})."
+            )
+
+        # insert into gap_farmregistry
+        self._execute_query(f"""
+            INSERT INTO public.gap_farmregistry
+            (planting_date, crop_id, crop_stage_type_id, farm_id, group_id)
+            SELECT tfrs.planting_date, tfrs.crop_id,
+            tfrs.crop_stage_id, tfrs.farm_id, {self.group.id} as group_id
+            FROM {self.table_name_sql} tfrs
+            WHERE tfrs.farm_id IS NOT NULL AND tfrs.crop_id IS NOT NULL AND
+            tfrs.crop_stage_id IS NOT NULL AND
+            tfrs.planting_date IS NOT NULL AND tfrs.grid_id IS NOT NULL;
+        """, 'insert_farmregistry')
 
     def run(self):
         """Run the ingestion process."""
         if not self.session.file:
             raise FileNotFoundException("No file found for ingestion.")
-        dir_path = self._extract_zip_file()
         try:
-            self._run(dir_path)
-
-            # Final batch insert (ensures all remaining farms are inserted)
-            if self.farm_list:
-                self._bulk_insert_farms_and_registries()
-
-            # If no errors occurred in `_run()`, mark as SUCCESS
-            if self.session.status != IngestorSessionStatus.FAILED:
-                self.session.status = IngestorSessionStatus.SUCCESS
+            self._extract_zip_file()
+            self._run()
         except Exception as e:
-            self.session.status = IngestorSessionStatus.FAILED
-            self.session.notes = str(e)
+            raise e
         finally:
-            shutil.rmtree(dir_path)
-            self.session.end_at = datetime.now(timezone.utc)
-            self.session.save()
+            # remove temporary table
+            self._execute_query(
+                f'DROP TABLE IF EXISTS {self.table_name_sql}',
+                'drop_temp_table'
+            )
+
+            # store execution times in session
+            if self.session.additional_config:
+                self.session.additional_config.update(self.execution_times)
+            else:
+                self.session.additional_config = self.execution_times
