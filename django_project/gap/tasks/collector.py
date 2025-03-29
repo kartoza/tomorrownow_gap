@@ -132,9 +132,12 @@ def run_tio_collector_session():
         name='Tomorrow.io Short-term Forecast',
         store_type=DatasetStore.ZARR
     )
+
+    config = get_ingestor_config_from_preferences(dataset.provider)
     # create the collector object
     collector_session = CollectorSession.objects.create(
-        ingestor_type=IngestorType.TIO_FORECAST_COLLECTOR
+        ingestor_type=IngestorType.TIO_FORECAST_COLLECTOR,
+        additional_config=config
     )
     _do_run_zarr_collector(dataset, collector_session, IngestorType.TOMORROWIO)
 

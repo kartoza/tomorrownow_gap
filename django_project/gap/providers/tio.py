@@ -144,6 +144,7 @@ class TomorrowIODatasetReader(BaseDatasetReader):
         self.warnings = None
         self.results = []
         self.verbose = verbose
+        self.error_status_codes = {}
 
     @classmethod
     def init_provider(cls):
@@ -395,6 +396,11 @@ class TomorrowIODatasetReader(BaseDatasetReader):
             self.errors = [error]
         else:
             self.errors.append(error)
+        # count the status_code
+        if response.status_code in self.error_status_codes:
+            self.error_status_codes[response.status_code] += 1
+        else:
+            self.error_status_codes[response.status_code] = 1
 
     def _get_result_datetime(self, interval: dict) -> datetime:
         """Parse datetime from API response.

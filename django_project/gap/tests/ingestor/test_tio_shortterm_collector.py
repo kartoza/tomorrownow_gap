@@ -11,22 +11,33 @@ from datetime import datetime
 from unittest.mock import patch
 
 import responses
+
 from django.conf import settings
 from django.contrib.gis.gdal import DataSource
 from django.contrib.gis.geos import Polygon, GEOSGeometry
 from django.core.files.storage import default_storage
 from django.test import TestCase
 from django.utils import timezone
+from functools import partial
 
 from core.settings.utils import absolute_path
 from gap.factories.grid import GridFactory
-from gap.ingestor.tio_shortterm import path
+from gap.ingestor.tio_shortterm import path, TioShortTermCollector
 from gap.models import (
     Country, IngestorSessionStatus, IngestorType
 )
 from gap.models.dataset import DataSourceFile
 from gap.models.ingestor import CollectorSession
 from gap.tests.mock_response import BaseTestWithPatchResponses, PatchRequest
+
+
+def mock_collector_run(self_obj, working_dir):
+    """Mock collector run."""
+    # Mock the collector run method
+    collector = TioShortTermCollector(
+        self_obj, working_dir=working_dir
+    )
+    collector.run()
 
 
 class TioShortTermCollectorTest(BaseTestWithPatchResponses, TestCase):
@@ -87,22 +98,26 @@ class TioShortTermCollectorTest(BaseTestWithPatchResponses, TestCase):
             f'{settings.STORAGE_DIR_PREFIX}tio-short-term-collector/test'
         )
 
-    def test_collector_empty_grid(self):
+    @patch.object(CollectorSession, '_run')
+    def test_collector_empty_grid(self, mock_run):
         """Testing collector."""
         session = CollectorSession.objects.create(
             ingestor_type=self.ingestor_type
         )
+        mock_run.side_effect = partial(mock_collector_run, session)
         session.run()
         session.refresh_from_db()
+        print(session.notes)
         self.assertEqual(session.status, IngestorSessionStatus.SUCCESS)
         self.assertEqual(DataSourceFile.objects.count(), 1)
         _file = default_storage.open(DataSourceFile.objects.first().name)
         with zipfile.ZipFile(_file, 'r') as zip_file:
             self.assertEqual(len(zip_file.filelist), 0)
 
+    @patch.object(CollectorSession, '_run')
     @patch('gap.ingestor.tio_shortterm.timezone')
     @responses.activate
-    def test_collector_one_grid(self, mock_timezone):
+    def test_collector_one_grid(self, mock_timezone, mock_run):
         """Testing collector."""
         self.init_mock_requests()
         today = datetime(
@@ -122,6 +137,7 @@ class TioShortTermCollectorTest(BaseTestWithPatchResponses, TestCase):
         session = CollectorSession.objects.create(
             ingestor_type=self.ingestor_type
         )
+        mock_run.side_effect = partial(mock_collector_run, session)
         session.run()
         session.refresh_from_db()
         self.assertEqual(session.dataset_files.count(), 1)
