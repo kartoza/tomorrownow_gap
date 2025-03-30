@@ -10,7 +10,9 @@ from factory.django import DjangoModelFactory
 
 
 class SignUpRequestFactory(DjangoModelFactory):
+    """SignUpRequest factory class."""
     class Meta:
+        """Meta class."""
         model = SignUpRequest
 
     first_name = "Test"
