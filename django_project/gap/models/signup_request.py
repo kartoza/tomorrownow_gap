@@ -35,6 +35,8 @@ class SignUpRequest(models.Model):
     )
 
     class Meta:
+        """Meta class."""
+
         db_table = 'sign_up_request'
         verbose_name = _('Sign up request')
         ordering = ['-submitted_at']
