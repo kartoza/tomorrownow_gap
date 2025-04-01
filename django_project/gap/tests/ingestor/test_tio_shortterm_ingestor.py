@@ -507,6 +507,7 @@ class TestDuckDBTioIngestor(TestCase):
 
     @patch('gap.ingestor.tio_shortterm.execute_dask_compute')
     def test_success_ingesteor(self, mock_dask_compute):
+        """Test ingestor success run."""
         self._create_duckdb_file()
 
         with patch.object(self.ingestor, '_open_zarr_dataset') as mock_open:
