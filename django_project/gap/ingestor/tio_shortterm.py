@@ -17,6 +17,7 @@ import xarray as xr
 import dask.array as da
 import geohash
 import duckdb
+import time
 from typing import List
 from datetime import timedelta, date, datetime, time as time_s
 import pytz
@@ -707,10 +708,28 @@ class TioShortTermDuckDBCollector(BaseIngestor):
                 self.end_dt, time=time_s(0, 0, 0), tzinfo=pytz.utc
             )
         )
-        reader.read()
-        if reader.is_success():
-            values = reader.get_data_values()
-            return values.to_json(), None
+        for attempt in range(3):
+            try:
+                reader.read()
+                if reader.is_success():
+                    values = reader.get_data_values()
+                    return values.to_json(), None
+                else:
+                    if attempt < 2:
+                        logger.warning(
+                            f"Attempt {attempt + 1} failed: "
+                            f"{reader.error_status_codes}"
+                        )
+                        time.sleep(3 ** attempt)
+            except Exception as e:
+                if attempt < 2:  # Retry for the first two attempts
+                    logger.warning(
+                        f"Attempt {attempt + 1} failed: {e}. Retrying..."
+                    )
+                    time.sleep(3 ** attempt)  # Exponential backoff
+                else:
+                    logger.error("Max retries reached. Failing.")
+                    raise
 
         return None, reader.error_status_codes
 
