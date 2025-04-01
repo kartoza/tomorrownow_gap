@@ -73,6 +73,7 @@ class SignupView(TemplateView):
     template_name = 'signup.html'
 
     def get_context_data(self, **kwargs):
+        """Get context data for Signup view."""
         context = super().get_context_data(**kwargs)
         preferences = Preferences.load()
 
