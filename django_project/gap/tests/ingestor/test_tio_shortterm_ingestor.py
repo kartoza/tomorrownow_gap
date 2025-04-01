@@ -306,7 +306,7 @@ class TestTioIngestor(TestCase):
 
     @patch('django.core.files.storage.default_storage.open')
     @patch('zipfile.ZipFile.namelist')
-    @patch('gap.ingestor.tio_shortterm.execute_dask_compute')
+    @patch('xarray.Dataset.to_zarr')
     def test_run_success(
             self, mock_dask_compute, mock_namelist, mock_default_storage):
         """Test run ingestor succesfully."""
@@ -505,7 +505,7 @@ class TestDuckDBTioIngestor(TestCase):
         os.remove(tmp_filepath)
         return grid
 
-    @patch('gap.ingestor.tio_shortterm.execute_dask_compute')
+    @patch('xarray.Dataset.to_zarr')
     def test_success_ingestor(self, mock_dask_compute):
         """Test ingestor success run."""
         self._create_duckdb_file()
