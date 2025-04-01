@@ -156,7 +156,7 @@ class TioShortTermCollector(BaseIngestor):
         try:
             self._run()
         except Exception as e:
-            logger.error('Ingestor Tio Short Term failed!', e)
+            logger.error('Ingestor Tio Short Term failed!')
             logger.error(traceback.format_exc())
             raise Exception(e)
         finally:
@@ -878,7 +878,7 @@ class TioShortTermDuckDBCollector(BaseIngestor):
         try:
             self._run()
         except Exception as e:
-            logger.error('Collector Tio Short Term failed!', e)
+            logger.error('Collector Tio Short Term failed!')
             logger.error(traceback.format_exc())
             raise Exception(e)
         finally:
