@@ -42,6 +42,7 @@ class DatasetStore:
     EXT_API = 'EXT_API'
     ZIP_FILE = 'ZIP_FILE'
     PARQUET = 'PARQUET'
+    DUCKDB = 'DUCKDB'
 
     @classmethod
     def to_ext(cls, store_type: str) -> str:
@@ -55,6 +56,8 @@ class DatasetStore:
         elif store_type == DatasetStore.PARQUET:
             # for partitioned parquet, we don't use file ext
             return ''
+        elif store_type == DatasetStore.DUCKDB:
+            return '.duckdb'
         else:
             raise NotImplementedError(
                 f'{store_type} does not have store implementation!'
@@ -170,6 +173,7 @@ class DataSourceFile(models.Model):
             (DatasetStore.ZARR, DatasetStore.ZARR),
             (DatasetStore.ZIP_FILE, DatasetStore.ZIP_FILE),
             (DatasetStore.PARQUET, DatasetStore.PARQUET),
+            (DatasetStore.DUCKDB, DatasetStore.DUCKDB),
         ),
         max_length=512
     )

@@ -5,7 +5,23 @@ Tomorrow Now GAP.
 .. note:: Geometry utils.
 """
 
+from django.db.models import FloatField
+from django.contrib.gis.db.models.functions import GeoFunc
 from django.contrib.gis.geos import Polygon
+
+
+class ST_X(GeoFunc):
+    """Custom GeoFunc to extract lon."""
+
+    output_field = FloatField()
+    function = 'ST_X'
+
+
+class ST_Y(GeoFunc):
+    """Custom GeoFunc to extract lat."""
+
+    output_field = FloatField()
+    function = 'ST_Y'
 
 
 def split_polygon_to_bbox(polygon: Polygon, size: int):

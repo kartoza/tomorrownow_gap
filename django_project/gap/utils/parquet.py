@@ -28,7 +28,7 @@ from gap.models import (
     Measurement, Dataset, DataSourceFile, Station,
     DatasetAttribute, StationHistory
 )
-from gap.providers.observation import ST_X, ST_Y
+from gap.utils.geometry import ST_X, ST_Y
 from gap.utils.ingestor_config import get_ingestor_config_from_preferences
 from core.utils.date import split_epochs_by_year, split_epochs_by_year_month
 
