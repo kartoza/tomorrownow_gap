@@ -65,3 +65,20 @@ class SentryProxyView(View):
             return HttpResponse(response.content, status=response.status_code)
 
         return HttpResponse(status=400)
+
+
+class SignupView(TemplateView):
+    """User signup page view."""
+
+    template_name = 'signup.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        preferences = Preferences.load()
+
+        context['gap_base_context'] = json.dumps({
+            'api_swagger_url': reverse('api:v1:schema-swagger'),
+            'api_docs_url': preferences.documentation_url
+        })
+
+        return context

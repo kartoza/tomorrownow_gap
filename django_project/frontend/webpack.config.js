@@ -14,7 +14,8 @@ const minimized = !isDev;
 
 let conf = {
     entry: {
-        App: './src/index.tsx'
+        App: './src/index.tsx',
+        Signup: './src/Signup.tsx',
     },
     output: {
         path: path.resolve(__dirname, "./bundles/frontend"),

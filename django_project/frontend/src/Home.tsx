@@ -1,32 +1,34 @@
 import React from 'react';
 import './styles/App.scss';
 import { useGapContext } from './contexts/GapContext';
-import { SignupAccountForm } from './pages/SignupAccount';
 import {
   Box,
   Button,
-  useDisclosure
+  Flex,
+  Spacer,
 } from '@chakra-ui/react';
-import {
-  Modal,
-  ModalOverlay,
-  ModalContent,
-  ModalHeader,
-  ModalCloseButton,
-  ModalBody,
-} from '@chakra-ui/modal';
 
 function Home() {
   const gapContext = useGapContext();
-  const { open, onOpen, onClose } = useDisclosure();
 
   const redirectToURL = (url: string) => {
     window.location.href = url;
   };
 
   return (
-    <div className="App">
-      <header className="App-header">
+    <Box className="App">
+      {/* Navbar with just Sign Up */}
+      <Flex as="nav" p={4} bg="gray.900" color="white" align="center">
+        <Spacer />
+        <a href="/signup/">
+          <Button colorScheme="purple" size="sm">
+            Sign Up
+          </Button>
+        </a>
+      </Flex>
+
+      {/* Main content */}
+      <Box className="App-header">
         <p>OSIRIS II Global Access Platform</p>
 
         <div className="button-container">
@@ -43,28 +45,8 @@ function Home() {
             API Documentation
           </div>
         </div>
-
-        <div className="button-container">
-          <Button colorScheme="purple" mt={4} onClick={onOpen}>
-            Sign Up
-          </Button>
-        </div>
-      </header>
-
-      {/* Signup Form Modal */}
-      <Modal isOpen={open} onClose={onClose} size="lg">
-        <ModalOverlay />
-        <ModalContent>
-          <ModalHeader textAlign="center" fontSize="xl">
-            Create Your Account
-          </ModalHeader>
-          <ModalCloseButton />
-          <ModalBody pb={6}>
-            <SignupAccountForm />
-          </ModalBody>
-        </ModalContent>
-      </Modal>
-    </div>
+      </Box>
+    </Box>
   );
 }
 

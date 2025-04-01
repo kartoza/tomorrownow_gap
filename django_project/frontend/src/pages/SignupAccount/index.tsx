@@ -3,6 +3,7 @@ import {
   Box,
   Button,
   Input,
+  Heading,
 } from '@chakra-ui/react';
 import { FormControl, FormLabel } from '@chakra-ui/form-control';
 import { useToast } from '@chakra-ui/toast';
@@ -30,14 +31,14 @@ const SignupAccountForm = () => {
     setLoading(true);
 
     // Confirm passwords match before submitting
-    if (formData.password !== formData.confirm_password) {
-        toast({
+    if (formData.password.trim() !== formData.confirm_password.trim()) {
+      toast({
         title: 'Passwords do not match',
         status: 'error',
         isClosable: true,
-        });
-        setLoading(false);
-        return;
+      });
+      setLoading(false);
+      return;
     }
 
     try {
@@ -89,6 +90,9 @@ const SignupAccountForm = () => {
 
   return (
     <Box maxW="sm" mx="auto" mt={8} px={4}>
+      <Heading as="h1" size="lg" textAlign="center" mb={6}>
+      Create Your Account
+      </Heading>
       <form onSubmit={handleSubmit}>
         <Stack spacing={4}>
           <FormControl isRequired>
@@ -114,7 +118,7 @@ const SignupAccountForm = () => {
           <FormControl isRequired>
             <FormLabel>Confirm Password</FormLabel>
             <Input type="password" name="confirm_password" value={formData.confirm_password} onChange={handleChange}/>
-            </FormControl>
+          </FormControl>
 
           <Button type="submit" colorScheme="purple" loading={loading}>
             Create Account
