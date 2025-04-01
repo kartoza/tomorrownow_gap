@@ -137,7 +137,7 @@ class TestTioIngestor(TestCase):
         self.zarr_source = DataSourceFileFactory.create(
             dataset=self.dataset,
             format=DatasetStore.ZARR,
-            name='tio.zarr'
+            name=f'tio_{str(uuid.uuid4())}.zarr'
         )
         self.session = IngestorSession.objects.create(
             ingestor_type=IngestorType.TOMORROWIO,
@@ -424,7 +424,7 @@ class TestDuckDBTioIngestor(TestCase):
         self.zarr_source = DataSourceFileFactory.create(
             dataset=self.dataset,
             format=DatasetStore.ZARR,
-            name='tio.zarr'
+            name=f'tio_{uuid.uuid4()}.zarr'
         )
         self.session = IngestorSession.objects.create(
             ingestor_type=IngestorType.TOMORROWIO,
@@ -506,7 +506,7 @@ class TestDuckDBTioIngestor(TestCase):
         return grid
 
     @patch('gap.ingestor.tio_shortterm.execute_dask_compute')
-    def test_success_ingesteor(self, mock_dask_compute):
+    def test_success_ingestor(self, mock_dask_compute):
         """Test ingestor success run."""
         self._create_duckdb_file()
 
