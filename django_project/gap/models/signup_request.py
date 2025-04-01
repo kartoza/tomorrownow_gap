@@ -2,13 +2,22 @@
 """
 Tomorrow Now GAP.
 
-.. note:: Preferences
+.. note:: Sign up request model.
 
 """
 
 from django.contrib.gis.db import models
+from django.conf import settings
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
+
+
+class RequestStatus(models.TextChoices):
+    """Request status choices."""
+
+    PENDING = 'PENDING', _('Pending')
+    APPROVED = 'APPROVED', _('Approved')
+    REJECTED = 'REJECTED', _('Rejected')
 
 
 class SignUpRequest(models.Model):
@@ -29,9 +38,28 @@ class SignUpRequest(models.Model):
     description = models.TextField(
         help_text=_("Describe your request or interest.")
     )
+    status = models.CharField(
+        verbose_name=_('Status'),
+        max_length=10,
+        choices=RequestStatus.choices,
+        default=RequestStatus.PENDING
+    )
     submitted_at = models.DateTimeField(
         verbose_name=_('Submitted at'),
         default=timezone.now
+    )
+    approved_at = models.DateTimeField(
+        verbose_name=_('Approved at'),
+        blank=True,
+        null=True
+    )
+    approved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name=_('Approved by'),
+        on_delete=models.SET_NULL,
+        related_name='approved_requests',
+        blank=True,
+        null=True
     )
 
     class Meta:
