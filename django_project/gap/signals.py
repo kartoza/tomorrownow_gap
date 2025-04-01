@@ -15,6 +15,7 @@ from gap.models import SignUpRequest
 
 @receiver(post_save, sender=SignUpRequest)
 def notify_user_managers_on_signup(sender, instance, created, **kwargs):
+    """Notify user managers on sign up."""
     if not created:
         return
 

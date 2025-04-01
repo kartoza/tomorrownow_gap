@@ -19,7 +19,7 @@ class TestSignUpRequestSignal(TestCase):
     """Test email is sent to managers on sign-up request."""
 
     def setUp(self):
-        # Create User Manager group
+        """ Create User Manager group"""
         self.manager_group = Group.objects.create(name="User Manager")
         self.manager = User.objects.create_user(
             username="manager1",

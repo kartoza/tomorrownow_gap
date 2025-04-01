@@ -24,4 +24,4 @@ class GAPConfig(AppConfig):
         salientsdk.login_api.download_query = patch_download_query
 
         # Import signals
-        from gap.signals import notify_user_managers_on_signup
+        from gap.signals import notify_user_managers_on_signup # noqa
