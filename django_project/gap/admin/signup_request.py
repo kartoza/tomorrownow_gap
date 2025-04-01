@@ -18,6 +18,7 @@ User = get_user_model()
 
 class ApprovedByManagerFilter(admin.SimpleListFilter):
     """Filter approved_by by users in 'Manager' group."""
+
     title = _('Approved by (Managers only)')
     parameter_name = 'approved_by'
 
@@ -25,7 +26,9 @@ class ApprovedByManagerFilter(admin.SimpleListFilter):
         """Return a list of tuples."""
         try:
             managers = User.objects.filter(groups__name='User Manager')
-            return [(user.id, user.get_full_name() or user.username) for user in managers]
+            return [(
+                user.id, user.get_full_name() or user.username
+            ) for user in managers]
         except Group.DoesNotExist:
             return []
 
@@ -41,7 +44,9 @@ class SignUpRequestAdmin(admin.ModelAdmin):
     """Sign Up Request Admin."""
 
     list_display = (
-        'first_name', 'last_name', 'email', 'status', 'submitted_at', 'approved_by', 'approved_at'
+        'first_name', 'last_name',
+        'email', 'status',
+        'submitted_at', 'approved_by', 'approved_at'
     )
     search_fields = ('first_name', 'last_name', 'email')
     list_filter = ('status', 'submitted_at', ApprovedByManagerFilter)
