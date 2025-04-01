@@ -6,9 +6,12 @@ Tomorrow Now GAP.
 """
 
 import os
+import json
+import uuid
 from unittest.mock import patch, MagicMock
-from datetime import date
+from datetime import date, datetime
 import zipfile
+import duckdb
 import numpy as np
 import pandas as pd
 import dask.array as da
@@ -22,7 +25,12 @@ from gap.models.ingestor import (
     IngestorType,
     CollectorSession
 )
-from gap.ingestor.tio_shortterm import TioShortTermIngestor, CoordMapping
+from gap.ingestor.tio_shortterm import (
+    TioShortTermIngestor,
+    CoordMapping,
+    TioShortTermDuckDBIngestor,
+    TioShortTermDuckDBCollector
+)
 from gap.ingestor.exceptions import (
     MissingCollectorSessionException, FileNotFoundException,
     AdditionalConfigNotFoundException
@@ -91,7 +99,7 @@ def create_polygon():
 
 
 class TestTioIngestor(TestCase):
-    """Salient ingestor test case."""
+    """Tomorrow.io ingestor test case."""
 
     fixtures = [
         '2.provider.json',
@@ -108,7 +116,7 @@ class TestTioIngestor(TestCase):
     def setUp(
             self, mock_zarr_reader,
             mock_netcdf_media_s3):
-        """Initialize TestSalientIngestor."""
+        """Initialize TestTioIngestor."""
         super().setUp()
         self.dataset = Dataset.objects.get(
             name='Tomorrow.io Short-term Forecast',
@@ -375,3 +383,137 @@ class TestTioIngestor(TestCase):
         self.assertEqual(session.collectors.count(), 1)
         mock_collector.assert_called_once()
         mock_ingestor.assert_called_once_with(session.id)
+
+
+class TestDuckDBTioIngestor(TestCase):
+    """Tomorrow.io ingestor test case."""
+
+    fixtures = [
+        '2.provider.json',
+        '3.station_type.json',
+        '4.dataset_type.json',
+        '5.dataset.json',
+        '6.unit.json',
+        '7.attribute.json',
+        '8.dataset_attribute.json'
+    ]
+
+    @patch('gap.utils.netcdf.NetCDFMediaS3')
+    @patch('gap.utils.zarr.BaseZarrReader')
+    def setUp(
+            self, mock_zarr_reader,
+            mock_netcdf_media_s3):
+        """Initialize TestDuckDBTioIngestor."""
+        super().setUp()
+        self.dataset = Dataset.objects.get(
+            name='Tomorrow.io Short-term Forecast',
+            store_type=DatasetStore.ZARR
+        )
+        self.collector = CollectorSession.objects.create(
+            ingestor_type=IngestorType.TIO_FORECAST_COLLECTOR
+        )
+        self.datasourcefile = DataSourceFileFactory.create(
+            dataset=self.dataset,
+            name='2024-10-02.duckdb',
+            format=DatasetStore.DUCKDB,
+            metadata={
+                'forecast_date': '2024-10-02'
+            }
+        )
+        self.collector.dataset_files.set([self.datasourcefile])
+        self.zarr_source = DataSourceFileFactory.create(
+            dataset=self.dataset,
+            format=DatasetStore.ZARR,
+            name='tio.zarr'
+        )
+        self.session = IngestorSession.objects.create(
+            ingestor_type=IngestorType.TOMORROWIO,
+            trigger_task=False,
+            additional_config={
+                'datasourcefile_id': self.zarr_source.id,
+                'datasourcefile_exists': True
+            }
+        )
+        self.session.collectors.set([self.collector])
+
+        self.mock_zarr_reader = mock_zarr_reader
+        self.mock_netcdf_media_s3 = mock_netcdf_media_s3
+        # self.mock_dask_compute = mock_dask_compute
+
+        self.ingestor = TioShortTermDuckDBIngestor(self.session)
+        self.ingestor.lat_metadata = LAT_METADATA
+        self.ingestor.lon_metadata = LON_METADATA
+
+    def _create_duckdb_file(self):
+        filepath = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            'data',
+            'tio_shorterm_collector',
+            'grid_data.zip'
+        )
+        # mock default_storage.open
+        f = open(filepath, "rb")
+
+        json_f = zipfile.ZipFile(f, 'r').open('grid-1.json')
+
+        # create a grid
+        grid = GridFactory(geometry=create_polygon())
+
+        # read the json file and create a duckdb file
+        tmp_filepath = os.path.join(
+            '/tmp', f'{str(uuid.uuid4())}.duckdb'
+        )
+        duckdb_conn = duckdb.connect(tmp_filepath)
+        collector_runner = TioShortTermDuckDBCollector(self.collector)
+        collector_runner._init_table(duckdb_conn)
+        json_data = json.load(json_f)
+        for item in json_data['data']:
+            date = datetime.fromisoformat(item['datetime'])
+            values = item['values']
+
+            param = [
+                grid.id,
+                grid.geometry.centroid.y,
+                grid.geometry.centroid.x,
+                date.date()
+            ]
+
+            param_names = []
+            param_placeholders = []
+            for attr in collector_runner.attribute_names:
+                param_names.append(attr)
+                param_placeholders.append('?')
+                if attr in values:
+                    param.append(values[attr])
+                else:
+                    param.append(None)
+
+            duckdb_conn.execute(f"""
+                INSERT INTO weather (grid_id, lat, lon, date,
+                    {', '.join(param_names)}
+                ) VALUES (?, ?, ?, ?, {', '.join(param_placeholders)})
+                """, param
+            )
+
+        duckdb_conn.close()
+        self.datasourcefile.name = os.path.basename(tmp_filepath)
+        collector_runner._upload_duckdb_file(self.datasourcefile)
+
+        json_f.close()
+        f.close()
+        # remove local file
+        os.remove(tmp_filepath)
+        return grid
+
+    @patch('gap.ingestor.tio_shortterm.execute_dask_compute')
+    def test_success_ingesteor(self, mock_dask_compute):
+        self._create_duckdb_file()
+
+        with patch.object(self.ingestor, '_open_zarr_dataset') as mock_open:
+            mock_open.return_value = mock_open_zarr_dataset()
+            self.ingestor._run()
+
+        mock_dask_compute.assert_called_once()
+        self.assertEqual(self.ingestor.metadata['total_json_processed'], 1)
+        self.assertEqual(len(self.ingestor.metadata['chunks']), 1)
+        self.assertEqual(self.collector.dataset_files.count(), 0)

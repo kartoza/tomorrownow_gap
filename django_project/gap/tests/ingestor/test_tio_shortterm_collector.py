@@ -543,6 +543,29 @@ class TioShortTermDuckDBCollectorTest(
             # Close the connection
             duckdb_conn.close()
 
+    def assert_empty_duckdb_file(self, data_source: DataSourceFile):
+        """Download and check duckdb file."""
+        s3_storage: S3Boto3Storage = storages["gap_products"]
+        with tempfile.NamedTemporaryFile(suffix='.duckdb') as tmp:
+            remote_path = data_source.metadata['remote_url']
+            # Download the file
+            with (
+                s3_storage.open(remote_path, "rb") as remote_file,
+                open(tmp.name, "wb") as local_file
+            ):
+                local_file.write(remote_file.read())
+            duckdb_conn = duckdb.connect(tmp.name)
+            # Check the number of tables in the database
+            tables = duckdb_conn.execute("SHOW TABLES").fetchall()
+            self.assertEqual(len(tables), 1)
+            # Check the table name
+            self.assertEqual(tables[0][0], "weather")
+            # Check the number of rows in the table
+            rows = duckdb_conn.execute(
+                "SELECT COUNT(*) FROM weather"
+            ).fetchone()
+            self.assertEqual(rows[0], 0)
+
     @patch('gap.ingestor.tio_shortterm.timezone')
     @responses.activate
     def test_collector_one_grid(self, mock_timezone):
@@ -632,3 +655,44 @@ class TioShortTermDuckDBCollectorTest(
         self.assertIn('forecast_date', data_source.metadata)
         self.assertIn('remote_url', data_source.metadata)
         self.assert_duckdb_file(data_source)
+
+    @patch('gap.ingestor.tio_shortterm.timezone')
+    @responses.activate
+    def test_failed_api(self, mock_timezone):
+        """Testing collector."""
+        self._mock_request(PatchRequest(
+            f'https://api.tomorrow.io/v4/timelines?apikey={self.api_key}',
+            response={
+                'type': 'invalid_request_error',
+                'message': 'Invalid request',
+            },
+            request_method='POST',
+            status_code=400
+        ))
+        today = datetime(
+            2024, 10, 1, 6, 0, 0
+        )
+        today = timezone.make_aware(
+            today, timezone.get_default_timezone()
+        )
+        mock_timezone.now.return_value = today
+        GridFactory(
+            geometry=Polygon(
+                (
+                    (0, 0), (0, 0.01), (0.01, 0.01), (0.01, 0), (0, 0)
+                )
+            )
+        )
+        session = CollectorSession.objects.create(
+            ingestor_type=self.ingestor_type,
+            additional_config={
+                'duckdb_num_threads': 1
+            }
+        )
+        session.run()
+        session.refresh_from_db()
+        self.assertEqual(session.dataset_files.count(), 1)
+        print(session.notes)
+        self.assertEqual(session.status, IngestorSessionStatus.SUCCESS)
+        self.assertEqual(session.dataset_files.count(), 1)
+        self.assert_empty_duckdb_file(session.dataset_files.first())
