@@ -16,6 +16,7 @@ User = get_user_model()
 
 
 class TokenGeneratorTests(TestCase):
+    """Test the token generation utility."""
     def setUp(self):
         self.user = User.objects.create_user(
             first_name="Alice",
@@ -27,6 +28,7 @@ class TokenGeneratorTests(TestCase):
         )
 
     def test_generate_verification_token(self):
+        """Test generating a verification token."""
         uid, token = generate_verification_token(self.user)
 
         # UID should decode back to the user's ID

@@ -15,7 +15,10 @@ User = get_user_model()
 
 @override_settings(DEFAULT_FROM_EMAIL="no-reply@example.com")
 class SendVerificationEmailTests(TestCase):
+    """Test the send_verification_email utility."""
+
     def setUp(self):
+        """Set up the test."""
         self.user = User.objects.create_user(
             first_name="Jane",
             last_name="Doe",
@@ -28,6 +31,7 @@ class SendVerificationEmailTests(TestCase):
         self.token = "testtoken"
 
     def test_send_verification_email_success(self):
+        """Test sending a verification email."""
         send_verification_email(self.user, self.uid, self.token)
 
         self.assertEqual(len(mail.outbox), 1)

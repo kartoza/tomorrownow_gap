@@ -18,7 +18,10 @@ User = get_user_model()
 
 
 class VerifyEmailViewTests(TestCase):
+    """Test the verify email view."""
+
     def setUp(self):
+        """Set up the test."""
         self.client = APIClient()
         self.user = User.objects.create(
             first_name="Test",
@@ -34,6 +37,7 @@ class VerifyEmailViewTests(TestCase):
         self.url = reverse("verify-email")
 
     def test_verify_email_success(self):
+        """Test verifying email."""
         response = self.client.get(
             self.url, {"uid": self.uid, "token": self.token}
         )
@@ -43,6 +47,7 @@ class VerifyEmailViewTests(TestCase):
         self.assertTrue(self.user.is_active)
 
     def test_verify_email_invalid_token(self):
+        """Test verifying email with invalid token."""
         response = self.client.get(
             self.url, {"uid": self.uid, "token": "invalid-token"}
         )
@@ -50,11 +55,13 @@ class VerifyEmailViewTests(TestCase):
         self.assertIn("Invalid or expired token", response.data["detail"])
 
     def test_verify_email_missing_parameters(self):
+        """Test verifying email with missing parameters."""
         response = self.client.get(self.url, {})
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("Missing parameters", response.data["detail"])
 
     def test_verify_email_invalid_uid(self):
+        """Test verifying email with invalid uid."""
         response = self.client.get(
             self.url, {"uid": "invalid", "token": self.token}
         )
