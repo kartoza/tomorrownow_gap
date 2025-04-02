@@ -1,3 +1,5 @@
+"""Views for user registration and email verification."""
+
 from rest_framework import generics
 from rest_framework.response import Response
 from django.contrib.auth import get_user_model
