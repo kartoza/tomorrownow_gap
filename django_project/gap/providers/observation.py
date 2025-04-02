@@ -575,7 +575,8 @@ class ObservationParquetReaderValue(DatasetReaderValue):
         if self.has_time_column and 'time' in df.columns:
             # Combine date and time columns if time column exists
             df['datetime'] = pd.to_datetime(
-                df['date'].dt.strftime('%Y-%m-%d') + ' ' + df['time']
+                df['date'].dt.strftime('%Y-%m-%d') + ' ' + df['time'],
+                utc=True
             )
             drop_columns = ['date', 'time']
         else:
@@ -697,10 +698,6 @@ class ObservationParquetReaderValue(DatasetReaderValue):
         try:
             # Execute the DuckDB query and fetch data
             df = self.conn.sql(self.query).df()
-            # Drop the station_id column
-            df = df.drop(columns=["station_id"])
-            # Set correct index
-            df = df.set_index(["date", "lat", "lon"])
 
             # Convert DataFrame to Xarray Dataset
             ds = xr.Dataset.from_dataframe(df)
