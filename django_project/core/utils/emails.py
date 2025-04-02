@@ -7,9 +7,16 @@ from django.contrib.sites.models import Site
 
 def send_verification_email(user, uid, token):
     """Send a verification email to a user."""
-    current_site = Site.objects.get_current()
-    domain = current_site.domain
-    activation_url = f"https://{domain}/verify-email/?uid={uid}&token={token}"
+    # For testing purposes
+    if settings.DEBUG:
+        domain = "http://localhost:8000"
+    else:
+        domain_name = Site.objects.get_current().domain
+        domain = f"https://{domain_name}"
+
+    activation_url = (
+        f"{domain}/api/auth/verify-email/?uid={uid}&token={token}"
+    )
     subject = "Verify Your Email"
     message = (
         f"Hello {user.first_name},"

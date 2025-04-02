@@ -4,6 +4,7 @@ from rest_framework import generics
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
 from django.contrib.auth import get_user_model
+from django.shortcuts import redirect
 from django.utils.http import urlsafe_base64_decode
 from django.contrib.auth.tokens import default_token_generator
 
@@ -18,6 +19,7 @@ class RegisterView(generics.CreateAPIView):
     """Register a new user."""
 
     serializer_class = RegisterSerializer
+    permission_classes = [AllowAny]
 
     def perform_create(self, serializer):
         """Create a new user and send a verification email."""
@@ -48,5 +50,5 @@ class VerifyEmailView(generics.GenericAPIView):
         if default_token_generator.check_token(user, token):
             user.is_active = True
             user.save()
-            return Response({"detail": "Email verified successfully."})
+            return redirect("/signup-request/")
         return Response({"detail": "Invalid or expired token."}, status=400)

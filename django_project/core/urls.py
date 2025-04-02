@@ -7,7 +7,7 @@ from django.urls import path, include, re_path
 
 from core.views import (
     PreferencesRedirectView, FlowerProxyView,
-    RegisterView, VerifyEmailView
+    RegisterView, VerifyEmailView, SignUpRequestView
 )
 
 
@@ -20,6 +20,11 @@ urlpatterns = [
         name='index'
     ),
     FlowerProxyView.as_url(),
+    path(
+        'api/signup-request/',
+        SignUpRequestView.as_view(),
+        name='signup-request'
+    ),
     path(
         'api/auth/register/',
         RegisterView.as_view(),

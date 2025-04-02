@@ -83,3 +83,8 @@ class SignupView(TemplateView):
         })
 
         return context
+
+
+class SignupRequestView(TemplateView):
+    """User signup request page view."""
+    template_name = 'signup_request.html'

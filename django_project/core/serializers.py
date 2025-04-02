@@ -3,6 +3,7 @@
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 from django.contrib.auth.password_validation import validate_password
+from gap.models import SignUpRequest
 
 User = get_user_model()
 
@@ -48,3 +49,13 @@ class RegisterSerializer(serializers.ModelSerializer):
             is_active=False,  # Email verification required
         )
         return user
+
+
+class SignUpRequestSerializer(serializers.ModelSerializer):
+    """Serializer for sign-up requests."""
+
+    class Meta:
+        """Meta class for SignUpRequestSerializer."""
+
+        model = SignUpRequest
+        fields = ['first_name', 'last_name', 'email', 'description']
