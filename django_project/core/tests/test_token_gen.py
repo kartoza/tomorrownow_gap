@@ -17,7 +17,9 @@ User = get_user_model()
 
 class TokenGeneratorTests(TestCase):
     """Test the token generation utility."""
+
     def setUp(self):
+        """Set up the test."""
         self.user = User.objects.create_user(
             first_name="Alice",
             last_name="Smith",
