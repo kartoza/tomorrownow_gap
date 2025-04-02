@@ -12,7 +12,8 @@ from django.conf import settings
 from core.factories import UserF, BackgroundTaskF
 from gap.tasks.ingestor import (
     run_daily_ingestor, notify_ingestor_failure,
-    run_ingestor_session
+    run_ingestor_session,
+    reset_measurements
 )
 from gap.models.ingestor import (
     IngestorSession, IngestorSessionStatus
@@ -159,3 +160,56 @@ class IngestorTaskTest(TestCase):
 
         assert mock_session.run.call_count == 3  # All sessions should be run
         mock_notify.assert_called_with(42, "Ingestor failure")
+
+    @mock.patch("gap.tasks.ingestor.logger")
+    @mock.patch("gap.tasks.ingestor.connection.cursor")
+    @mock.patch("gap.models.Dataset.objects.get")
+    def test_reset_measurements_valid_dataset(
+        self, mock_get_dataset, mock_cursor, mock_logger
+    ):
+        """Test reset_measurements for a valid dataset."""
+        mock_dataset = mock.Mock()
+        mock_dataset.name = "Arable Ground Observational"
+        mock_dataset.id = 1
+        mock_get_dataset.return_value = mock_dataset
+
+        mock_cursor.return_value.__enter__.return_value = mock.Mock()
+
+        reset_measurements(1)
+
+        raw_sql = ("""
+        delete from gap_measurement gm
+        where id in (
+            select gm.id from gap_measurement gm
+            join gap_datasetattribute gd on gd.id = gm.dataset_attribute_id
+            where gd.dataset_id = %s
+        );
+        """)
+
+        mock_cursor.return_value.__enter__.\
+            return_value.execute.assert_called_once_with(
+                raw_sql, [1]
+            )
+        mock_logger.info.assert_called_once_with(
+            "Measurements for dataset Arable Ground Observational "
+            "have been reset."
+        )
+
+    @mock.patch("gap.tasks.ingestor.logger")
+    @mock.patch("gap.models.Dataset.objects.get")
+    def test_reset_measurements_invalid_dataset(
+        self, mock_get_dataset, mock_logger
+    ):
+        """Test reset_measurements for an invalid dataset."""
+        mock_dataset = mock.Mock()
+        mock_dataset.name = "Invalid Dataset"
+        mock_get_dataset.return_value = mock_dataset
+
+        with self.assertRaises(ValueError) as context:
+            reset_measurements(1)
+
+        self.assertEqual(
+            str(context.exception),
+            "Invalid dataset Invalid Dataset to be reset!"
+        )
+        mock_logger.info.assert_not_called()

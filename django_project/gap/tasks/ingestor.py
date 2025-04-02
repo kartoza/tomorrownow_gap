@@ -12,9 +12,13 @@ from django.core.mail import send_mail
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.utils import timezone
+from django.db import connection
 
 from core.celery import app
-from gap.models import Dataset, DataSourceFile, Preferences, DatasetStore
+from gap.models import (
+    Dataset, DataSourceFile, Preferences,
+    DatasetStore
+)
 from gap.models.ingestor import (
     IngestorSession, IngestorType,
     IngestorSessionStatus
@@ -165,3 +169,32 @@ def convert_dataset_to_parquet(dataset_id: int):
     converter = converter_class(dataset, data_source)
     converter.setup()
     converter.run()
+
+
+@app.task(name='reset_measurements')
+def reset_measurements(dataset_id: int):
+    """Reset measurements for a dataset."""
+    dataset = Dataset.objects.get(id=dataset_id)
+    # for now, we only reset arable to update to hourly
+    if dataset.name not in [
+        'Arable Ground Observational'
+    ]:
+        raise ValueError(
+            f'Invalid dataset {dataset.name} to be reset!'
+        )
+
+    # Reset measurements
+    raw_sql = (
+        """
+        delete from gap_measurement gm
+        where id in (
+            select gm.id from gap_measurement gm
+            join gap_datasetattribute gd on gd.id = gm.dataset_attribute_id
+            where gd.dataset_id = %s
+        );
+        """
+    )
+    with connection.cursor() as cursor:
+        cursor.execute(raw_sql, [dataset.id])
+
+    logger.info(f"Measurements for dataset {dataset.name} have been reset.")

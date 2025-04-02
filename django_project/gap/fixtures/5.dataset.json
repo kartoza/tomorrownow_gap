@@ -105,7 +105,7 @@
       "description": null,
       "provider": 5,
       "type": 8,
-      "time_step": "DAILY",
+      "time_step": "HOURLY",
       "store_type": "TABLE",
       "is_internal_use": false,
       "observation_type": "GROUND_OBSERVATION"

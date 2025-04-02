@@ -403,7 +403,7 @@
       "description": "The mean relative humidity (between 0 and 1) in the day",
       "variable_name": "mean_relative_humidity",
       "unit": 6,
-      "is_active": true
+      "is_active": false
     }
   },
   {
@@ -414,7 +414,7 @@
       "description": "Daily mean temperature",
       "variable_name": "mean_day_temperature",
       "unit": 5,
-      "is_active": true
+      "is_active": false
     }
   },
   {
