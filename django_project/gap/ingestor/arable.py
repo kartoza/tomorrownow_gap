@@ -202,12 +202,14 @@ class ArableIngestor(BaseIngestor):
 
             # Get station data
             epoch_min, epoch_max = self.get_data(station)
-            min_time, max_time = find_max_min_epoch_dates(
-                min_time, max_time, epoch_min
-            )
-            min_time, max_time = find_max_min_epoch_dates(
-                min_time, max_time, epoch_max
-            )
+            if epoch_min:
+                min_time, max_time = find_max_min_epoch_dates(
+                    min_time, max_time, epoch_min
+                )
+            if epoch_max:
+                min_time, max_time = find_max_min_epoch_dates(
+                    min_time, max_time, epoch_max
+                )
 
         # update the ingested max and min dates
         if min_time:
