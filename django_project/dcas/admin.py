@@ -7,7 +7,7 @@ Tomorrow Now GAP DCAS.
 
 from import_export.admin import ExportMixin
 from import_export_celery.admin_actions import create_export_job_action
-from django.contrib import admin
+from django.contrib import admin, messages
 
 from dcas.models import (
     DCASConfig,
@@ -20,6 +20,13 @@ from dcas.models import (
     GDDMatrix
 )
 from dcas.resources import DCASErrorLogResource
+from core.utils.file import format_size
+from dcas.tasks import (
+    run_dcas,
+    export_dcas_minio,
+    export_dcas_sftp,
+    log_farms_without_messages
+)
 
 
 class ConfigByCountryInline(admin.TabularInline):
@@ -51,20 +58,80 @@ class DCASRuleAdmin(admin.ModelAdmin):
     )
 
 
+@admin.action(description='Trigger DCAS processing')
+def trigger_dcas_processing(modeladmin, request, queryset):
+    """Trigger dcas processing."""
+    run_dcas.delay(queryset.first().id)
+    modeladmin.message_user(
+        request,
+        'Process will be started in background!',
+        messages.SUCCESS
+    )
+
+
+@admin.action(description='Send DCAS output to minio')
+def trigger_dcas_output_to_minio(modeladmin, request, queryset):
+    """Send DCAS output to minio."""
+    export_dcas_minio.delay(queryset.first().id)
+    modeladmin.message_user(
+        request,
+        'Process will be started in background!',
+        messages.SUCCESS
+    )
+
+
+@admin.action(description='Send DCAS output to sftp')
+def trigger_dcas_output_to_sftp(modeladmin, request, queryset):
+    """Send DCAS output to sftp."""
+    export_dcas_sftp.delay(queryset.first().id)
+    modeladmin.message_user(
+        request,
+        'Process will be started in background!',
+        messages.SUCCESS
+    )
+
+
+@admin.action(description='Trigger DCAS error handling')
+def trigger_dcas_error_handling(modeladmin, request, queryset):
+    """Trigger DCAS error handling."""
+    log_farms_without_messages.delay(queryset.first().id)
+    modeladmin.message_user(
+        request,
+        'Process will be started in background!',
+        messages.SUCCESS
+    )
+
+
 @admin.register(DCASRequest)
 class DCASRequestAdmin(admin.ModelAdmin):
     """Admin page for DCASRequest."""
 
-    list_display = ('requested_at', 'country', 'start_time', 'end_time')
+    list_display = ('requested_at', 'start_time', 'end_time', 'status')
     list_filter = ('country',)
+    actions = (
+        trigger_dcas_processing,
+        trigger_dcas_output_to_minio,
+        trigger_dcas_output_to_sftp,
+        trigger_dcas_error_handling
+    )
 
 
 @admin.register(DCASOutput)
 class DCASOutputAdmin(admin.ModelAdmin):
     """Admin page for DCASOutput."""
 
-    list_display = ('delivered_at', 'request', 'file_name', 'status')
-    list_filter = ('request', 'status')
+    list_display = (
+        'delivered_at', 'request',
+        'file_name', 'status',
+        'get_size', 'delivery_by')
+    list_filter = ('request', 'status', 'delivery_by')
+
+    def get_size(self, obj: DCASOutput):
+        """Get the size."""
+        return format_size(obj.size)
+
+    get_size.short_description = 'Size'
+    get_size.admin_order_field = 'size'
 
 
 @admin.register(DCASErrorLog)
@@ -77,14 +144,21 @@ class DCASErrorLogAdmin(ExportMixin, admin.ModelAdmin):
     list_display = (
         "id",
         "request_id",
-        "farm_id",
+        "get_farm_unique_id",
         "error_type",
         "error_message",
         "logged_at",
     )
 
-    search_fields = ("error_message", "farm_id", "request__id")
-    list_filter = ("error_type", "logged_at")
+    search_fields = ("error_message", "farm__unique_id", "request__id")
+    list_filter = ("error_type", "logged_at", "request_id")
+
+    def get_farm_unique_id(self, obj: DCASErrorLog):
+        """Get the farm unique ID."""
+        return obj.farm.unique_id
+
+    get_farm_unique_id.short_description = 'Farm ID'
+    get_farm_unique_id.admin_order_field = 'farm__unique_id'
 
 # GDD Config and Matrix
 

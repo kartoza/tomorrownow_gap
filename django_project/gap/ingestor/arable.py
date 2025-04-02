@@ -8,15 +8,19 @@ Tomorrow Now GAP.
 import os
 
 import requests
+from datetime import datetime, timezone
 from django.contrib.gis.geos import Point
 
 from gap.ingestor.base import BaseIngestor
 from gap.ingestor.exceptions import ApiKeyNotFoundException
 from gap.models import (
     Provider, Station, StationType, IngestorSession, Dataset, DatasetType,
-    DatasetTimeStep, DatasetStore, Country, Measurement
+    Country, Measurement, DatasetStore
 )
 from gap.models.preferences import Preferences
+from core.utils.date import (
+    find_max_min_epoch_dates
+)
 
 PROVIDER = 'Arable'
 STATION_TYPE = 'Ground Observations'
@@ -41,6 +45,7 @@ class ArableAPI:
 class ArableIngestor(BaseIngestor):
     """Ingestor for arable data."""
 
+    DEFAULT_FORMAT = DatasetStore.PARQUET
     api_key = None
     hourly_exclude = ['mean_rh', 'meant']
 
@@ -57,19 +62,25 @@ class ArableIngestor(BaseIngestor):
         self.dataset_type = DatasetType.objects.get(
             variable_name=DATASET_TYPE
         )
-        self.dataset, _ = Dataset.objects.get_or_create(
-            name=DATASET_NAME,
-            provider=self.provider,
-            type=self.dataset_type,
-            time_step=DatasetTimeStep.HOURLY,
-            store_type=DatasetStore.TABLE
-        )
+        self.dataset = self._init_dataset()
+        self.data_source_file = None
 
         self.attributes = {}
         for dataset_attr in self.dataset.datasetattribute_set.all():
             if dataset_attr.source in self.hourly_exclude:
                 continue
             self.attributes[dataset_attr.source] = dataset_attr.id
+
+    def _init_dataset(self) -> Dataset:
+        """Fetch dataset for this ingestor.
+
+        :return: Dataset for this ingestor
+        :rtype: Dataset
+        """
+        return Dataset.objects.get(
+            name=DATASET_NAME,
+            provider__name=PROVIDER
+        )
 
     def get(self, url, params=None, page=1, is_pagination=True):
         """Request the API."""
@@ -101,6 +112,7 @@ class ArableIngestor(BaseIngestor):
     @staticmethod
     def last_iso_date_time(station: Station) -> str | None:
         """Last date measurements of station."""
+        # TODO: we need to query the parquet to get the last date time
         first_measurement = Measurement.objects.filter(
             station=station
         ).order_by('-date_time').first()
@@ -124,7 +136,15 @@ class ArableIngestor(BaseIngestor):
         data = self.get(
             ArableAPI().DATA, params=params, is_pagination=False
         )
+        min_time = None
+        max_time = None
         for row in data:
+            epoch = int(datetime.fromisoformat(row['time']).timestamp())
+            min_time, max_time = find_max_min_epoch_dates(
+                min_time, max_time, epoch
+            )
+
+            # iterate attribute value
             for source, attr_id in self.attributes.items():
                 try:
                     value = row[source]
@@ -139,6 +159,7 @@ class ArableIngestor(BaseIngestor):
                         )
                 except KeyError:
                     pass
+        return min_time, max_time
 
     def run(self):
         """Run the ingestor."""
@@ -146,6 +167,8 @@ class ArableIngestor(BaseIngestor):
 
         # Get stations or devices
         devices = self.get(ArableAPI().DEVICES)
+        min_time = None
+        max_time = None
         for device in devices:
             # Skip device that does not have location
             try:
@@ -178,4 +201,21 @@ class ArableIngestor(BaseIngestor):
             )
 
             # Get station data
-            self.get_data(station)
+            epoch_min, epoch_max = self.get_data(station)
+            min_time, max_time = find_max_min_epoch_dates(
+                min_time, max_time, epoch_min
+            )
+            min_time, max_time = find_max_min_epoch_dates(
+                min_time, max_time, epoch_max
+            )
+
+        # update the ingested max and min dates
+        if min_time:
+            self.min_ingested_date = datetime.fromtimestamp(
+                min_time, tz=timezone.utc
+            )
+
+        if max_time:
+            self.max_ingested_date = datetime.fromtimestamp(
+                max_time, tz=timezone.utc
+            )

@@ -39,6 +39,7 @@ from gap.utils.reader import (
     BaseDatasetReader
 )
 from gap.utils.zarr import BaseZarrReader
+from core.utils.date import closest_leap_year
 
 logger = logging.getLogger(__name__)
 PROVIDER_NAME = 'Tomorrow.io'
@@ -143,40 +144,13 @@ class TomorrowIODatasetReader(BaseDatasetReader):
         self.warnings = None
         self.results = []
         self.verbose = verbose
+        self.error_status_codes = {}
 
     @classmethod
     def init_provider(cls):
         """Init Tomorrow.io provider and variables."""
-        provider, _ = Provider.objects.get_or_create(name='Tomorrow.io')
-        dt_historical = DatasetType.objects.get(
-            variable_name='cbam_historical_analysis',
-            type=CastType.HISTORICAL
-        )
-        ds_historical, _ = Dataset.objects.get_or_create(
-            name='Tomorrow.io Historical Reanalysis',
-            provider=provider,
-            type=dt_historical,
-            store_type=DatasetStore.EXT_API,
-            defaults={
-                'time_step': DatasetTimeStep.DAILY,
-                'is_internal_use': True
-            }
-        )
+        _, _ = Provider.objects.get_or_create(name='Tomorrow.io')
         tomorrowio_shortterm_forecast_dataset()
-        dt_ltn = DatasetType.objects.get(
-            name=cls.LONG_TERM_NORMALS_TYPE,
-            type=CastType.HISTORICAL
-        )
-        ds_ltn, _ = Dataset.objects.get_or_create(
-            name='Tomorrow.io Long Term Normals (20 years)',
-            provider=provider,
-            type=dt_ltn,
-            store_type=DatasetStore.EXT_API,
-            defaults={
-                'time_step': DatasetTimeStep.DAILY,
-                'is_internal_use': True
-            }
-        )
 
     def _is_ltn_request(self):
         """Check if the request is for Long Term Normal (LTN) request."""
@@ -422,6 +396,11 @@ class TomorrowIODatasetReader(BaseDatasetReader):
             self.errors = [error]
         else:
             self.errors.append(error)
+        # count the status_code
+        if response.status_code in self.error_status_codes:
+            self.error_status_codes[response.status_code] += 1
+        else:
+            self.error_status_codes[response.status_code] = 1
 
     def _get_result_datetime(self, interval: dict) -> datetime:
         """Parse datetime from API response.
@@ -434,7 +413,10 @@ class TomorrowIODatasetReader(BaseDatasetReader):
         dt_str = interval.get('startTime')
         if self._is_ltn_request():
             dt_str = interval.get('startDate')
-            dt_str = f'{self.start_date.year}-{dt_str}'
+            year = self.start_date.year
+            if dt_str == '02-29':
+                year = closest_leap_year(year)
+            dt_str = f'{year}-{dt_str}'
             return datetime.strptime(
                 dt_str, '%Y-%m-%d').replace(tzinfo=pytz.utc)
         return datetime.fromisoformat(dt_str)
@@ -632,6 +614,10 @@ class TioZarrReader(BaseZarrReader):
                 val = val.drop_vars(self.date_variable).rename({
                     'forecast_date': 'date'
                 })
+                # Subtract 1 day from the date coordinate
+                val = val.assign_coords(
+                    date=val.date - np.timedelta64(1, "D")
+                )
                 self.xrDatasets.append(val)
 
     def get_data_values(self) -> DatasetReaderValue:
@@ -677,8 +663,11 @@ class TioZarrReader(BaseZarrReader):
 
         if start_dt < self.latest_forecast_date:
             return dataset[variables].sel(
-                forecast_date=slice(start_dt, end_dt),
-                **{self.date_variable: 0}
+                forecast_date=slice(
+                    start_dt + np.timedelta64(1, 'D'),
+                    end_dt + np.timedelta64(1, 'D')
+                ),
+                **{self.date_variable: -1}
             ).sel(
                 lat=point.y,
                 lon=point.x, method='nearest')
@@ -717,10 +706,13 @@ class TioZarrReader(BaseZarrReader):
 
         if start_dt < self.latest_forecast_date:
             return dataset[variables].sel(
-                forecast_date=slice(start_dt, end_dt),
+                forecast_date=slice(
+                    start_dt + np.timedelta64(1, 'D'),
+                    end_dt + np.timedelta64(1, 'D')
+                ),
                 lat=slice(lat_min, lat_max),
                 lon=slice(lon_min, lon_max),
-                **{self.date_variable: 0}
+                **{self.date_variable: -1}
             )
 
         min_idx = self._get_forecast_day_idx(start_dt)
@@ -759,8 +751,11 @@ class TioZarrReader(BaseZarrReader):
 
         if start_dt < self.latest_forecast_date:
             return dataset[variables].sel(
-                forecast_date=slice(start_dt, end_dt),
-                **{self.date_variable: 0}
+                forecast_date=slice(
+                    start_dt + np.timedelta64(1, 'D'),
+                    end_dt + np.timedelta64(1, 'D')
+                ),
+                **{self.date_variable: -1}
             ).where(
                 mask == 0,
                 drop=True
@@ -812,8 +807,11 @@ class TioZarrReader(BaseZarrReader):
 
         if start_dt < self.latest_forecast_date:
             return dataset[variables].sel(
-                forecast_date=slice(start_dt, end_dt),
-                **{self.date_variable: 0}
+                forecast_date=slice(
+                    start_dt + np.timedelta64(1, 'D'),
+                    end_dt + np.timedelta64(1, 'D')
+                ),
+                **{self.date_variable: -1}
             ).where(
                 mask_da,
                 drop=True

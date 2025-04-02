@@ -5,6 +5,7 @@ Tomorrow Now GAP.
 .. note:: DCAS Functions to process row data.
 """
 
+import datetime
 import pandas as pd
 from sqlalchemy import select, distinct, column, extract, func, cast
 from sqlalchemy.ext.automap import automap_base
@@ -67,7 +68,7 @@ class DataQuery:
         self.grid = self.base_schema.classes['gap_grid'].__table__
         self.country = self.base_schema.classes['gap_country'].__table__
 
-    def grid_data_query(self, farm_registry_group):
+    def grid_data_query(self, farm_registry_group_ids):
         """Get query for Grid Data."""
         subquery = select(
             self.grid.c.id.label(self.grid_id_index_col),
@@ -82,7 +83,7 @@ class DataQuery:
         ).join(
             self.country, self.grid.c.country_id == self.country.c.id
         ).where(
-            self.farmregistry.c.group_id == farm_registry_group.id
+            self.farmregistry.c.group_id.in_(farm_registry_group_ids)
         ).order_by(
             self.grid.c.id
         )
@@ -101,7 +102,7 @@ class DataQuery:
             column('country_id'),
         ).select_from(subquery)
 
-    def _grid_data_with_crop_subquery(self, farm_registry_group):
+    def _grid_data_with_crop_subquery(self, farm_registry_group_ids):
         return select(
             self.grid.c.id.label(self.grid_id_index_col),
             self.grid.c.id.label('grid_id'),
@@ -129,14 +130,14 @@ class DataQuery:
         ).join(
             self.grid, self.farm.c.grid_id == self.grid.c.id
         ).where(
-            self.farmregistry.c.group_id == farm_registry_group.id
+            self.farmregistry.c.group_id.in_(farm_registry_group_ids)
         ).order_by(
             self.grid.c.id
         )
 
-    def grid_data_with_crop_query(self, farm_registry_group):
+    def grid_data_with_crop_query(self, farm_registry_group_ids):
         """Get grid data with crop query."""
-        subquery = self._grid_data_with_crop_subquery(farm_registry_group)
+        subquery = self._grid_data_with_crop_subquery(farm_registry_group_ids)
         if self.limit:
             # for testing purpose
             subquery = subquery.limit(self.limit)
@@ -152,9 +153,9 @@ class DataQuery:
             column('grid_crop_key')
         ).distinct().select_from(subquery)
 
-    def grid_data_with_crop_meta(self, farm_registry_group):
+    def grid_data_with_crop_meta(self, farm_registry_group_ids):
         """Get metadata for grid with crop data."""
-        subquery = self._grid_data_with_crop_subquery(farm_registry_group)
+        subquery = self._grid_data_with_crop_subquery(farm_registry_group_ids)
         subquery = subquery.limit(1)
         subquery = subquery.subquery('grid_data')
         sql_query = select(
@@ -180,7 +181,7 @@ class DataQuery:
         )
         return df
 
-    def _farm_registry_subquery(self, farm_registry_group):
+    def _farm_registry_subquery(self, farm_registry_group_ids):
         subquery = select(
             self.farmregistry.c.id.label('farmregistry_id'),
             self.farmregistry.c.planting_date.label('planting_date'),
@@ -219,16 +220,16 @@ class DataQuery:
         ).join(
             self.country, self.grid.c.country_id == self.country.c.id
         ).where(
-            self.farmregistry.c.group_id == farm_registry_group.id
+            self.farmregistry.c.group_id.in_(farm_registry_group_ids)
         ).order_by(
             self.grid.c.id, self.farmregistry.c.id
         )
 
         return subquery
 
-    def farm_registry_query(self, farm_registry_group):
+    def farm_registry_query(self, farm_registry_group_ids):
         """Get Farm Registry data query."""
-        subquery = self._farm_registry_subquery(farm_registry_group)
+        subquery = self._farm_registry_subquery(farm_registry_group_ids)
         if self.limit:
             # for testing purpose
             subquery = subquery.limit(self.limit)
@@ -237,9 +238,9 @@ class DataQuery:
 
         return select(subquery)
 
-    def farm_registry_meta(self, farm_registry_group, request_date):
+    def farm_registry_meta(self, farm_registry_group_ids, request_date):
         """Get metadata for farm registry query."""
-        subquery = self._farm_registry_subquery(farm_registry_group)
+        subquery = self._farm_registry_subquery(farm_registry_group_ids)
         subquery = subquery.limit(1)
         subquery = subquery.subquery('farm_data')
 
@@ -283,30 +284,38 @@ class DataQuery:
         conndb.close()
         return df
 
-    def get_farms_without_messages(parquet_path: str, chunk_size: int = 500):
+    def get_farms_without_messages(
+        date: datetime.date, parquet_path: str, conn, chunk_size: int = 500
+    ):
         """
         Fetch farms without advisory messages using chunked processing.
 
+        :param date: FarmRegistries date to be filtered.
+        :type date: datetime.date
         :param parquet_path: Path to the final Parquet file.
         :type parquet_path: str
+        :param conn: DuckDB connection.
+        :type conn: DuckDB connection
         :param chunk_size: Number of records per chunk (default: 500).
         :type chunk_size: int
         :return: Generator yielding Pandas DataFrames in chunks.
         :rtype: Generator[pd.DataFrame]
         """
-        conn = duckdb.connect()
         offset = 0  # Start at the beginning
 
         try:
             while True:
                 query = f"""
-                    SELECT farm_id, crop_id
-                    FROM read_parquet('{parquet_path}')
+                    SELECT farm_id, crop, farm_unique_id, growth_stage
+                    FROM read_parquet('{parquet_path}', hive_partitioning=true)
                     WHERE message IS NULL
                     AND message_2 IS NULL
                     AND message_3 IS NULL
                     AND message_4 IS NULL
                     AND message_5 IS NULL
+                    AND year={date.year} AND month={date.month} AND
+                    day={date.day}
+                    ORDER BY registry_id
                     LIMIT {chunk_size} OFFSET {offset}
                 """
                 df = conn.sql(query).df()

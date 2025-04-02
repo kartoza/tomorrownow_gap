@@ -9,7 +9,9 @@ import os
 import responses
 from django.contrib.gis.gdal import DataSource
 from django.contrib.gis.geos import GEOSGeometry, Point
-from django.test import TestCase
+from django.test import TestCase, override_settings
+from django.core.files.storage import storages
+from django.utils import timezone
 
 from core.settings.utils import absolute_path
 from gap.ingestor.exceptions import EnvIsNotSetException
@@ -20,8 +22,10 @@ from gap.ingestor.wind_borne_systems import (
 )
 from gap.models import (
     Provider, StationType, Country, Station, IngestorSession,
-    IngestorSessionStatus, IngestorType
+    IngestorSessionStatus, IngestorType, Dataset, DataSourceFile,
+    DatasetStore
 )
+from gap.utils.parquet import WindborneParquetConverter
 from gap.tests.mock_response import BaseTestWithPatchResponses, PatchRequest
 
 
@@ -121,6 +125,9 @@ class WindBorneSystemsAPIIngestorTest(BaseTestWithPatchResponses, TestCase):
 
     def setUp(self):
         """Init test case."""
+        self.dataset = Dataset.objects.get(
+            name='WindBorne Balloons Observations'
+        )
         # Init kenya Country
         shp_path = os.path.join(
             os.path.dirname(os.path.abspath(__file__)),
@@ -143,8 +150,10 @@ class WindBorneSystemsAPIIngestorTest(BaseTestWithPatchResponses, TestCase):
         os.environ[USERNAME_ENV_NAME] = ''
         os.environ[PASSWORD_ENV_NAME] = ''
         session = IngestorSession.objects.create(
-            ingestor_type=self.ingestor_type
+            ingestor_type=self.ingestor_type,
+            trigger_task=False
         )
+        session.run()
         session.refresh_from_db()
         self.assertEqual(
             session.notes,
@@ -156,8 +165,10 @@ class WindBorneSystemsAPIIngestorTest(BaseTestWithPatchResponses, TestCase):
         os.environ[USERNAME_ENV_NAME] = 'Username'
         os.environ[PASSWORD_ENV_NAME] = ''
         session = IngestorSession.objects.create(
-            ingestor_type=self.ingestor_type
+            ingestor_type=self.ingestor_type,
+            trigger_task=False
         )
+        session.run()
         session.refresh_from_db()
         self.assertEqual(
             session.notes,
@@ -197,8 +208,11 @@ class WindBorneSystemsAPIIngestorTest(BaseTestWithPatchResponses, TestCase):
 
         # First import
         session = IngestorSession.objects.create(
-            ingestor_type=self.ingestor_type
+            ingestor_type=self.ingestor_type,
+            trigger_task=False,
+            trigger_parquet=False
         )
+        session.run()
         session.refresh_from_db()
         self.assertEqual(session.status, IngestorSessionStatus.SUCCESS)
         self.assertEqual(Station.objects.count(), 2)
@@ -329,4 +343,145 @@ class WindBorneSystemsAPIIngestorTest(BaseTestWithPatchResponses, TestCase):
                 ).values_list('value', flat=True)
             ),
             [3, 400, 30, 30]
+        )
+
+    def _remove_output(self, s3_path, s3, year):
+        """Remove parquet output from object storage."""
+        s3_storage = storages['gap_products']
+        path = (
+            f'{s3_path.replace(f's3://{s3['AWS_BUCKET_NAME']}/', '')}'
+            f'year={year}'
+        )
+        _, files = s3_storage.listdir(path)
+        print(files)
+        for file in files:
+            s3_storage.delete(file)
+
+    @responses.activate
+    @override_settings(DEBUG=True)
+    def test_convert_to_parquet(self):
+        """Test convert windborne data to parquet."""
+        self.init_mock_requests()
+        os.environ[USERNAME_ENV_NAME] = 'Username'
+        os.environ[PASSWORD_ENV_NAME] = 'password'
+
+        # Create mission 2
+        point = Point(
+            x=36.756561,
+            y=-1.131241,
+            srid=4326
+        )
+        provider = Provider.objects.get(
+            name=PROVIDER
+        )
+        station_type = StationType.objects.get(
+            name=STATION_TYPE
+        )
+        Station.objects.update_or_create(
+            provider=provider,
+            station_type=station_type,
+            code='mission-2',
+            defaults={
+                'name': 'mission-2',
+                'geometry': point,
+                'altitude': 500,
+            }
+        )
+
+        # First import
+        session = IngestorSession.objects.create(
+            ingestor_type=self.ingestor_type,
+            trigger_task=False,
+            trigger_parquet=False
+        )
+        session.run()
+        session.refresh_from_db()
+        self.assertEqual(session.status, IngestorSessionStatus.SUCCESS)
+        self.assertEqual(Station.objects.count(), 2)
+        first_station = Station.objects.first()
+        self.assertEqual(
+            first_station.stationhistory_set.count(), 2
+        )
+
+        data_source = DataSourceFile(name='winborne_test_store')
+        converter = WindborneParquetConverter(
+            self.dataset, data_source
+        )
+        converter.setup()
+        converter.run()
+        self.assertTrue(converter._check_parquet_exists(
+            converter._get_directory_path(data_source),
+            2024,
+            month=9
+        ))
+        self._remove_output(
+            converter._get_directory_path(data_source),
+            converter._get_s3_variables(),
+            2024
+        )
+
+    @responses.activate
+    @override_settings(DEBUG=True)
+    def test_ingestor_to_parquet(self):
+        """Test ingest windborne data to parquet."""
+        self.init_mock_requests()
+        os.environ[USERNAME_ENV_NAME] = 'Username'
+        os.environ[PASSWORD_ENV_NAME] = 'password'
+
+        # Create mission 2
+        point = Point(
+            x=36.756561,
+            y=-1.131241,
+            srid=4326
+        )
+        provider = Provider.objects.get(
+            name=PROVIDER
+        )
+        station_type = StationType.objects.get(
+            name=STATION_TYPE
+        )
+        Station.objects.update_or_create(
+            provider=provider,
+            station_type=station_type,
+            code='mission-2',
+            defaults={
+                'name': 'mission-2',
+                'geometry': point,
+                'altitude': 500,
+            }
+        )
+
+        # First import
+        data_source = DataSourceFile.objects.create(
+            name='winborne_test_store',
+            dataset=self.dataset,
+            format=DatasetStore.PARQUET,
+            start_date_time=timezone.now(),
+            end_date_time=timezone.now(),
+            created_on=timezone.now()
+        )
+        session = IngestorSession.objects.create(
+            ingestor_type=self.ingestor_type,
+            trigger_task=False,
+            additional_config={
+                'datasourcefile_id': data_source.id
+            }
+        )
+        session.run()
+        session.refresh_from_db()
+        self.assertEqual(session.status, IngestorSessionStatus.SUCCESS)
+        self.assertEqual(Station.objects.count(), 2)
+        converter = WindborneParquetConverter(
+            self.dataset, data_source
+        )
+        converter.setup()
+        self.assertTrue(converter._check_parquet_exists(
+            converter._get_directory_path(data_source),
+            2024,
+            month=9
+        ))
+        self._remove_output(
+            converter._get_directory_path(data_source),
+            converter._get_s3_variables(),
+            2024
         )

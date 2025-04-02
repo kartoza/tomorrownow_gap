@@ -107,7 +107,6 @@ class SalientCollector(BaseIngestor):
     def _store_as_netcdf_file(self, file_path: str, date_str: str):
         """Store the downscale Salient NetCDF to Default's Storage.
 
-        Data will be truncated to 3 months data.
         :param file_path: file path to downscale netcdf
         :type file_path: str
         :param date_str: forecast date in str
@@ -119,28 +118,15 @@ class SalientCollector(BaseIngestor):
         )
         # prepare start and end dates
         forecast_date = self._convert_forecast_date(date_str)
-        end_date = forecast_date + datetime.timedelta(days=3 * 30)
-        logger.info(f'Slicing dataset from {forecast_date} to {end_date}')
-        # open the original netcdf file
-        dataset = xr.open_dataset(file_path)
-
-        # select 3 months data
-        sliced_ds = dataset.sel(
-            forecast_day=slice(
-                forecast_date.isoformat(), end_date.isoformat()
-            )
-        )
+        end_date = forecast_date + datetime.timedelta(days=275)
+        logger.info(f'Salient dataset from {forecast_date} to {end_date}')
 
         # store as netcdf to S3
         filename = f'{str(uuid.uuid4())}.nc'
         netcdf_url = (
             NetCDFMediaS3.get_netcdf_base_url(self.s3) + filename
         )
-        sliced_file_path = os.path.join(self.working_dir, filename)
-        sliced_ds.to_netcdf(
-            sliced_file_path, engine='h5netcdf', format='NETCDF4')
-        self.fs.put(sliced_file_path, netcdf_url)
-        file_stats = os.stat(sliced_file_path)
+        self.fs.put(file_path, netcdf_url)
 
         # create DataSourceFile
         start_datetime = datetime.datetime(
@@ -180,12 +166,16 @@ class SalientCollector(BaseIngestor):
             os.environ.get("SALIENT_SDK_PASSWORD")
         )
 
+        # no need to upload new shapefile
         # create the requested locations
-        loc = sk.Location(shapefile=sk.upload_shapefile(
-            coords=self._get_coords(),
-            geoname="gap-1",
-            force=False)
-        )
+        # loc = sk.Location(shapefile=sk.upload_shapefile(
+        #     coords=self._get_coords(),
+        #     geoname="gap-1",
+        #     force=False)
+        # )
+        # use existing gap-1.geojson
+        # note: i'm unable to upload new shapefile, but gap-1 exists
+        loc = sk.Location(shapefile='gap-1.geojson')
 
         # request data
         fcst_file = sk.downscale(
@@ -195,6 +185,7 @@ class SalientCollector(BaseIngestor):
             members=50,
             force=False,
             verbose=settings.DEBUG,
+            length=275  # 9 months
         )
 
         self._store_as_netcdf_file(fcst_file, self._get_date_config())

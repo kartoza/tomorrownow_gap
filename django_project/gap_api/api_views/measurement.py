@@ -101,6 +101,7 @@ class MeasurementAPI(GAPAPILoggingMixin, APIView):
             description='Product type',
             type=openapi.TYPE_STRING,
             enum=[
+                'cbam_historical_analysis_bias_adjust',
                 'cbam_historical_analysis',
                 'arable_ground_observation',
                 'disdrometer_ground_observation',
@@ -109,7 +110,7 @@ class MeasurementAPI(GAPAPILoggingMixin, APIView):
                 'cbam_shortterm_forecast',
                 'salient_seasonal_forecast'
             ],
-            default='cbam_historical_analysis'
+            default='cbam_historical_analysis_bias_adjust'
         ),
         openapi.Parameter(
             'attributes',
@@ -648,7 +649,10 @@ class MeasurementAPI(GAPAPILoggingMixin, APIView):
                 dataset_dict[da.dataset.id].add_attribute(da)
             else:
                 try:
-                    reader = get_reader_from_dataset(da.dataset)
+                    reader = get_reader_from_dataset(
+                        da.dataset,
+                        self._preferences.api_use_parquet
+                    )
                     dataset_dict[da.dataset.id] = reader(
                         da.dataset, [da], location, start_dt, end_dt,
                         altitudes=(min_altitudes, max_altitudes),

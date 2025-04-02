@@ -169,7 +169,7 @@ class TestUserFileAPI(CommonMeasurementAPITest):
         )
         response = view(request)
         self.assertEqual(response.status_code, 200)
-        mocked_reader.assert_called_once_with(attribute1.dataset)
+        mocked_reader.assert_called_once_with(attribute1.dataset, False)
         self.assertIn('X-Accel-Redirect', response.headers)
         self.assertTrue(UserFile.objects.filter(
             user=self.superuser,
@@ -205,7 +205,7 @@ class TestUserFileAPI(CommonMeasurementAPITest):
         )
         response = view(request)
         self.assertEqual(response.status_code, 200)
-        mocked_reader.assert_called_once_with(attribute1.dataset)
+        mocked_reader.assert_called_once_with(attribute1.dataset, False)
         self.assertIn('X-Accel-Redirect', response.headers)
 
     @patch('gap_api.api_views.measurement.get_reader_from_dataset')
@@ -232,7 +232,7 @@ class TestUserFileAPI(CommonMeasurementAPITest):
         )
         response = view(request)
         self.assertEqual(response.status_code, 200)
-        mocked_reader.assert_called_once_with(attribute1.dataset)
+        mocked_reader.assert_called_once_with(attribute1.dataset, False)
         self.assertIn('X-Accel-Redirect', response.headers)
         self.assertTrue(UserFile.objects.filter(
             user=self.superuser,
@@ -268,7 +268,7 @@ class TestUserFileAPI(CommonMeasurementAPITest):
         )
         response = view(request)
         self.assertEqual(response.status_code, 200)
-        mocked_reader.assert_called_once_with(attribute1.dataset)
+        mocked_reader.assert_called_once_with(attribute1.dataset, False)
         self.assertIn('X-Accel-Redirect', response.headers)
 
     @patch('gap_api.api_views.measurement.get_reader_from_dataset')
@@ -296,7 +296,7 @@ class TestUserFileAPI(CommonMeasurementAPITest):
         )
         response = view(request)
         self.assertEqual(response.status_code, 200)
-        mocked_reader.assert_called_once_with(attribute1.dataset)
+        mocked_reader.assert_called_once_with(attribute1.dataset, False)
         self.assertIn('X-Accel-Redirect', response.headers)
         self.assertIn(f2.name, response.headers['X-Accel-Redirect'])
 

@@ -16,7 +16,8 @@ from gap.models import Dataset, DataSourceFile, DatasetStore
 from gap.models.ingestor import (
     IngestorSession,
     IngestorType,
-    CollectorSession
+    CollectorSession,
+    IngestorSessionStatus
 )
 from gap.ingestor.salient import SalientIngestor, SalientCollector
 from gap.factories import DataSourceFileFactory, DataSourceFileCacheFactory
@@ -100,17 +101,14 @@ class TestSalientCollector(SalientIngestorBaseTest):
         result = self.collector._convert_forecast_date('2024-08-28')
         self.assertEqual(result, date(2024, 8, 28))
 
-    @patch('xarray.open_dataset')
     @patch('os.stat')
     @patch('uuid.uuid4')
     @patch('gap.utils.netcdf.NetCDFMediaS3.get_netcdf_base_url')
     def test_store_as_netcdf_file(
         self, mock_get_netcdf_base_url, mock_uuid4,
-        mock_os_stat, mock_open_dataset
+        mock_os_stat
     ):
         """Test storing the downscaled Salient NetCDF as a file."""
-        mock_dataset = MagicMock()
-        mock_open_dataset.return_value = mock_dataset
         mock_uuid4.return_value = '1234-5678'
         mock_get_netcdf_base_url.return_value = 's3://fake-bucket/'
         mock_os_stat.return_value.st_size = 1048576
@@ -122,7 +120,7 @@ class TestSalientCollector(SalientIngestorBaseTest):
         self.assertEqual(self.collector.metadata['filesize'], 1048576)
         self.assertEqual(
             self.collector.metadata['forecast_date'], '2024-08-28')
-        self.assertEqual(self.collector.metadata['end_date'], '2024-11-26')
+        self.assertEqual(self.collector.metadata['end_date'], '2025-05-30')
 
     @patch('gap.ingestor.salient.sk')
     def test_run(self, mock_sk):
@@ -174,6 +172,26 @@ class TestSalientCollector(SalientIngestorBaseTest):
         mock_collector.assert_called_once()
         mock_ingestor.assert_called_once_with(session.id)
 
+    @patch("gap.tasks.collector.notify_collector_failure.delay")
+    @patch('gap.models.ingestor.CollectorSession.objects.create')
+    @patch('gap.tasks.ingestor.run_ingestor_session.delay')
+    def test_run_salient_collector_session_with_notify_failed(
+        self, mock_ingestor, mock_create, mock_notify
+    ):
+        """Test run salient collector session."""
+        mock_session = MagicMock()
+        mock_session.id = 100
+        mock_session.run.return_value = None  # No exception
+        mock_session.status = IngestorSessionStatus.FAILED
+        mock_session.notes = "Failure reason"
+        mock_session.dataset_files.count.return_value = 0
+        mock_create.return_value = mock_session
+
+        run_salient_collector_session()
+        mock_create.assert_called_once()
+        mock_ingestor.assert_not_called()
+        mock_notify.assert_called_once_with(100, "Failure reason")
+
 
 class TestSalientIngestor(SalientIngestorBaseTest):
     """Salient ingestor test case."""
@@ -200,7 +218,7 @@ class TestSalientIngestor(SalientIngestorBaseTest):
             ingestor_type=IngestorType.SALIENT,
             additional_config={
                 'datasourcefile_id': datasource.id,
-                'datasourcefile_zarr_exists': True
+                'datasourcefile_exists': True
             },
             trigger_task=False
         )

@@ -26,6 +26,6 @@ class Command(BaseCommand):
         dt = datetime.date(2024, 12, 1)
         farm_registry_group = FarmRegistryGroup.objects.get(id=1)
 
-        pipeline = DCASDataPipeline(farm_registry_group, dt)
+        pipeline = DCASDataPipeline([farm_registry_group.id], dt)
 
         pipeline.run()

@@ -71,7 +71,7 @@ def process_partition_total_gdd(
     for epoch in epoch_list:
         c_name = f'gdd_{epoch}'
         gdd_dfs[c_name] = np.where(
-            df['planting_date_epoch'] > epoch,
+            df['planting_date_epoch'] >= epoch,
             np.nan,
             (
                 (
@@ -130,6 +130,15 @@ def process_partition_seasonal_precipitation(
 
     # merge the df with grid_data
     df = df.merge(grid_data_df, on=['grid_id'], how='inner')
+
+    # trim total_rainfall if less than planting date
+    for epoch in epoch_list:
+        c_name = f'total_rainfall_{epoch}'
+        df[c_name] = np.where(
+            df['planting_date_epoch'] > epoch,
+            np.nan,
+            df[c_name]
+        )
 
     # calculate seasonal_precipitation
     grid_column_list.remove('grid_id')

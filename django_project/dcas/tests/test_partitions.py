@@ -100,7 +100,8 @@ class DCASPartitionsTest(DCASPipelineBaseTest):
         """Test process_partition_seasonal_precipitation."""
         epoch_list = [1, 2]
         df = pd.DataFrame({
-            'grid_id': [1, 2, 1]
+            'grid_id': [1, 2, 1],
+            'planting_date_epoch': [1, 2, 1],
         })
 
         mock_read_grid_data.return_value = pd.DataFrame({
@@ -120,7 +121,11 @@ class DCASPartitionsTest(DCASPipelineBaseTest):
         )
         pd.testing.assert_series_equal(
             result_df['seasonal_precipitation'],
-            pd.Series([23, 26, 23], name='seasonal_precipitation')
+            pd.Series(
+                [23, 14, 23],
+                name='seasonal_precipitation',
+                dtype='float64'
+            )
         )
 
     @patch('dcas.partitions.read_grid_data')

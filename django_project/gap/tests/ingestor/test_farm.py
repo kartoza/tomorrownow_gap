@@ -186,3 +186,55 @@ class FarmIngestorTest(TestCase):
         # Farm in correct group
         for farm in farms:
             self.farm_group.farms.get(id=farm.id)
+
+    def test_run_duplicates(self):
+        """Test when ingestor working with duplicates."""
+        filepath = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            'data', 'farms', 'Correct.xlsx'
+        )
+        _file = open(filepath, 'rb')
+        session = IngestorSession.objects.create(
+            file=SimpleUploadedFile(_file.name, _file.read()),
+            ingestor_type=IngestorType.FARM,
+            additional_config={
+                'farm_group_id': self.farm_group.id
+            },
+            trigger_task=False
+        )
+        session.run()
+        self.assertEqual(
+            session.ingestorsessionprogress_set.filter(
+                session=session,
+                status=IngestorSessionStatus.FAILED
+            ).count(), 0
+        )
+        session.delete()
+        self.assertEqual(session.notes, None)
+        self.assertEqual(session.status, IngestorSessionStatus.SUCCESS)
+        farms = Farm.objects.all()
+        self.assertEqual(farms.count(), 3)
+        # re-run and get the duplicates
+        _file.close()
+        _file = open(filepath, 'rb')
+        session = IngestorSession.objects.create(
+            file=SimpleUploadedFile(_file.name, _file.read()),
+            ingestor_type=IngestorType.FARM,
+            additional_config={
+                'farm_group_id': self.farm_group.id,
+                'skip_existing_farm_id': True
+            },
+            trigger_task=False
+        )
+        session.run()
+        self.assertEqual(
+            session.ingestorsessionprogress_set.filter(
+                session=session,
+                status=IngestorSessionStatus.FAILED
+            ).count(), 0
+        )
+        self.assertIn('duplicate_ids_path', session.additional_config)
+        self.assertIn('duplicate_ids_count', session.additional_config)
+        self.assertEqual(
+            session.additional_config['duplicate_ids_count'], 3
+        )

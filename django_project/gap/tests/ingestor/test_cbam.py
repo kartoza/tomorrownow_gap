@@ -168,7 +168,7 @@ class CBAMIngestorTest(CBAMIngestorBaseTest):
         self.assertEqual(ingestor.s3['AWS_ACCESS_KEY_ID'], 'test_access_key')
         self.assertEqual(ingestor.s3_options['key'], 'test_access_key')
         self.assertTrue(ingestor.datasource_file)
-        self.assertEqual(ingestor.datasource_file.name, 'cbam.zarr')
+        self.assertIn('.zarr', ingestor.datasource_file.name)
         self.assertTrue(ingestor.created)
 
     @patch('gap.utils.zarr.BaseZarrReader.get_s3_variables')
@@ -193,7 +193,7 @@ class CBAMIngestorTest(CBAMIngestorBaseTest):
             ingestor_type=IngestorType.CBAM,
             additional_config={
                 'datasourcefile_id': datasource.id,
-                'datasourcefile_zarr_exists': True
+                'datasourcefile_exists': True
             },
             trigger_task=False
         )
@@ -389,7 +389,7 @@ class CBAMIngestorTest(CBAMIngestorBaseTest):
         # Assert
         assert 'Date' not in dataset.attrs
 
-        zarr_url = 's3://bucket/cbam.zarr'
+        zarr_url = f's3://bucket/{instance.datasource_file.name}'
         mock_to_zarr.assert_called_once_with(
             zarr_url,
             mode='w',

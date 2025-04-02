@@ -19,7 +19,9 @@ from gap.models import (
     DataSourceFileCache
 )
 from gap.tasks.collector import run_collector_session
-from gap.tasks.ingestor import run_ingestor_session
+from gap.tasks.ingestor import (
+    run_ingestor_session, convert_dataset_to_parquet
+)
 from gap.utils.zarr import BaseZarrReader
 
 
@@ -63,6 +65,13 @@ class DatasetTypeAdmin(admin.ModelAdmin):
     )
 
 
+@admin.action(description='Run Parquet Converter Task')
+def trigger_parquet_converter(modeladmin, request, queryset):
+    """Run Parquet Converter."""
+    for query in queryset:
+        convert_dataset_to_parquet.delay(query.id)
+
+
 @admin.register(Dataset)
 class DatasetAdmin(admin.ModelAdmin):
     """Dataset admin."""
@@ -71,6 +80,7 @@ class DatasetAdmin(admin.ModelAdmin):
         'name', 'provider', 'type', 'time_step',
         'store_type', 'is_internal_use'
     )
+    actions = (trigger_parquet_converter,)
 
 
 @admin.register(DatasetAttribute)

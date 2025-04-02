@@ -69,7 +69,7 @@ class GrowthStageService:
 
         # Find the appropriate growth stage based on total GDD
         prev_stage = {
-            'gdd_treshold': 0
+            'gdd_threshold': 0
         }
         for stage in growth_stage_matrix:
             if total_gdd <= stage["gdd_threshold"]:

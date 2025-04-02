@@ -176,6 +176,7 @@ class TahmoIngestorTest(TestCase):
             file=self.correct_file,
             ingestor_type=self.ingestor_type,
             trigger_task=False,
+            trigger_parquet=False,
             additional_config={
                 'reset_data': True
             }
@@ -203,6 +204,7 @@ class TahmoIngestorTest(TestCase):
             file=self.correct_file,
             ingestor_type=self.ingestor_type,
             trigger_task=False,
+            trigger_parquet=False,
             additional_config={
                 'min_date': '2018-03-14'
             }

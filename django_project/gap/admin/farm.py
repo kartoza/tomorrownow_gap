@@ -15,7 +15,10 @@ from core.admin import AbstractDefinitionAdmin
 from gap.models import (
     FarmCategory, FarmRSVPStatus, Farm
 )
-from gap.models.farm_group import FarmGroup, FarmGroupCropInsightField
+from gap.models.farm_group import (
+    FarmGroup, FarmGroupCropInsightField,
+    FarmGroupMembership, FarmGroupRelationship
+)
 from gap.tasks.crop_insight import generate_spw, generate_crop_plan
 
 
@@ -64,7 +67,7 @@ class FarmGroupAdmin(AbstractDefinitionAdmin):
     list_display = (
         'id', 'name', 'description', 'user_count', 'farm_count', 'phone_number'
     )
-
+    exclude = ('farms',)
     filter_horizontal = ('farms', 'users')
     inlines = (FarmGroupCropInsightFieldInline,)
     actions = (
@@ -149,3 +152,25 @@ class FarmAdmin(admin.ModelAdmin):
     def longitude(self, obj: Farm):
         """Longitude of farm."""
         return obj.geometry.x
+
+
+@admin.register(FarmGroupMembership)
+class FarmGroupMembershipAdmin(admin.ModelAdmin):
+    """Admin for FarmGroupMembership."""
+
+    # Note: when adding FarmGroupRelationship manually,
+    # it's better to use this class since it's not loading all the farms
+    list_display = ('id', 'farm_id', 'farmgroup_id',)
+    search_fields = ('farm_id',)
+    list_filter = ('farmgroup_id',)
+
+
+@admin.register(FarmGroupRelationship)
+class FarmGroupRelationshipAdmin(admin.ModelAdmin):
+    """Admin for FarmGroupRelationship."""
+
+    list_display = (
+        'id', 'farm', 'farmgroup'
+    )
+    search_fields = ('farm__unique_id',)
+    list_filter = ('farmgroup',)

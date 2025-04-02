@@ -184,6 +184,22 @@ class DatasetReaderInput:
                 Point(x=bbox_list[2], y=bbox_list[3], srid=4326)
             ]), LocationInputType.BBOX)
 
+    @classmethod
+    def from_list_of_points(cls, points: List[Tuple[float, float]]):
+        """Create DatasetReaderInput from a list of points.
+
+        :param points: List of tuples with (lat, lon) coordinates
+        :type points: List[Tuple[float, float]]
+        :return: DatasetReaderInput instance
+        :rtype: DatasetReaderInput
+        """
+        point_objects = [
+            Point(lon, lat) for lat, lon in points
+        ]
+        return DatasetReaderInput(
+            point_objects, LocationInputType.LIST_OF_POINT,
+        )
+
     @property
     def geometry(self) -> GEOSGeometry:
         """Return geometry of geom_collection."""

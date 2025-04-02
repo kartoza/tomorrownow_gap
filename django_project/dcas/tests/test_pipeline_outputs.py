@@ -81,7 +81,7 @@ class DCASOutputsTest(DCASPipelineBaseTest):
             f.write("test message")
 
         # Call the method under test
-        pipeline_output._upload_to_sftp(test_file)
+        pipeline_output.upload_to_sftp(test_file)
 
         # Assertions
         # Verify `connect()` was called once

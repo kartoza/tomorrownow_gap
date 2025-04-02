@@ -5,22 +5,31 @@ Tomorrow Now GAP.
 .. note:: Observation Data Reader
 """
 
+import os
 import json
+import duckdb
+import uuid
+import numpy as np
 from _collections_abc import dict_values
 from datetime import datetime
 import pandas as pd
 import tempfile
-from django.db.models import Exists, OuterRef, F, FloatField, QuerySet
+import xarray as xr
+from django.db.models import Exists, OuterRef, F, QuerySet
 from django.db.models.functions.datetime import TruncDate, TruncTime
 from django.contrib.gis.geos import Polygon, Point
-from django.contrib.gis.db.models.functions import Distance, GeoFunc
+from django.contrib.gis.db.models.functions import Distance
 from typing import List, Tuple, Union
 from django.core.files.storage import storages
 from storages.backends.s3boto3 import S3Boto3Storage
+from django.conf import settings
 
 from gap.models import (
     Dataset,
     DatasetAttribute,
+    DataSourceFile,
+    DatasetStore,
+    DatasetTimeStep,
     Station,
     Measurement,
     Preferences
@@ -32,20 +41,7 @@ from gap.utils.reader import (
     DatasetReaderValue
 )
 from gap.utils.dask import execute_dask_compute
-
-
-class ST_X(GeoFunc):
-    """Custom GeoFunc to extract lon."""
-
-    output_field = FloatField()
-    function = 'ST_X'
-
-
-class ST_Y(GeoFunc):
-    """Custom GeoFunc to extract lat."""
-
-    output_field = FloatField()
-    function = 'ST_Y'
+from gap.utils.geometry import ST_X, ST_Y
 
 
 class CSVBuffer:
@@ -531,4 +527,456 @@ class ObservationDatasetReader(BaseDatasetReader):
             self.results, self.location_input, self.attributes,
             self.start_date, self.end_date, self.nearest_stations,
             self.result_count
+        )
+
+
+class ObservationParquetReaderValue(DatasetReaderValue):
+    """Class to generate the query output from Parquet files."""
+
+    def __init__(
+            self, val: duckdb.DuckDBPyConnection,
+            location_input: DatasetReaderInput,
+            attributes: List[DatasetAttribute],
+            start_date: datetime,
+            end_date: datetime,
+            query) -> None:
+        """Initialize ObservationParquetReaderValue class.
+
+        :param val: value that has been read
+        :type val: List[DatasetTimelineValue]
+        :param location_input: location input query
+        :type location_input: DatasetReaderInput
+        :param attributes: list of dataset attributes
+        :type attributes: List[DatasetAttribute]
+        """
+        super().__init__(
+            val, location_input, attributes, result_count=1
+        )
+        self.start_date = start_date
+        self.end_date = end_date
+        self.attributes = sorted(
+            self.attributes, key=lambda x: x.attribute.id
+        )
+        self.query = query
+
+    @property
+    def conn(self) -> duckdb.DuckDBPyConnection:
+        """Get DuckDB Connection."""
+        return self._val
+
+    def to_json(self):
+        """Generate json."""
+        output = {
+            'geometry': json.loads(self.location_input.geometry.json),
+        }
+        # Convert query results to a DataFrame
+        df = self.conn.sql(self.query).df()
+
+        if self.has_time_column and 'time' in df.columns:
+            # Combine date and time columns if time column exists
+            df['datetime'] = pd.to_datetime(
+                df['date'].dt.strftime('%Y-%m-%d') + ' ' + df['time']
+            )
+            drop_columns = ['date', 'time']
+        else:
+            # If dataset lacks time, only use the date
+            df['datetime'] = df['date']
+            drop_columns = ['date']
+        drop_columns.extend(['lat', 'lon'])
+        # Drop unnecessary columns safely
+        df = df.drop(columns=drop_columns, errors='ignore')
+        # Replace NaN with None
+        df = df.replace({np.nan: None})
+        output['data'] = df.to_dict(orient="records")
+        # TODO: the current structure is not consistent with others
+        self.conn.close()
+        return output
+
+    def to_csv_stream(self, suffix='.csv', separator=','):
+        """Generate csv bytes stream.
+
+        :param suffix: file extension, defaults to '.csv'
+        :type suffix: str, optional
+        :param separator: separator, defaults to ','
+        :type separator: str, optional
+        :yield: bytes of csv file
+        :rtype: bytes
+        """
+        with (
+            tempfile.NamedTemporaryFile(
+                suffix=suffix, delete=True, delete_on_close=False)
+        ) as tmp_file:
+            export_query = (
+                f"""
+                    COPY({self.query})
+                    TO '{tmp_file.name}'
+                    (HEADER, DELIMITER '{separator}');
+                """
+            )
+
+            self.conn.sql(export_query)
+            self.conn.close()
+
+            with open(tmp_file.name, 'r') as f:
+                while True:
+                    chunk = f.read(self.chunk_size_in_bytes)
+                    if not chunk:
+                        break
+                    yield chunk
+
+    def to_csv(self, suffix='.csv', separator=','):
+        """Generate CSV file save directly to object storage.
+
+        :param suffix: File extension, defaults to '.csv'
+        :type suffix: str, optional
+        :param separator: CSV separator, defaults to ','
+        :type separator: str, optional
+        :return: File path of the saved CSV file.
+        :rtype: str
+        """
+        output = self._get_file_remote_url(suffix)
+        self.s3 = self._get_s3_variables()
+        try:
+            # COPY statement to write directly to S3
+            export_query = (
+                f"""
+                COPY ({self.query})
+                TO 's3://{self.s3['AWS_BUCKET_NAME']}/{output}'
+                (HEADER, DELIMITER '{separator}');
+                """
+            )
+
+            self.conn.sql(export_query)
+
+        except Exception as e:
+            print(f"Error generating CSV: {e}")
+            raise
+        finally:
+            self.conn.close()
+
+        return output
+
+    def to_netcdf_stream(self, suffix='.nc'):
+        """Generate NetCDF bytes stream.
+
+        :param suffix: File extension, defaults to '.nc'
+        :type suffix: str, optional
+        :yield: bytes of netcdf file
+        :rtype: bytes
+        """
+        with tempfile.NamedTemporaryFile(
+            suffix=suffix,
+            delete=True,
+            delete_on_close=False
+        ) as tmp_file:
+            # Convert query results to a DataFrame
+            df = self.conn.sql(self.query).df()
+
+            # Convert DataFrame to Xarray Dataset
+            ds = xr.Dataset.from_dataframe(df)
+
+            # Save dataset to NetCDF
+            ds.to_netcdf(tmp_file.name, format='NETCDF4', engine='h5netcdf')
+
+            # Stream the file
+            with open(tmp_file.name, 'rb') as f:
+                while chunk := f.read(self.chunk_size_in_bytes):
+                    yield chunk
+            self.conn.close()
+
+    def to_netcdf(self, suffix=".nc"):
+        """Generate NetCDF file and save directly to object storage.
+
+        :param suffix: File extension, defaults to '.nc'
+        :type suffix: str, optional
+        :return: File path of the saved NetCDF file.
+        :rtype: str
+        """
+        output = self._get_file_remote_url(suffix)
+
+        try:
+            # Execute the DuckDB query and fetch data
+            df = self.conn.sql(self.query).df()
+            # Drop the station_id column
+            df = df.drop(columns=["station_id"])
+            # Set correct index
+            df = df.set_index(["date", "lat", "lon"])
+
+            # Convert DataFrame to Xarray Dataset
+            ds = xr.Dataset.from_dataframe(df)
+
+            # Create a temporary NetCDF file
+            with tempfile.NamedTemporaryFile(
+                suffix=suffix, delete=True, delete_on_close=False
+            ) as tmp_file:
+                ds.to_netcdf(
+                    tmp_file.name,
+                    format="NETCDF4",
+                    engine='h5netcdf'
+                )
+
+                # Upload to S3 (MinIO)
+                s3_storage = storages["gap_products"]
+                s3_storage.transfer_config = (
+                    Preferences.user_file_s3_transfer_config()
+                )
+                s3_storage.save(output, tmp_file)
+
+            print(f"NetCDF successfully uploaded to S3: {output}")
+
+        except Exception as e:
+            print(f"Error generating NetCDF: {e}")
+            raise
+        finally:
+            self.conn.close()
+
+        return output
+
+    def _get_file_remote_url(self, suffix):
+        """Generate a valid and secure S3 file path.
+
+        :param suffix: File extension.
+        :type suffix: str
+        :return: Secure and organized file path for S3 storage.
+        :rtype: str
+        """
+        s3 = self._get_s3_variables()
+
+        output_url = s3["AWS_DIR_PREFIX"]
+        if output_url and not output_url.endswith('/'):
+            output_url += '/'
+        output_url += f'user_data/{uuid.uuid4().hex}{suffix}'
+
+        return output_url
+
+
+class ObservationParquetReader(ObservationDatasetReader):
+    """Class to read tahmo dataset in GeoParquet."""
+
+    has_month_partition = False
+    has_altitudes = False
+    station_id_key = 'st_id'
+
+    def __init__(
+            self, dataset: Dataset, attributes: List[DatasetAttribute],
+            location_input: DatasetReaderInput, start_date: datetime,
+            end_date: datetime,
+            altitudes: Tuple[float, float] = None
+    ) -> None:
+        """Initialize ObservationParquetReader class.
+
+        :param dataset: Dataset from observation provider
+        :type dataset: Dataset
+        :param attributes: List of attributes to be queried
+        :type attributes: List[DatasetAttribute]
+        :param location_input: Location to be queried
+        :type location_input: DatasetReaderInput
+        :param start_date: Start date time filter
+        :type start_date: datetime
+        :param end_date: End date time filter
+        :type end_date: datetime
+        """
+        super().__init__(
+            dataset, attributes, location_input, start_date, end_date,
+            altitudes=altitudes
+        )
+        self.s3 = self._get_s3_variables()
+        self.has_time_column = dataset.time_step != DatasetTimeStep.DAILY
+
+    def _get_s3_variables(self) -> dict:
+        """Get s3 env variables for product bucket.
+
+        :return: Dictionary of S3 env vars
+        :rtype: dict
+        """
+        prefix = 'MINIO'
+        keys = [
+            'AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY',
+            'AWS_ENDPOINT_URL', 'AWS_REGION_NAME'
+        ]
+        results = {}
+        for key in keys:
+            results[key] = os.environ.get(f'{prefix}_{key}', '')
+        results['AWS_BUCKET_NAME'] = os.environ.get(
+            'MINIO_GAP_AWS_BUCKET_NAME', '')
+        results['AWS_DIR_PREFIX'] = os.environ.get(
+            'MINIO_GAP_AWS_DIR_PREFIX', '')
+        if settings.DEBUG:
+            results['AWS_ENDPOINT_URL'] = results['AWS_ENDPOINT_URL'].replace(
+                'http://', ''
+            )
+        else:
+            results['AWS_ENDPOINT_URL'] = results['AWS_ENDPOINT_URL'].replace(
+                'https://', ''
+            )
+        if results['AWS_ENDPOINT_URL'].endswith('/'):
+            results['AWS_ENDPOINT_URL'] = results['AWS_ENDPOINT_URL'][:-1]
+        return results
+
+    def _get_directory_path(self):
+        """Fetch the DataSourceFile for the dataset."""
+        data_source = DataSourceFile.objects.filter(
+            dataset=self.dataset,
+            format=DatasetStore.PARQUET,
+            is_latest=True
+        ).order_by('-id').first()
+
+        if not data_source:
+            raise ValueError(
+                "No valid DataSourceFile found for this dataset."
+            )
+
+        return (
+            f"s3://{self.s3['AWS_BUCKET_NAME']}/"
+            f"{self.s3['AWS_DIR_PREFIX']}/"
+            f"{data_source.name}/"
+        )
+
+    def _get_connection(self):
+        duckdb_threads = Preferences.load().duckdb_threads_num
+
+        config = {
+            'enable_object_cache': True,
+            's3_access_key_id': self.s3['AWS_ACCESS_KEY_ID'],
+            's3_secret_access_key': self.s3['AWS_SECRET_ACCESS_KEY'],
+            's3_region': 'us-east-1',
+            's3_url_style': 'path',
+            's3_endpoint': self.s3['AWS_ENDPOINT_URL'],
+            's3_use_ssl': not settings.DEBUG
+        }
+        # Only add 'threads' key if a valid thread count exists
+        if duckdb_threads:
+            config['threads'] = duckdb_threads
+        conn = duckdb.connect(config=config)
+        conn.install_extension("httpfs")
+        conn.load_extension("httpfs")
+        conn.install_extension("spatial")
+        conn.load_extension("spatial")
+        return conn
+
+    def read_historical_data(self, start_date: datetime, end_date: datetime):
+        """Read historical data from dataset.
+
+        :param start_date: start date for reading historical data
+        :type start_date: datetime
+        :param end_date:  end date for reading historical data
+        :type end_date: datetime
+        """
+        attributes = ', '.join(
+            [a.attribute.variable_name for a in self.attributes]
+        )
+        if self.has_altitudes:
+            attributes = 'altitude, ' + attributes
+        s3_path = self._get_directory_path()
+        if self.has_month_partition:
+            s3_path += 'year=*/month=*/*.parquet'
+        else:
+            s3_path += 'year=*/*.parquet'
+
+        # Determine if dataset has time column
+        time_column = (
+            "strftime(date_time, '%H:%M:%S') as time," if
+            self.has_time_column else ""
+        )
+        self.query = None
+        # Handle BBOX Query
+        if self.location_input.type == LocationInputType.BBOX:
+            points = self.location_input.points
+            self.query = (
+                f"""
+                SELECT date_time::date as date,
+                {time_column} loc_y as lat, loc_x as lon,
+                st_code as station_id,
+                {attributes}
+                FROM read_parquet('{s3_path}', hive_partitioning=true)
+                WHERE year>={start_date.year} AND year<={end_date.year} AND
+                date_time>='{start_date}' AND date_time<='{end_date}' AND
+                ST_Within(geometry, ST_MakeEnvelope(
+                {points[0].x}, {points[0].y}, {points[1].x}, {points[1].y}))
+                ORDER BY date_time
+                """
+            )
+
+        # Handle Point Query
+        elif self.location_input.type == LocationInputType.POINT:
+            # **Step 1: Find the nearest station using PostGIS**
+            nearest_stations = self.get_nearest_stations()
+
+            if (
+                nearest_stations is None or
+                self._get_count(nearest_stations) == 0
+            ):
+                raise ValueError("No nearest station found!")
+
+            nearest_station = nearest_stations[0]
+            # **Step 2: Use the nearest station ID in the DuckDB query**
+            self.query = (
+                f"""
+                SELECT date_time::date as date,
+                {time_column} loc_y as lat, loc_x as lon,
+                st_code as station_id, {attributes}
+                FROM read_parquet('{s3_path}', hive_partitioning=true)
+                WHERE year>={start_date.year} AND year<={end_date.year} AND
+                date_time>='{start_date}' AND date_time<='{end_date}' AND
+                {self.station_id_key} = '{nearest_station.id}'
+                ORDER BY date_time
+                """
+            )
+        # Handle Polygon Query
+        elif self.location_input.type == LocationInputType.POLYGON:
+            polygon_wkt = self.location_input.polygon.wkt
+            self.query = (
+                f"""
+                SELECT date_time::date as date,
+                {time_column} loc_y as lat, loc_x as lon,
+                st_code as station_id,
+                {attributes}
+                FROM read_parquet('{s3_path}', hive_partitioning=true)
+                WHERE year>={start_date.year} AND year<={end_date.year} AND
+                date_time>='{start_date}' AND date_time<='{end_date}' AND
+                ST_Within(geometry, ST_GeomFromText('{polygon_wkt}'))
+                ORDER BY date_time
+                """
+            )
+        # Handle List of Points Query
+        elif self.location_input.type == LocationInputType.LIST_OF_POINT:
+            nearest_stations = self.get_nearest_stations()
+            if (
+                nearest_stations is None or
+                self._get_count(nearest_stations) == 0
+            ):
+                raise ValueError("No nearest station found!")
+
+            station_ids = ", ".join(f"'{s.id}'" for s in nearest_stations)
+            self.query = (
+                f"""
+                SELECT date_time::date as date,
+                {time_column} loc_y as lat, loc_x as lon,
+                st_code as station_id, {attributes}
+                FROM read_parquet('{s3_path}', hive_partitioning=true)
+                WHERE year>={start_date.year} AND year<={end_date.year} AND
+                date_time>='{start_date}' AND date_time<='{end_date}' AND
+                {self.station_id_key} IN ({station_ids})
+                ORDER BY date_time
+                """
+            )
+
+        else:
+            raise NotImplementedError(
+                'Only BBOX and Point queries are supported!'
+            )
+        if self.query is None:
+            raise ValueError(
+                "Failed to generate SQL query for the given location input."
+            )
+
+    def get_data_values(self) -> DatasetReaderValue:
+        """Fetch data values from dataset.
+
+        :return: Data Value.
+        :rtype: DatasetReaderValue
+        """
+        return ObservationParquetReaderValue(
+            self._get_connection(), self.location_input, self.attributes,
+            self.start_date, self.end_date, self.query
         )

@@ -29,7 +29,7 @@ class DCASErrorLog(models.Model):
         related_name='error_logs',
         help_text="The DCAS request associated with this error."
     )
-    farm_id = models.ForeignKey(
+    farm = models.ForeignKey(
         Farm, on_delete=models.CASCADE,
         help_text="The unique identifier of the farm that failed to process."
     )

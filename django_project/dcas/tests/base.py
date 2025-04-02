@@ -63,12 +63,12 @@ class BasePipelineTest(BaseRuleEngineTest):
 
         # create farm registries
         self.farm_registry_group = FarmRegistryGroupFactory()
-        self._create_farm_registry_for_grid(
+        self.farm_registry_1 = self._create_farm_registry_for_grid(
             self.farm_registry_group, self.grid_1,
             Crop.objects.get(name='Cassava'),
             CropStageType.objects.get(name='Early')
         )
-        self._create_farm_registry_for_grid(
+        self.farm_registry_2 = self._create_farm_registry_for_grid(
             self.farm_registry_group, self.grid_2,
             Crop.objects.get(name='Cassava'),
             CropStageType.objects.get(name='Early')

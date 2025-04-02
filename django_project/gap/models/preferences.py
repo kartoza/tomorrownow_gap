@@ -69,6 +69,19 @@ def user_file_uploader_config_default() -> dict:
     }
 
 
+def default_dcas_config() -> dict:
+    """Return dictionary for default dcas config."""
+    return {
+        'weekdays': [1],  # Monday=0, Sunday=6
+        'override_request_date': None,
+        'farm_npartitions': None,
+        'grid_crop_npartitions': None,
+        'farm_registries': [],
+        'store_csv_to_minio': False,
+        'store_csv_to_sftp': False,
+    }
+
+
 class Preferences(SingletonModel):
     """Preference settings specifically for gap."""
 
@@ -153,12 +166,38 @@ class Preferences(SingletonModel):
         )
     )
 
+    # api log batch size
+    api_use_parquet = models.BooleanField(
+        default=False,
+        help_text=(
+            'When set to True, API will use parquet reader '
+            'instead of EAV.'
+        )
+    )
+
     # UserFile Uploader s3 config
     user_file_uploader_config = models.JSONField(
         default=user_file_uploader_config_default,
         blank=True,
         null=True,
         help_text='Config for fsspec uploader to s3 for UserFile.'
+    )
+
+    # DCAS Configuration
+    dcas_config = models.JSONField(
+        default=default_dcas_config,
+        blank=True,
+        null=True,
+        help_text='Config for DCAS module.'
+    )
+
+    # duckdb configuration
+    duckdb_threads_num = models.IntegerField(
+        default=2,
+        help_text=(
+            'Number of threads for duckdb computation, '
+            'higher number will use more memory and cpu.'
+        )
     )
 
     class Meta:  # noqa: D106

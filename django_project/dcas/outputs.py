@@ -37,7 +37,7 @@ class DCASPipelineOutput:
     DCAS_OUTPUT_DIR = 'dcas_output'
 
     def __init__(
-        self, request_date, extract_additional_columns=False,
+        self, request_date, extract_additional_columns=True,
         duck_db_num_threads=None
     ):
         """Initialize DCASPipelineOutput."""
@@ -80,6 +80,15 @@ class DCASPipelineOutput:
     def grid_crop_data_path(self):
         """Return full path to grid with crop data."""
         return self.grid_crop_data_dir_path + '/*.parquet'
+
+    @property
+    def output_csv_file_path(self):
+        """Return full path to output csv file."""
+        dt = self.request_date.strftime('%Y%m%d')
+        return os.path.join(
+            self.TMP_BASE_DIR,
+            f'output_{dt}.csv'
+        )
 
     def _setup_s3fs(self):
         """Initialize s3fs."""
@@ -170,6 +179,7 @@ class DCASPipelineOutput:
             self._get_directory_path(self.DCAS_OUTPUT_DIR),
             partition_on=['iso_a3', 'year', 'month', 'day'],
             filesystem=self.fs,
+            compression='zstd',
             compute=False
         )
         print(f'writing to {self._get_directory_path(self.DCAS_OUTPUT_DIR)}')
@@ -196,8 +206,9 @@ class DCASPipelineOutput:
         print(f'writing dataframe to {file_path}')
         df.to_parquet(file_path)
 
-    def _upload_to_sftp(self, local_file):
+    def upload_to_sftp(self, local_file):
         """Upload CSV file to Docker SFTP."""
+        is_success = False
         try:
             print(f'Connecting to SFTP server at '
                   f'{settings.SFTP_HOST}:{settings.SFTP_PORT}...')
@@ -225,8 +236,11 @@ class DCASPipelineOutput:
             sftp.close()
             transport.close()
 
+            is_success = True
         except Exception as e:
             print(f"Failed to upload to SFTP: {e}")
+
+        return is_success
 
     def _get_connection(self, s3):
         endpoint = s3['AWS_ENDPOINT_URL']
@@ -257,11 +271,7 @@ class DCASPipelineOutput:
 
     def convert_to_csv(self):
         """Convert output to csv file."""
-        dt = self.request_date.strftime('%Y%m%d')
-        file_path = os.path.join(
-            self.TMP_BASE_DIR,
-            f'output_{dt}.csv'
-        )
+        file_path = self.output_csv_file_path
         column_list = [
             'farm_unique_id as farmer_id', 'crop',
             'planting_date as plantingDate', 'growth_stage as growthStage',

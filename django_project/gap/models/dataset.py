@@ -41,6 +41,27 @@ class DatasetStore:
     ZARR = 'ZARR'
     EXT_API = 'EXT_API'
     ZIP_FILE = 'ZIP_FILE'
+    PARQUET = 'PARQUET'
+    DUCKDB = 'DUCKDB'
+
+    @classmethod
+    def to_ext(cls, store_type: str) -> str:
+        """Get file extension of a store type."""
+        if store_type == DatasetStore.NETCDF:
+            return '.nc'
+        elif store_type == DatasetStore.ZARR:
+            return '.zarr'
+        elif store_type == DatasetStore.ZIP_FILE:
+            return '.zip'
+        elif store_type == DatasetStore.PARQUET:
+            # for partitioned parquet, we don't use file ext
+            return ''
+        elif store_type == DatasetStore.DUCKDB:
+            return '.duckdb'
+        else:
+            raise NotImplementedError(
+                f'{store_type} does not have store implementation!'
+            )
 
 
 class DatasetTimeStep:
@@ -102,6 +123,7 @@ class Dataset(Definition):
             (DatasetStore.NETCDF, DatasetStore.NETCDF),
             (DatasetStore.ZARR, DatasetStore.ZARR),
             (DatasetStore.EXT_API, DatasetStore.EXT_API),
+            (DatasetStore.PARQUET, DatasetStore.PARQUET),
         ),
         max_length=512
     )
@@ -150,6 +172,8 @@ class DataSourceFile(models.Model):
             (DatasetStore.NETCDF, DatasetStore.NETCDF),
             (DatasetStore.ZARR, DatasetStore.ZARR),
             (DatasetStore.ZIP_FILE, DatasetStore.ZIP_FILE),
+            (DatasetStore.PARQUET, DatasetStore.PARQUET),
+            (DatasetStore.DUCKDB, DatasetStore.DUCKDB),
         ),
         max_length=512
     )

@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 PLUMBER_PORT = os.getenv('PLUMBER_PORT', 8282)
 
 
-def plumber_health_check(max_retry=5):
+def plumber_health_check(port = PLUMBER_PORT, max_retry=5):
     """
     Check whether API is up and running.
 
@@ -33,7 +33,7 @@ def plumber_health_check(max_retry=5):
     :param max_retry: maximum retry of checking
     :return: True if successful number of check is less than max_retry
     """
-    request_url = f'http://0.0.0.0:{PLUMBER_PORT}/statistical/echo'
+    request_url = f'http://0.0.0.0:{port}/statistical/echo'
     retry = 0
     req = None
     time.sleep(1)
@@ -53,7 +53,7 @@ def plumber_health_check(max_retry=5):
     return retry < max_retry
 
 
-def spawn_r_plumber():
+def spawn_r_plumber(index = None, port = PLUMBER_PORT):
     """Run a Plumber API server."""
     command_list = (
         [
@@ -62,7 +62,7 @@ def spawn_r_plumber():
             (
                 "pr <- plumber::plumb("
                 f"'/home/web/plumber_data/plumber.R'); "
-                f"args <- list(host = '0.0.0.0', port = {PLUMBER_PORT}); "
+                f"args <- list(host = '0.0.0.0', port = {port}); "
                 "do.call(pr$run, args)"
             )
         ]
@@ -80,9 +80,13 @@ def spawn_r_plumber():
         # sleep for 10 seconds to wait the API is up
         time.sleep(10)
         # we can also use polling to echo endpoint for health check
-        plumber_health_check()
+        plumber_health_check(port=port)
         # write process pid to /tmp/
-        write_pidfile(process.pid, '/tmp/plumber.pid')
+        write_pidfile(
+            process.pid,
+            '/tmp/plumber.pid' if index is None else
+            f'/tmp/plumber_{index}.pid'
+        )
     except Exception as ex:  # noqa
         logger.error(ex)
         logger.error(traceback.format_exc())
@@ -92,19 +96,19 @@ def spawn_r_plumber():
     return process
 
 
-def kill_r_plumber_process():
+def kill_r_plumber_process(index = None):
     """Kill plumber process by PID stored in file."""
     pid_path = os.path.join(
         '/',
         'tmp',
-        'plumber.pid'
+        'plumber.pid' if index is None else f'plumber_{index}.pid'
     )
     kill_process_by_pid(pid_path)
 
 
 def execute_spw_model(
         data_url: str, filename: str, lat: float = 0.0, lon: float = 0.0,
-        place_name: str = None):
+        place_name: str = None, port = PLUMBER_PORT):
     """Execute SPW model given the data_filepath.
 
     :param data_url: CSV file URL containing the data.
@@ -120,7 +124,7 @@ def execute_spw_model(
     :return: dictionary of spw model output
     :rtype: dict
     """
-    request_url = f'http://plumber:{PLUMBER_PORT}/spw/generic'
+    request_url = f'http://plumber:{port}/spw/generic'
     data = {
         'data_url': data_url,
         'filename': filename,

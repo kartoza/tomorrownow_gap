@@ -34,7 +34,7 @@ class TestDCASErrorLogResource(TestCase):
 
         self.error_log = DCASErrorLog.objects.create(
             request=self.request,
-            farm_id=self.farm,
+            farm=self.farm,
             error_type=DCASErrorType.MISSING_MESSAGES,
             error_message="Test missing message error"
         )

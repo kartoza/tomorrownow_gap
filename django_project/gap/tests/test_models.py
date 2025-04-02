@@ -20,7 +20,8 @@ from gap.models import (
     Measurement,
     CollectorSession,
     IngestorType,
-    DatasetTimeStep
+    DatasetTimeStep,
+    DatasetStore
 )
 
 
@@ -186,3 +187,28 @@ class DatasetTimeStepTest(TestCase):
         with self.assertRaises(ValueError) as ctx:
             DatasetTimeStep.to_freq(DatasetTimeStep.OTHER)
         self.assertIn('Unsupported time_step', str(ctx.exception))
+
+
+class DatasetStoreTest(TestCase):
+    """DatasetStore test case."""
+
+    def test_convert_extension(self):
+        """Test to_ext function."""
+        self.assertEqual(
+            DatasetStore.to_ext(DatasetStore.NETCDF),
+            '.nc'
+        )
+        self.assertEqual(
+            DatasetStore.to_ext(DatasetStore.ZARR),
+            '.zarr'
+        )
+        self.assertEqual(
+            DatasetStore.to_ext(DatasetStore.PARQUET),
+            ''
+        )
+        self.assertEqual(
+            DatasetStore.to_ext(DatasetStore.ZIP_FILE),
+            '.zip'
+        )
+        with self.assertRaises(NotImplementedError):
+            DatasetStore.to_ext(DatasetStore.EXT_API)

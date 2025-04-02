@@ -5,7 +5,7 @@ Tomorrow Now GAP.
 .. note:: Base Ingestor.
 """
 
-from typing import Union, List
+from typing import Union, List, Tuple
 import logging
 import datetime
 import pytz
@@ -53,7 +53,19 @@ class CoordMapping:
 
 
 class BaseIngestor:
-    """Collector/Ingestor Base class."""
+    """Collector/Ingestor Base class.
+
+    Available config for ingestor:
+    datasourcefile_id: Id of existing DataSourceFile
+    datasourcefile_exists: Indicates that Zarr exists on s3,
+        or create new one
+    datasourcefile_name: set the zarr name if creating new zarr
+    remove_temp_file: remove temporary from the collector
+    use_latest_datasource: Default to True,
+        always use the latest DataSourceFile
+    """
+
+    DEFAULT_FORMAT = None
 
     def __init__(
         self,
@@ -63,6 +75,8 @@ class BaseIngestor:
         """Initialize ingestor/collector."""
         self.session = session
         self.working_dir = working_dir
+        self.min_ingested_date = None
+        self.max_ingested_date = None
 
     def is_cancelled(self):
         """Check if session is cancelled by user.
@@ -89,21 +103,59 @@ class BaseIngestor:
             return default_value
         return self.session.additional_config.get(name, default_value)
 
+    def _init_dataset(self) -> Dataset:
+        """Fetch dataset for this ingestor.
+
+        :raises NotImplementedError: should be implemented in child class
+        :return: Dataset for this ingestor
+        :rtype: Dataset
+        """
+        raise NotImplementedError(
+            'Ingestor/Collector class must implement init_dataset!'
+        )
+
+    def _init_datasource(self) -> Tuple[DataSourceFile, bool]:
+        if self.DEFAULT_FORMAT is None:
+            raise ValueError('DEFAULT_FORMAT for ingestor class is not set!')
+
+        # get data source file
+        datasource_file = None
+        created = False
+        datasourcefile_id = self.get_config('datasourcefile_id')
+        if datasourcefile_id:
+            datasource_file = DataSourceFile.objects.get(
+                id=datasourcefile_id
+            )
+            created = not self.get_config(
+                'datasourcefile_exists', True
+            )
+        else:
+            datasourcefile_name = self.get_config(
+                'datasourcefile_name',
+                f'{uuid.uuid4()}.{DatasetStore.to_ext(self.DEFAULT_FORMAT)}'
+            )
+            datasource_file, created = (
+                DataSourceFile.objects.get_or_create(
+                    name=datasourcefile_name,
+                    dataset=self._init_dataset(),
+                    format=self.DEFAULT_FORMAT,
+                    defaults={
+                        'created_on': timezone.now(),
+                        'start_date_time': timezone.now(),
+                        'end_date_time': (
+                            timezone.now()
+                        )
+                    }
+                )
+            )
+
+        return datasource_file, created
+
 
 class BaseZarrIngestor(BaseIngestor):
-    """Base Ingestor class for Zarr product.
+    """Base Ingestor class for Zarr product."""
 
-    Available config for ingestor:
-    datasourcefile_id: Id of existing DataSourceFile
-    datasourcefile_zarr_exists: Indicates that Zarr exists on s3,
-        or create new one
-    datasourcefile_name: set the zarr name if creating new zarr
-    remove_temp_file: remove temporary from the collector
-    use_latest_datasource: Default to True,
-        always use the latest DataSourceFile
-    """
-
-    default_zarr_name = f'{uuid.uuid4()}.zarr'
+    DEFAULT_FORMAT = DatasetStore.ZARR
 
     def __init__(self, session, working_dir):
         """Initialize base zarr ingestor."""
@@ -121,38 +173,7 @@ class BaseZarrIngestor(BaseIngestor):
         self.existing_dates = None
 
         # get zarr data source file
-        datasourcefile_id = self.get_config('datasourcefile_id')
-        if datasourcefile_id:
-            self.datasource_file = DataSourceFile.objects.get(
-                id=datasourcefile_id)
-            self.created = not self.get_config(
-                'datasourcefile_zarr_exists', True)
-        else:
-            datasourcefile_name = self.get_config(
-                'datasourcefile_name', f'{self.default_zarr_name}')
-            self.datasource_file, self.created = (
-                DataSourceFile.objects.get_or_create(
-                    name=datasourcefile_name,
-                    dataset=self.dataset,
-                    format=DatasetStore.ZARR,
-                    defaults={
-                        'created_on': timezone.now(),
-                        'start_date_time': timezone.now(),
-                        'end_date_time': (
-                            timezone.now()
-                        )
-                    }
-                )
-            )
-
-    def _init_dataset(self) -> Dataset:
-        """Fetch dataset for this ingestor.
-
-        :raises NotImplementedError: should be implemented in child class
-        :return: Dataset for this ingestor
-        :rtype: Dataset
-        """
-        raise NotImplementedError
+        self.datasource_file, self.created = self._init_datasource()
 
     def _update_zarr_source_file(self, updated_date: datetime.date):
         """Update zarr DataSourceFile start and end datetime.

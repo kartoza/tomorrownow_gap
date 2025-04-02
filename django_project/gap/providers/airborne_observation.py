@@ -13,7 +13,10 @@ from django.contrib.gis.db.models.functions import Distance
 from django.contrib.gis.geos import Polygon, Point
 
 from gap.models import Measurement, StationHistory
-from gap.providers.observation import ObservationDatasetReader
+from gap.providers.observation import (
+    ObservationDatasetReader,
+    ObservationParquetReader
+)
 
 
 class ObservationAirborneDatasetReader(ObservationDatasetReader):
@@ -100,3 +103,13 @@ class ObservationAirborneDatasetReader(ObservationDatasetReader):
             dataset_attribute__in=self.attributes,
             station_history__in=nearest_histories
         ).order_by('date_time')
+
+
+class ObservationAirborneParquetReader(
+    ObservationParquetReader, ObservationAirborneDatasetReader
+):
+    """Class for parquet reader for Airborne dataset."""
+
+    has_month_partition = True
+    has_altitudes = True
+    station_id_key = 'st_hist_id'

@@ -6,6 +6,7 @@ Tomorrow Now GAP.
 """
 
 import os
+from typing import Tuple
 from datetime import datetime
 
 import requests
@@ -17,9 +18,10 @@ from gap.ingestor.base import BaseIngestor
 from gap.ingestor.exceptions import EnvIsNotSetException
 from gap.models import (
     Provider, StationType, IngestorSession, Dataset,
-    DatasetType, DatasetTimeStep, DatasetStore, Station, StationHistory,
-    Measurement
+    DatasetType, Station, StationHistory, Measurement,
+    DatasetStore
 )
+from core.utils.date import find_max_min_epoch_dates
 
 PROVIDER = 'WindBorne Systems'
 STATION_TYPE = 'Balloon'
@@ -44,7 +46,7 @@ class WindBorneSystemsAPI:
         if not self.password:
             raise EnvIsNotSetException(PASSWORD_ENV_NAME)
 
-    def measurements(self, mission_id, since=None) -> (list, int, bool):
+    def measurements(self, mission_id, since=None) -> Tuple[list, int, bool]:
         """Return measurements, since and has_next_page."""
         params = {
             'include_ids': True,
@@ -84,6 +86,8 @@ class WindBorneSystemsAPI:
 class WindBorneSystemsIngestor(BaseIngestor):
     """Ingestor for WindBorneSystems."""
 
+    DEFAULT_FORMAT = DatasetStore.PARQUET
+
     def __init__(self, session: IngestorSession, working_dir: str = '/tmp'):
         """Initialize the ingestor."""
         super().__init__(session, working_dir)
@@ -97,17 +101,22 @@ class WindBorneSystemsIngestor(BaseIngestor):
         self.dataset_type = DatasetType.objects.get(
             variable_name=DATASET_TYPE
         )
-        self.dataset, _ = Dataset.objects.get_or_create(
-            name=DATASET_NAME,
-            provider=self.provider,
-            type=self.dataset_type,
-            time_step=DatasetTimeStep.OTHER,
-            store_type=DatasetStore.TABLE
-        )
+        self.dataset = self._init_dataset()
 
         self.attributes = {}
         for dataset_attr in self.dataset.datasetattribute_set.all():
             self.attributes[dataset_attr.source] = dataset_attr
+
+    def _init_dataset(self) -> Dataset:
+        """Fetch dataset for this ingestor.
+
+        :return: Dataset for this ingestor
+        :rtype: Dataset
+        """
+        return Dataset.objects.get(
+            name=DATASET_NAME,
+            provider__name=PROVIDER
+        )
 
     def mission_ids(self, api: WindBorneSystemsAPI):
         """Mission ids."""
@@ -126,6 +135,8 @@ class WindBorneSystemsIngestor(BaseIngestor):
         api = WindBorneSystemsAPI()
         additional_config = self.session.additional_config
         global_since = additional_config.get('since', None)
+        min_time = None
+        max_time = None
 
         # Run for every mission id
         missions = self.mission_ids(api)
@@ -150,6 +161,9 @@ class WindBorneSystemsIngestor(BaseIngestor):
                         # Get date time
                         date_time = datetime.fromtimestamp(
                             observation['timestamp']
+                        )
+                        min_time, max_time = find_max_min_epoch_dates(
+                            min_time, max_time, observation['timestamp']
                         )
                         date_time = timezone.make_aware(
                             date_time, timezone.get_default_timezone()
@@ -201,3 +215,14 @@ class WindBorneSystemsIngestor(BaseIngestor):
                     additional_config[mission_since_key] = since
                     self.session.additional_config = additional_config
                     self.session.save()
+
+        # update the ingested max and min dates
+        if min_time:
+            self.min_ingested_date = datetime.fromtimestamp(
+                min_time, tz=timezone.utc
+            )
+
+        if max_time:
+            self.max_ingested_date = datetime.fromtimestamp(
+                max_time, tz=timezone.utc
+            )

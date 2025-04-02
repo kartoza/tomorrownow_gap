@@ -47,7 +47,7 @@ class DCASPipelineTest(DCASPipelineBaseTest):
         )
 
         pipeline = DCASDataPipeline(
-            self.farm_registry_group, self.request_date
+            [self.farm_registry_group.id], self.request_date
         )
         df = pipeline._merge_grid_data_with_config(df)
         self.assertIn('config_id', df.columns)
@@ -69,7 +69,7 @@ class DCASPipelineTest(DCASPipelineBaseTest):
             'country_id': country_id_list
         }, index=id_list)
         pipeline = DCASDataPipeline(
-            self.farm_registry_group, self.request_date
+            [self.farm_registry_group.id], self.request_date
         )
         df = pipeline._merge_grid_data_with_config(df)
         self.assertIn('config_id', df.columns)
@@ -83,7 +83,7 @@ class DCASPipelineTest(DCASPipelineBaseTest):
     def test_process_farm_registry_data(self):
         """Test running process_farm_registry_data."""
         pipeline = DCASDataPipeline(
-            self.farm_registry_group, self.request_date
+            [self.farm_registry_group.id], self.request_date
         )
         conn_engine = create_engine(pipeline._conn_str())
         pipeline.data_query.setup(conn_engine)

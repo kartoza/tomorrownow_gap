@@ -17,10 +17,11 @@ from gap.ingestor.base import BaseIngestor
 from gap.ingestor.exceptions import EnvIsNotSetException
 from gap.models import (
     Country, Provider, StationType, IngestorSession, Dataset,
-    DatasetType, DatasetAttribute, DatasetTimeStep, DatasetStore, Station,
-    Measurement
+    DatasetType, DatasetAttribute, Station,
+    Measurement, DatasetStore
 )
 from gap.models.preferences import Preferences
+from core.utils.date import find_max_min_epoch_dates
 
 PROVIDER = 'Tahmo'
 STATION_TYPE = 'Disdrometer'
@@ -95,6 +96,7 @@ class TahmoAPI:
 class TahmoAPIIngestor(BaseIngestor):
     """Ingestor for arable data."""
 
+    DEFAULT_FORMAT = DatasetStore.PARQUET
     api_key = None
 
     def __init__(self, session: IngestorSession, working_dir: str = '/tmp'):
@@ -110,23 +112,29 @@ class TahmoAPIIngestor(BaseIngestor):
         self.dataset_type = DatasetType.objects.get(
             variable_name=DATASET_TYPE
         )
-        self.dataset, _ = Dataset.objects.get_or_create(
-            name=DATASET_NAME,
-            provider=self.provider,
-            type=self.dataset_type,
-            time_step=DatasetTimeStep.QUARTER_HOURLY,
-            store_type=DatasetStore.TABLE
-        )
+        self.dataset = self._init_dataset()
 
         self.attributes = {}
         for dataset_attr in self.dataset.datasetattribute_set.all():
             self.attributes[dataset_attr.source] = dataset_attr
+
+    def _init_dataset(self) -> Dataset:
+        """Fetch dataset for this ingestor.
+
+        :return: Dataset for this ingestor
+        :rtype: Dataset
+        """
+        return Dataset.objects.get(
+            name=DATASET_NAME,
+            provider__name=PROVIDER
+        )
 
     @staticmethod
     def last_date_time(
             station: Station, dataset_attribute: DatasetAttribute
     ) -> datetime:
         """Last date measurements of station."""
+        # TODO: we need to query the parquet to get the last date time
         first_measurement = Measurement.objects.filter(
             station=station,
             dataset_attribute=dataset_attribute
@@ -176,6 +184,8 @@ class TahmoAPIIngestor(BaseIngestor):
             )
             # Save measurements
             end_date = timezone.now()
+            min_time = None
+            max_time = None
             for variable, dataset_attribute in self.attributes.items():
                 start_date = TahmoAPIIngestor.last_date_time(
                     station, dataset_attribute
@@ -186,6 +196,14 @@ class TahmoAPIIngestor(BaseIngestor):
                 for measurement in measurements:
                     try:
                         if measurement[4] is not None:
+                            epoch = int(
+                                datetime.fromisoformat(
+                                    measurement[0]
+                                ).timestamp()
+                            )
+                            min_time, max_time = find_max_min_epoch_dates(
+                                min_time, max_time, epoch
+                            )
                             Measurement.objects.get_or_create(
                                 station=station,
                                 dataset_attribute=dataset_attribute,
@@ -196,3 +214,14 @@ class TahmoAPIIngestor(BaseIngestor):
                             )
                     except KeyError:
                         pass
+
+            # update the ingested max and min dates
+            if min_time:
+                self.min_ingested_date = datetime.fromtimestamp(
+                    min_time, tz=timezone.utc
+                )
+
+            if max_time:
+                self.max_ingested_date = datetime.fromtimestamp(
+                    max_time, tz=timezone.utc
+                )

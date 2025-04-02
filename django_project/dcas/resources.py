@@ -31,7 +31,7 @@ class DCASErrorLogResource(ModelResource):
     )
     farm_unique_id = Field(
         column_name="Farm ID",
-        attribute="farm_id__unique_id"
+        attribute="farm__unique_id"
     )
 
     class Meta:

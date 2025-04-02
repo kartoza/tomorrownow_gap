@@ -140,10 +140,12 @@ class CBAMCollector(BaseIngestor):
 class CBAMIngestor(BaseIngestor):
     """Ingestor for CBAM Historical Data."""
 
+    DEFAULT_FORMAT = DatasetStore.ZARR
+
     def __init__(self, session: IngestorSession, working_dir: str = '/tmp'):
         """Initialize CBAMIngestor."""
         super().__init__(session, working_dir)
-        self.dataset = Dataset.objects.get(name='CBAM Climate Reanalysis')
+        self.dataset = self._init_dataset()
         self.s3 = BaseZarrReader.get_s3_variables()
         self.s3_options = {
             'key': self.s3.get('AWS_ACCESS_KEY_ID'),
@@ -152,29 +154,13 @@ class CBAMIngestor(BaseIngestor):
         }
 
         # get zarr data source file
-        datasourcefile_id = self.get_config('datasourcefile_id')
-        if datasourcefile_id:
-            self.datasource_file = DataSourceFile.objects.get(
-                id=datasourcefile_id)
-            self.created = not self.get_config(
-                'datasourcefile_zarr_exists', True)
-        else:
-            datasourcefile_name = self.get_config(
-                'datasourcefile_name', 'cbam.zarr')
-            self.datasource_file, self.created = (
-                DataSourceFile.objects.get_or_create(
-                    name=datasourcefile_name,
-                    dataset=self.dataset,
-                    format=DatasetStore.ZARR,
-                    defaults={
-                        'created_on': timezone.now(),
-                        'start_date_time': timezone.now(),
-                        'end_date_time': (
-                            timezone.now() - datetime.timedelta(days=20 * 365)
-                        )
-                    }
-                )
+        self.datasource_file, self.created = self._init_datasource()
+        if self.created:
+            self.datasource_file.start_date_time = timezone.now()
+            self.datasource_file.end_date_time = (
+                timezone.now() - datetime.timedelta(days=20 * 365)
             )
+            self.datasource_file.save()
 
         # min+max are the BBOX that GAP processes
         # inc and original_min comes from CBAM netcdf file
@@ -192,6 +178,16 @@ class CBAMIngestor(BaseIngestor):
         }
         self.reindex_tolerance = 0.001
         self.existing_dates = None
+
+
+    def _init_dataset(self) -> Dataset:
+        """Fetch dataset for this ingestor.
+
+        :raises NotImplementedError: should be implemented in child class
+        :return: Dataset for this ingestor
+        :rtype: Dataset
+        """
+        return Dataset.objects.get(name='CBAM Climate Reanalysis')
 
     def is_date_in_zarr(self, date: datetime.date) -> bool:
         """Check whether a date has been added to zarr file.

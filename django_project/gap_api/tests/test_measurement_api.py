@@ -261,7 +261,7 @@ class HistoricalAPITest(CommonMeasurementAPITest):
         )
         response = view(request)
         self.assertEqual(response.status_code, 200)
-        mocked_reader.assert_called_once_with(attribute1.dataset)
+        mocked_reader.assert_called_once_with(attribute1.dataset, False)
         self.assertIn('metadata', response.data)
         self.assertIn('results', response.data)
         results = response.data['results']
@@ -310,7 +310,7 @@ class HistoricalAPITest(CommonMeasurementAPITest):
         )
         response = view(request)
         self.assertEqual(response.status_code, 200)
-        mocked_reader.assert_called_once_with(attribute1.dataset)
+        mocked_reader.assert_called_once_with(attribute1.dataset, False)
         self.assertEqual(response['content-type'], 'text/csv')
         mocked_reader.reset_mock()
         request = self._post_measurement_request(
@@ -319,7 +319,7 @@ class HistoricalAPITest(CommonMeasurementAPITest):
         )
         response = view(request)
         self.assertEqual(response.status_code, 200)
-        mocked_reader.assert_called_once_with(attribute1.dataset)
+        mocked_reader.assert_called_once_with(attribute1.dataset, False)
         self.assertEqual(response['content-type'], 'text/ascii')
         mocked_reader.reset_mock()
         request = self._post_measurement_request(
@@ -328,7 +328,7 @@ class HistoricalAPITest(CommonMeasurementAPITest):
         )
         response = view(request)
         self.assertEqual(response.status_code, 200)
-        mocked_reader.assert_called_once_with(attribute1.dataset)
+        mocked_reader.assert_called_once_with(attribute1.dataset, False)
         self.assertEqual(response['content-type'], 'application/x-netcdf')
         # invalid output_type
         request = self._post_measurement_request(
@@ -469,7 +469,7 @@ class HistoricalAPITest(CommonMeasurementAPITest):
         request.user = self.user_1
         response = view(request)
         self.assertEqual(response.status_code, 200)
-        mocked_reader.assert_called_once_with(attribute1.dataset)
+        mocked_reader.assert_called_once_with(attribute1.dataset, False)
         self.assertIn('metadata', response.data)
         self.assertIn('results', response.data)
         results = response.data['results']

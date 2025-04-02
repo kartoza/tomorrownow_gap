@@ -21,8 +21,7 @@ from gap.ingestor.exceptions import FileNotFoundException
 from gap.models import (
     Provider, Station, StationType, Country,
     IngestorSession, IngestorSessionProgress, IngestorSessionStatus,
-    Measurement, Dataset, DatasetType, DatasetTimeStep,
-    DatasetStore, DatasetAttribute
+    Measurement, Dataset, DatasetType, DatasetAttribute
 )
 from gap.ingestor.base import BaseIngestor
 
@@ -56,12 +55,17 @@ class TahmoIngestor(BaseIngestor):
         self.dataset_type = DatasetType.objects.get(
             variable_name='tahmo_ground_observation'
         )
-        self.dataset = Dataset.objects.get(
+        self.dataset = self._init_dataset()
+
+    def _init_dataset(self) -> Dataset:
+        """Fetch dataset for this ingestor.
+
+        :return: Dataset for this ingestor
+        :rtype: Dataset
+        """
+        return Dataset.objects.get(
             name='Tahmo Ground Observational',
-            provider=self.provider,
-            type=self.dataset_type,
-            time_step=DatasetTimeStep.DAILY,
-            store_type=DatasetStore.TABLE
+            provider__name='Tahmo'
         )
 
     def _run(self, dir_path):

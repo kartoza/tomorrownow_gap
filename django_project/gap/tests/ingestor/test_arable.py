@@ -104,8 +104,10 @@ class ArableIngestorTest(BaseTestWithPatchResponses, TestCase):
         """Test no API Key."""
         os.environ[API_KEY_ENV_NAME] = ''
         session = IngestorSession.objects.create(
-            ingestor_type=self.ingestor_type
+            ingestor_type=self.ingestor_type,
+            trigger_task=False
         )
+        session.run()
         session.refresh_from_db()
         self.assertEqual(session.notes, ApiKeyNotFoundException().message)
         self.assertEqual(session.status, IngestorSessionStatus.FAILED)
@@ -116,8 +118,11 @@ class ArableIngestorTest(BaseTestWithPatchResponses, TestCase):
         self.init_mock_requests()
         os.environ[API_KEY_ENV_NAME] = 'API_KEY_ENV_NAME'
         session = IngestorSession.objects.create(
-            ingestor_type=self.ingestor_type
+            ingestor_type=self.ingestor_type,
+            trigger_task=False,
+            trigger_parquet=False
         )
+        session.run()
         session.refresh_from_db()
         self.assertEqual(session.status, IngestorSessionStatus.SUCCESS)
         self.assertEqual(Station.objects.count(), 2)

@@ -13,6 +13,13 @@ from core.models.background_task import TaskStatus
 from dcas.models.request import DCASRequest
 
 
+class DCASDeliveryMethod(models.TextChoices):
+    """Delivery method choices."""
+
+    SFTP = 'SFTP', _('SFTP')
+    OBJECT_STORAGE = 'OBJECT_STORAGE', _('OBJECT_STORAGE')
+
+
 class DCASOutput(models.Model):
     """Model to track the delivery of file output to SFTP."""
 
@@ -34,12 +41,26 @@ class DCASOutput(models.Model):
     )
     status = models.CharField(
         max_length=255,
-        choices=TaskStatus.choices,
-        default=TaskStatus.PENDING,
         null=True,
         blank=True,
+        choices=TaskStatus.choices,
+        default=TaskStatus.PENDING,
         help_text="The delivery status of the file."
     )
+    path = models.TextField(
+        null=True,
+        blank=True,
+        help_text="Full path to the uploaded file."
+    )
+    delivery_by = models.CharField(
+        null=True,
+        blank=True,
+        max_length=255,
+        choices=DCASDeliveryMethod.choices,
+        default=DCASDeliveryMethod.SFTP,
+        help_text="The type of delivery."
+    )
+    size = models.PositiveBigIntegerField(default=0)
 
     class Meta:
         """Meta class for DCASOutput."""
