@@ -20,7 +20,8 @@ from gap.models import (
 )
 from gap.tasks.collector import run_collector_session
 from gap.tasks.ingestor import (
-    run_ingestor_session, convert_dataset_to_parquet
+    run_ingestor_session, convert_dataset_to_parquet,
+    reset_measurements
 )
 from gap.utils.zarr import BaseZarrReader
 
@@ -72,6 +73,13 @@ def trigger_parquet_converter(modeladmin, request, queryset):
         convert_dataset_to_parquet.delay(query.id)
 
 
+@admin.action(description='Run Reset Measurement Task')
+def trigger_reset_measurements(modeladmin, request, queryset):
+    """Run Reset Measurement."""
+    for query in queryset:
+        reset_measurements.delay(query.id)
+
+
 @admin.register(Dataset)
 class DatasetAdmin(admin.ModelAdmin):
     """Dataset admin."""
@@ -80,7 +88,10 @@ class DatasetAdmin(admin.ModelAdmin):
         'name', 'provider', 'type', 'time_step',
         'store_type', 'is_internal_use'
     )
-    actions = (trigger_parquet_converter,)
+    actions = (
+        trigger_parquet_converter,
+        trigger_reset_measurements,
+    )
 
 
 @admin.register(DatasetAttribute)
