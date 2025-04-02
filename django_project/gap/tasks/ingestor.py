@@ -17,7 +17,7 @@ from django.db import connection
 from core.celery import app
 from gap.models import (
     Dataset, DataSourceFile, Preferences,
-    DatasetStore, Measurement
+    DatasetStore
 )
 from gap.models.ingestor import (
     IngestorSession, IngestorType,

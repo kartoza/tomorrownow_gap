@@ -177,16 +177,14 @@ class IngestorTaskTest(TestCase):
 
         reset_measurements(1)
 
-        raw_sql = (
-        """
+        raw_sql = ("""
         delete from gap_measurement gm
         where id in (
             select gm.id from gap_measurement gm
             join gap_datasetattribute gd on gd.id = gm.dataset_attribute_id
             where gd.dataset_id = %s
         );
-        """
-        )
+        """)
 
         mock_cursor.return_value.__enter__.\
             return_value.execute.assert_called_once_with(
