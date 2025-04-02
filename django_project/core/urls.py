@@ -5,7 +5,10 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import path, include, re_path
 
-from core.views import PreferencesRedirectView, FlowerProxyView
+from core.views import (
+    PreferencesRedirectView, FlowerProxyView,
+    RegisterView, VerifyEmailView
+)
 
 
 urlpatterns = [
@@ -17,6 +20,15 @@ urlpatterns = [
         name='index'
     ),
     FlowerProxyView.as_url(),
+    path(
+        'api/auth/register/',
+        RegisterView.as_view(),
+        name='register'
+    ),
+    path(
+        'api/auth/verify-email/',
+        VerifyEmailView.as_view(), name='verify-email'
+    ),
     path('admin/', admin.site.urls),
     path('', include('frontend.urls')),
 ]
