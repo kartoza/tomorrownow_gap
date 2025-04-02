@@ -60,7 +60,7 @@ class ArableIngestorTest(BaseTestWithPatchResponses, TestCase):
             PatchRequest(
                 (
                     f'{arable_api.DATA}?device=A00&'
-                    'select=et,max_rh,maxt,mean_rh,meant,min_rh,mint,prate,'
+                    'select=et,max_rh,maxt,min_rh,mint,prate,'
                     'precip,slp,time,wind_heading,wind_speed,'
                     'wind_speed_max,wind_speed_min'
                 ),
@@ -72,7 +72,7 @@ class ArableIngestorTest(BaseTestWithPatchResponses, TestCase):
             PatchRequest(
                 (
                     f'{arable_api.DATA}?device=A01&'
-                    'select=et,max_rh,maxt,mean_rh,meant,min_rh,mint,prate,'
+                    'select=et,max_rh,maxt,min_rh,mint,prate,'
                     'precip,slp,time,wind_heading,wind_speed,'
                     'wind_speed_max,wind_speed_min'
                 ),
@@ -124,6 +124,7 @@ class ArableIngestorTest(BaseTestWithPatchResponses, TestCase):
         )
         session.run()
         session.refresh_from_db()
+        print(session.notes)
         self.assertEqual(session.status, IngestorSessionStatus.SUCCESS)
         self.assertEqual(Station.objects.count(), 2)
         self.assertTrue(
@@ -135,14 +136,14 @@ class ArableIngestorTest(BaseTestWithPatchResponses, TestCase):
 
         # Checking data ingestion
         self.assertEqual(
-            Measurement.objects.filter(station__name='A00').count(), 18
+            Measurement.objects.filter(station__name='A00').count(), 14
         )
         self.assertEqual(
             ArableIngestor.last_iso_date_time(Station.objects.get(name='A00')),
             '2024-01-02T00:00:00Z'
         )
         self.assertEqual(
-            Measurement.objects.filter(station__name='A01').count(), 27
+            Measurement.objects.filter(station__name='A01').count(), 21
         )
         self.assertEqual(
             ArableIngestor.last_iso_date_time(Station.objects.get(name='A01')),
