@@ -48,7 +48,6 @@ class VerifyEmailView(generics.GenericAPIView):
             return Response({"detail": "Invalid token or user."}, status=400)
 
         if default_token_generator.check_token(user, token):
-            user.is_active = True
             user.save()
             return redirect("/signup-request/")
         return Response({"detail": "Invalid or expired token."}, status=400)

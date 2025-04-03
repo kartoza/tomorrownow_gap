@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Button,
@@ -6,11 +6,12 @@ import {
   Heading,
 } from '@chakra-ui/react';
 import { FormControl, FormLabel } from '@chakra-ui/form-control';
-import { useToast } from '@chakra-ui/toast';
 import { Stack } from '@chakra-ui/layout';
+import { isPasswordStrong } from '../../utils/validation';
+import toast from 'react-hot-toast';
 
 const SignupAccountForm = () => {
-  const toast = useToast();
+
   const [formData, setFormData] = useState({
     first_name: '',
     last_name: '',
@@ -30,13 +31,24 @@ const SignupAccountForm = () => {
     e.preventDefault();
     setLoading(true);
 
+    // Validate password strength
+    const passwordError = isPasswordStrong(formData.password);
+    if (passwordError) {
+      toast.error(`Weak password: ${passwordError}`);
+      return;
+    }
+
     // Confirm passwords match before submitting
     if (formData.password.trim() !== formData.confirm_password.trim()) {
-      toast({
-        title: 'Passwords do not match',
-        status: 'error',
-        isClosable: true,
-      });
+      toast.error('Passwords do not match');
+      setLoading(false);
+      return;
+    }
+
+    // Check if the email is already registered
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      toast.error('Invalid email address');
       setLoading(false);
       return;
     }
@@ -51,31 +63,33 @@ const SignupAccountForm = () => {
         body: JSON.stringify(formData),
       });
 
-      const data = await response.json();
+      let data;
+      try {
+        const text = await response.text();
+        console.log("Raw response text:", text);
+        data = JSON.parse(text);
+      } catch (err) {
+        console.log("Error parsing response:", err);
+        data = {};
+      }
+      console.log("Parsed response:", data);
 
       if (response.ok) {
-        toast({
-          title: 'Check your email.',
-          description: 'We’ve sent a verification link.',
-          status: 'success',
-          isClosable: true,
-        });
+        toast.success('Check your email. We’ve sent a verification link.');
+
         setFormData({ first_name: '', last_name: '', email: '', password: '', confirm_password: '' });
       } else {
-        toast({
-          title: 'Signup failed',
-          description: data.detail || 'Please try again.',
-          status: 'error',
-          isClosable: true,
-        });
+          if (data?.email?.[0] === "This email is already registered.") {
+            console.log("Email already registered toasted triggered");
+            toast.error("Email already in use");
+          } else if (typeof data.detail === 'string') {
+            toast.error(`Signup failed: ${data.detail}`);
+          } else {
+            toast.error("Signup failed. Please check your input.");
+          }
       }
     } catch (err) {
-      toast({
-        title: 'Server error',
-        description: 'Something went wrong.',
-        status: 'error',
-        isClosable: true,
-      });
+      toast.error('Server error. Something went wrong.');
     } finally {
       setLoading(false);
     }
@@ -108,16 +122,36 @@ const SignupAccountForm = () => {
           <FormControl isRequired>
             <FormLabel>Email</FormLabel>
             <Input type="email" name="email" value={formData.email} onChange={handleChange} />
+            {formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email) && (
+              <Box mt={2} color="red.500" fontSize="sm">
+                Please enter a valid email address
+              </Box>
+            )}
           </FormControl>
 
           <FormControl isRequired>
             <FormLabel>Password</FormLabel>
             <Input type="password" name="password" value={formData.password} onChange={handleChange} />
+            {formData.password && (
+              <Box mt={2} color="red.500" fontSize="sm">
+                {isPasswordStrong(formData.password)}
+              </Box>
+            )}
           </FormControl>
 
           <FormControl isRequired>
             <FormLabel>Confirm Password</FormLabel>
             <Input type="password" name="confirm_password" value={formData.confirm_password} onChange={handleChange}/>
+            {formData.confirm_password && formData.password !== formData.confirm_password && (
+              <Box mt={2} color="red.500" fontSize="sm">
+                Passwords do not match
+              </Box>
+            )}
+            {formData.confirm_password && formData.password === formData.confirm_password && (
+              <Box mt={2} color="green.500" fontSize="sm">
+                Passwords match
+              </Box>
+            )}
           </FormControl>
 
           <Button type="submit" colorScheme="purple" loading={loading}>

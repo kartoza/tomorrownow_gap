@@ -31,6 +31,15 @@ class RegisterSerializer(serializers.ModelSerializer):
             'password': {'write_only': True, 'required': True},
         }
 
+    def validate_email(self, value):
+        """Validate the email field."""
+        print(f"Validating email: {value}")
+        if User.objects.filter(email=value).exists():
+            raise serializers.ValidationError(
+                "This email is already registered."
+            )
+        return value
+
     def validate(self, data):
         """Validate the password and confirm_password fields."""
         if data["password"] != data["confirm_password"]:

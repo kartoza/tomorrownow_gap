@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Button,
@@ -7,8 +7,8 @@ import {
   Heading
 } from '@chakra-ui/react';
 import { FormControl, FormLabel } from '@chakra-ui/form-control';
-import { useToast } from '@chakra-ui/toast';
 import { Stack } from '@chakra-ui/layout';
+import toast from 'react-hot-toast';
 
 interface SignupRequestFormProps {
   user: {
@@ -27,7 +27,23 @@ const SignupRequestForm = ({ user }: SignupRequestFormProps) => {
   });
 
   const [loading, setLoading] = useState(false);
-  const toast = useToast();
+
+  // Load saved form data if available
+  useEffect(() => {
+    const saved = sessionStorage.getItem('signup-request');
+    if (saved) {
+      try {
+        setFormData(JSON.parse(saved));
+      } catch (e) {
+        console.warn("Could not parse saved form data", e);
+      }
+    }
+  }, []);
+
+  // Save form data on each change
+  useEffect(() => {
+    sessionStorage.setItem('signup-request', JSON.stringify(formData));
+  }, [formData]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -51,13 +67,14 @@ const SignupRequestForm = ({ user }: SignupRequestFormProps) => {
       });
 
       if (response.ok) {
-        toast({ title: 'Request submitted', status: 'success', isClosable: true });
+        toast.success('Request submitted');
+        sessionStorage.removeItem('signup-request');
         setFormData(prev => ({ ...prev, description: '' }));
       } else {
-        toast({ title: 'Submission failed', status: 'error', isClosable: true });
+        toast.error('Submission failed');
       }
     } catch {
-      toast({ title: 'Server error', status: 'error', isClosable: true });
+      toast.error('Server error');
     } finally {
       setLoading(false);
     }
@@ -79,6 +96,7 @@ const SignupRequestForm = ({ user }: SignupRequestFormProps) => {
             <FormLabel>First Name</FormLabel>
             <Input
               name="first_name"
+              autoComplete='given-name'
               value={formData.first_name}
               onChange={handleChange}
             />
@@ -88,6 +106,7 @@ const SignupRequestForm = ({ user }: SignupRequestFormProps) => {
             <FormLabel>Last Name</FormLabel>
             <Input
               name="last_name"
+              autoComplete='family-name'
               value={formData.last_name}
               onChange={handleChange}
             />
@@ -98,6 +117,7 @@ const SignupRequestForm = ({ user }: SignupRequestFormProps) => {
             <Input
               type="email"
               name="email"
+              autoComplete='email'
               value={formData.email}
               onChange={handleChange}
             />
