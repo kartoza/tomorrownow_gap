@@ -4,6 +4,7 @@ import { createRoot } from 'react-dom/client';
 import { ChakraProvider, defaultSystem } from '@chakra-ui/react';
 import { SignupRequestForm } from './pages/SignupRequest';
 import { GapContextProvider } from './contexts/GapContext';
+import ErrorBoundary from './components/ErrorBoundary';
 
 // Mock user data – replace this with actual user context/auth logic if needed
 const user = {
@@ -17,7 +18,9 @@ const root = createRoot(document.getElementById('app')!);
 root.render(
   <ChakraProvider value={defaultSystem}>
     <GapContextProvider>
-      <SignupRequestForm user={user} />
+      <ErrorBoundary>
+        <SignupRequestForm user={user} />
+      </ErrorBoundary>
     </GapContextProvider>
   </ChakraProvider>
 );

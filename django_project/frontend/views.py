@@ -87,4 +87,5 @@ class SignupView(TemplateView):
 
 class SignupRequestView(TemplateView):
     """User signup request page view."""
+
     template_name = 'signup_request.html'
