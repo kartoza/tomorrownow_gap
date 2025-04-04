@@ -216,7 +216,6 @@ class DCASFarmRegistryIngestor(BaseIngestor):
             """,
             'create_gist_index'
         )
-        
 
     def _run(self):
         """Run the ingestion logic."""
