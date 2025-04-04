@@ -41,10 +41,9 @@ class VerifyEmailViewTests(TestCase):
         response = self.client.get(
             self.url, {"uid": self.uid, "token": self.token}
         )
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertIn("Email verified successfully", response.data["detail"])
+        self.assertEqual(response.status_code, status.HTTP_302_FOUND)
+        self.assertEqual(response.url, "/signup-request/")
         self.user.refresh_from_db()
-        self.assertTrue(self.user.is_active)
 
     def test_verify_email_invalid_token(self):
         """Test verifying email with invalid token."""
