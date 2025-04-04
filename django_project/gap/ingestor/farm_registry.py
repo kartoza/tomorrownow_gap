@@ -295,7 +295,10 @@ class DCASFarmRegistryIngestor(BaseIngestor):
             vrt_file_path,
             '-nln',
             self.table_name,
-            '-append'
+            '-append',
+            '--config',
+            'PG_USE_COPY',
+            'YES'
         ]
         subprocess.run(cmd_list, check=True)
         ogr2_total_time = time.time() - ogr2_start_time
@@ -551,3 +554,8 @@ class DCASFarmRegistryIngestor(BaseIngestor):
                 self.session.additional_config.update(self.execution_times)
             else:
                 self.session.additional_config = self.execution_times
+
+            # store the farm registry group id
+            self.session.additional_config['farm_registry_group_id'] = (
+                self.group.id
+            )
