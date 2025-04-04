@@ -160,17 +160,58 @@ class DCASFarmRegistryIngestorTest(TransactionTestCase):
         session.file = test_file
         session.save()
 
-        with self.assertRaises(FarmRegistryException) as ctx:
-            ingestor.run()
-        self.assertIn('Mismatch in row counts', str(ctx.exception))
+        ingestor.run()
 
         # Verify session status
-        session.refresh_from_db()
         self.assertEqual(Farm.objects.count(), 2)
         self.assertEqual(FarmRegistry.objects.count(), 0)
+        self.assertNotEqual(
+            session.additional_config['farmregistry_insert_count'],
+            session.additional_config['total_rows']
+        )
 
         # verify temp table has been deleted
         self.assertFalse(ingestor._check_table_exists())
+
+    def test_use_existing_farm_group(self):
+        """Test successful ingestion of farmer registry data."""
+        group = FarmRegistryGroup.objects.create(
+            name='group001',
+        )
+        session = IngestorSession.objects.create(
+            ingestor_type='Farm Registry',
+            trigger_task=False,
+            additional_config={
+                'group_id': group.id
+            }
+        )
+        ingestor = DCASFarmRegistryIngestor(session, self.working_dir)
+
+        test_zip_path = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            'data',  # Test data directory
+            'farm_registry',
+            'test_farm_registry.zip'  # Pre-existing ZIP file
+        )
+        with open(test_zip_path, 'rb') as _file:
+            test_file = SimpleUploadedFile(_file.name, _file.read())
+
+        # set file in session
+        session.file = test_file
+        session.save()
+
+        ingestor.run()
+
+        # Verify session status
+        session.refresh_from_db()
+
+        # Verify FarmRegistryGroup was created
+        self.assertEqual(FarmRegistryGroup.objects.count(), 1)
+        group = FarmRegistryGroup.objects.first()
+
+        # Verify Farm and FarmRegistry were created
+        self.assertEqual(Farm.objects.count(), 2)
+        self.assertEqual(FarmRegistry.objects.count(), 2)
 
 
 class TestKeysStaticMethods(unittest.TestCase):
