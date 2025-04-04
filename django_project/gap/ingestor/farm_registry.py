@@ -176,6 +176,47 @@ class DCASFarmRegistryIngestor(BaseIngestor):
             table_exists = cursor.fetchone()[0]
         return table_exists
 
+    def _drop_table(self):
+        """Drop the temporary table if it exists."""
+        # remove temporary table
+        self._execute_query(
+            f'DROP TABLE IF EXISTS {self.table_name_sql}',
+            'drop_temp_table'
+        )
+
+    def _create_table(self):
+        self._drop_table()
+        # create temporary table
+        self._execute_query(
+            f"""
+            CREATE unlogged TABLE {self.table_name_sql} (
+                ogc_fid serial4 NOT NULL,
+                farmer_id varchar NULL,
+                crop varchar NULL,
+                planting_date date NULL,
+                grid_id int4 NULL,
+                farm_id int4 NULL,
+                crop_txt varchar NULL,
+                crop_stage_txt varchar NULL,
+                crop_id int4 NULL,
+                crop_stage_id int4 NULL,
+                wkb_geometry public.geometry(point, 4326) NULL,
+                CONSTRAINT farm_registry_session_{self.session.id}_pkey
+                PRIMARY KEY (ogc_fid)
+            );
+            """,
+            'create_temp_table'
+        )
+        # create index
+        self._execute_query(
+            f"""
+            CREATE INDEX
+            frs_{self.session.id}_wkb_geometry_geom_idx ON
+            {self.table_name_sql} USING gist (wkb_geometry);
+            """,
+            'create_gist_index'
+        )
+
     def _run(self):
         """Run the ingestion logic."""
         dir_path = self.working_dir
@@ -235,6 +276,9 @@ class DCASFarmRegistryIngestor(BaseIngestor):
         with connection.cursor() as cursor:
             cursor.execute('CREATE SCHEMA IF NOT EXISTS temp;')
 
+        # create temporary table
+        self._create_table()
+
         # run ogr2ogr command
         progress = self._add_progress('ogr2ogr')
         ogr2_start_time = time.time()
@@ -252,7 +296,7 @@ class DCASFarmRegistryIngestor(BaseIngestor):
             vrt_file_path,
             '-nln',
             self.table_name,
-            '-overwrite'
+            '-append'
         ]
         subprocess.run(cmd_list, check=True)
         ogr2_total_time = time.time() - ogr2_start_time
@@ -449,10 +493,7 @@ class DCASFarmRegistryIngestor(BaseIngestor):
             raise e
         finally:
             # remove temporary table
-            self._execute_query(
-                f'DROP TABLE IF EXISTS {self.table_name_sql}',
-                'drop_temp_table'
-            )
+            self._drop_table()
 
             # store execution times in session
             if self.session.additional_config:
