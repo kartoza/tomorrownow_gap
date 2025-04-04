@@ -437,7 +437,7 @@ class DCASFarmRegistryIngestor(BaseIngestor):
             SELECT DISTINCT ON (tfrs.farmer_id)
             tfrs.farmer_id, tfrs.wkb_geometry, tfrs.grid_id
             FROM {self.table_name_sql} tfrs
-            WHERE tfrs.farm_id IS NULL;
+            WHERE tfrs.farm_id IS NULL AND tfrs.grid_id IS NOT NULL;
         """, 'insert_farm')
 
         # update back the farm_id
