@@ -207,15 +207,6 @@ class DCASFarmRegistryIngestor(BaseIngestor):
             """,
             'create_temp_table'
         )
-        # create index
-        self._execute_query(
-            f"""
-            CREATE INDEX
-            frs_{self.session.id}_wkb_geometry_geom_idx ON
-            {self.table_name_sql} USING gist (wkb_geometry);
-            """,
-            'create_gist_index'
-        )
 
     def _run(self):
         """Run the ingestion logic."""
@@ -332,6 +323,16 @@ class DCASFarmRegistryIngestor(BaseIngestor):
         progress.notes = f"Execution time: {ogr2_total_time}"
         progress.status = IngestorSessionStatus.SUCCESS
         progress.save()
+
+        # create gist index
+        self._execute_query(
+            f"""
+            CREATE INDEX
+            frs_{self.session.id}_wkb_geometry_geom_idx ON
+            {self.table_name_sql} USING gist (wkb_geometry);
+            """,
+            'create_gist_index'
+        )
 
         # create index on columns: farmer_id, crop_txt, crop_stage_txt
         progress = self._add_progress('create_index')
