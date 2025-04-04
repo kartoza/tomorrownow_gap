@@ -1,20 +1,24 @@
+// src/Signup.tsx
 import React from 'react';
+import { createRoot } from 'react-dom/client';
 import { ChakraProvider, defaultSystem } from '@chakra-ui/react';
+import { SignupAccountForm } from './pages/SignupAccount';
 import { GapContextProvider } from './contexts/GapContext';
 import ErrorBoundary from './components/ErrorBoundary';
-import Home from './Home';
 import { Toaster } from 'react-hot-toast';
 
-const App = () => (
+const root = createRoot(document.getElementById('app')!);
+
+root.render(
   <ChakraProvider value={defaultSystem}>
     <GapContextProvider>
       <ErrorBoundary>
-        <Home />
+        <SignupAccountForm />
         <Toaster
           position="top-center"
           reverseOrder={false}
           toastOptions={{
-            duration: 5000,
+            duration: 3000,
             style: {
               background: '#1a202c',
               color: '#fff',
@@ -25,5 +29,3 @@ const App = () => (
     </GapContextProvider>
   </ChakraProvider>
 );
-
-export default App;

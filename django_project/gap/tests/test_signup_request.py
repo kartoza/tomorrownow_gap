@@ -8,7 +8,7 @@ Tomorrow Now GAP.
 from django.test import TestCase
 from django.db.utils import IntegrityError
 
-from gap.models import SignUpRequest
+from gap.models import SignUpRequest, RequestStatus
 from gap.factories import SignUpRequestFactory
 from unittest.mock import patch
 from django.contrib.auth import get_user_model
@@ -84,3 +84,56 @@ class TestSignUpRequestSignal(TestCase):
         assert "New Sign Up Request" in kwargs["subject"]
         assert "testuser@example.com" in kwargs["message"]
         assert self.manager.email in kwargs["recipient_list"]
+
+
+class TestApprovalSignal(TestCase):
+    """Test user activation and email on approval/rejection."""
+
+    def setUp(self):
+        """Set up test data."""
+        self.user = User.objects.create_user(
+            username="testuser",
+            email="test@example.com",
+            password="testpass123",
+            is_active=False,
+        )
+        self.signup_request = SignUpRequest.objects.create(
+            first_name="Jane",
+            last_name="Doe",
+            email="test@example.com",
+            description="Requesting access",
+        )
+
+    @patch("gap.models.signup_request.send_mail")
+    def test_user_activated_and_email_sent_on_approval(self, mock_send_mail):
+        """Test user gets activated and receives email upon approval."""
+        self.signup_request.status = RequestStatus.APPROVED
+        self.signup_request.save()
+
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.is_active)
+
+        mock_send_mail.assert_called_once()
+        args, kwargs = mock_send_mail.call_args
+        self.assertIn("approved", kwargs["subject"].lower())
+        self.assertIn("test@example.com", kwargs["recipient_list"])
+
+    @patch("gap.models.signup_request.send_mail")
+    def test_user_deactivated_and_email_sent_on_rejection(
+        self, mock_send_mail
+    ):
+        """Test user gets deactivated and receives email upon rejection."""
+        # First activate user manually
+        self.user.is_active = True
+        self.user.save()
+
+        self.signup_request.status = RequestStatus.REJECTED
+        self.signup_request.save()
+
+        self.user.refresh_from_db()
+        self.assertFalse(self.user.is_active)
+
+        mock_send_mail.assert_called_once()
+        args, kwargs = mock_send_mail.call_args
+        self.assertIn("rejected", kwargs["subject"].lower())
+        self.assertIn("test@example.com", kwargs["recipient_list"])
