@@ -23,6 +23,7 @@ from gap.models import (
     CollectorSession,
     IngestorSession,
     IngestorSessionStatus,
+    IngestorSessionProgress,
     Dataset,
     DatasetStore,
     DataSourceFile,
@@ -132,7 +133,7 @@ class BaseIngestor:
         else:
             datasourcefile_name = self.get_config(
                 'datasourcefile_name',
-                f'{uuid.uuid4()}.{DatasetStore.to_ext(self.DEFAULT_FORMAT)}'
+                f'{uuid.uuid4()}{DatasetStore.to_ext(self.DEFAULT_FORMAT)}'
             )
             datasource_file, created = (
                 DataSourceFile.objects.get_or_create(
@@ -151,11 +152,22 @@ class BaseIngestor:
 
         return datasource_file, created
 
+    def _add_progress(self, progress_name, notes=None):
+        """Add progress to the session."""
+        return IngestorSessionProgress.objects.create(
+            session=self.session,
+            filename=progress_name,
+            row_count=0,
+            notes=notes
+        )
+
 
 class BaseZarrIngestor(BaseIngestor):
     """Base Ingestor class for Zarr product."""
 
     DEFAULT_FORMAT = DatasetStore.ZARR
+    DATE_VARIABLE = 'date'
+    variables = []
 
     def __init__(self, session, working_dir):
         """Initialize base zarr ingestor."""
@@ -329,6 +341,23 @@ class BaseZarrIngestor(BaseIngestor):
         ds.close()
 
         return results
+
+    def _is_date_in_zarr(self, date: datetime.date) -> bool:
+        """Check whether a date has been added to zarr file.
+
+        :param date: date to check
+        :type date: date
+        :return: True if date exists in zarr file.
+        :rtype: bool
+        """
+        if self.created:
+            return False
+        if self.existing_dates is None:
+            ds = self._open_zarr_dataset(self.variables)
+            self.existing_dates = ds[self.DATE_VARIABLE].values
+            ds.close()
+        np_date = np.datetime64(f'{date.isoformat()}')
+        return np_date in self.existing_dates
 
 
 def ingestor_revoked_handler(bg_task: BackgroundTask):

@@ -166,6 +166,7 @@ class TioShortTermCollector(BaseIngestor):
 class TioShortTermIngestor(BaseZarrIngestor):
     """Ingestor Tio Short Term data into Zarr."""
 
+    DATE_VARIABLE = 'forecast_date'
     default_chunks = {
         'forecast_date': 10,
         'forecast_day_idx': 21,
@@ -222,23 +223,6 @@ class TioShortTermIngestor(BaseZarrIngestor):
             name='Tomorrow.io Short-term Forecast',
             store_type=DatasetStore.ZARR
         )
-
-    def _is_date_in_zarr(self, date: date) -> bool:
-        """Check whether a date has been added to zarr file.
-
-        :param date: date to check
-        :type date: date
-        :return: True if date exists in zarr file.
-        :rtype: bool
-        """
-        if self.created:
-            return False
-        if self.existing_dates is None:
-            ds = self._open_zarr_dataset(self.variables)
-            self.existing_dates = ds.forecast_date.values
-            ds.close()
-        np_date = np.datetime64(f'{date.isoformat()}')
-        return np_date in self.existing_dates
 
     def _append_new_forecast_date(
             self, forecast_date: date, is_new_dataset=False):
