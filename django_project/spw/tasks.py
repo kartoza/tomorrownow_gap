@@ -8,7 +8,9 @@ from datetime import timedelta
 from celery import shared_task
 from celery.utils.log import get_task_logger
 from django.utils import timezone
+from django.db.models import Max
 
+from gap.models import FarmShortTermForecast
 from spw.models import RModelExecutionLog
 from spw.utils.plumber import (
     kill_r_plumber_process,
@@ -47,4 +49,20 @@ def cleanup_r_execution_logs():
     datetime_filter = timezone.now() - timedelta(days=REMOVE_AFTER_DAYS)
     RModelExecutionLog.objects.filter(
         start_date_time__lte=datetime_filter
+    ).delete()
+
+
+@shared_task(name="clean_duplicate_farm_short_term_forecast")
+def clean_duplicate_farm_short_term_forecast():
+    """Cleanup FarmShortTermForecast."""
+    # group by farm and forecast_date
+    # and keep the latest one
+    duplicates = FarmShortTermForecast.objects.values(
+        'farm', 'forecast_date'
+    ).annotate(
+        latest_id=Max('id')
+    ).values('latest_id')
+    # delete all except the latest one
+    FarmShortTermForecast.objects.exclude(
+        id__in=duplicates
     ).delete()
