@@ -503,18 +503,16 @@ class TioShortTermIngestor(BaseZarrIngestor):
     def run(self):
         """Run TomorrowIO Ingestor."""
         # Run the ingestion
-        is_success = False
         try:
             self._run()
             self.session.notes = json.dumps(self.metadata, default=str)
-            is_success = True
+
+            # trigger dcas after sucessful
+            trigger_task_after_ingestor_completed()
         except Exception as e:
             logger.error('Ingestor TomorrowIO failed!')
             logger.error(traceback.format_exc())
             raise e
-        finally:
-            if is_success:
-                trigger_task_after_ingestor_completed()
 
     def _process_tio_shortterm_data(
             self, forecast_date: date, lat_arr: List[CoordMapping],
