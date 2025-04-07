@@ -223,23 +223,6 @@ class CBAMBiasAdjustIngestor(BaseZarrIngestor):
             store_type=DatasetStore.ZARR
         )
 
-    def _is_date_in_zarr(self, date: datetime.date) -> bool:
-        """Check whether a date has been added to zarr file.
-
-        :param date: date to check
-        :type date: date
-        :return: True if date exists in zarr file.
-        :rtype: bool
-        """
-        if self.created:
-            return False
-        if self.existing_dates is None:
-            ds = self._open_zarr_dataset(self.variables)
-            self.existing_dates = ds.date.values
-            ds.close()
-        np_date = np.datetime64(f'{date.isoformat()}')
-        return np_date in self.existing_dates
-
     def _days_in_year(self, year):
         """Return number of days in year."""
         return 365 + calendar.isleap(year)

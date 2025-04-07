@@ -20,8 +20,7 @@ from gap.ingestor.exceptions import (
 from gap.models import (
     FarmRegistryGroup,
     IngestorSession,
-    IngestorSessionStatus,
-    IngestorSessionProgress
+    IngestorSessionStatus
 )
 
 logger = logging.getLogger(__name__)
@@ -147,15 +146,6 @@ class DCASFarmRegistryIngestor(BaseIngestor):
             name=group_name,
             date_time=datetime.now(timezone.utc),
             is_latest=True
-        )
-
-    def _add_progress(self, progress_name, notes=None):
-        """Add progress to the session."""
-        return IngestorSessionProgress.objects.create(
-            session=self.session,
-            filename=progress_name,
-            row_count=0,
-            notes=notes
         )
 
     def _execute_query(self, query, query_name):
