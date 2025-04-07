@@ -22,7 +22,8 @@ import time
 from xarray.core.dataset import Dataset as xrDataset
 from django.conf import settings
 from django.utils import timezone
-from django.core.files.storage import default_storage
+from django.core.files.storage import storages
+from storages.backends.s3boto3 import S3Boto3Storage
 from typing import List
 
 
@@ -52,16 +53,16 @@ class SalientCollector(BaseIngestor):
         self.dataset = Dataset.objects.get(name='Salient Seasonal Forecast')
 
         # init s3 variables and fs
-        self.s3 = NetCDFMediaS3.get_s3_variables('salient')
+        self.s3 = BaseZarrReader.get_s3_variables()
         self.s3_options = {
             'key': self.s3.get('AWS_ACCESS_KEY_ID'),
             'secret': self.s3.get('AWS_SECRET_ACCESS_KEY'),
-            'client_kwargs': NetCDFMediaS3.get_s3_client_kwargs()
+            'client_kwargs': BaseZarrReader.get_s3_client_kwargs()
         }
         self.fs = s3fs.S3FileSystem(
             key=self.s3.get('AWS_ACCESS_KEY_ID'),
             secret=self.s3.get('AWS_SECRET_ACCESS_KEY'),
-            client_kwargs=NetCDFMediaS3.get_s3_client_kwargs()
+            client_kwargs=BaseZarrReader.get_s3_client_kwargs()
         )
 
         # reset variables
@@ -125,13 +126,16 @@ class SalientCollector(BaseIngestor):
         )
         # prepare start and end dates
         forecast_date = self._convert_forecast_date(date_str)
-        end_date = forecast_date + datetime.timedelta(days=SALIENT_NUMBER_OF_DAYS)
+        end_date = forecast_date + datetime.timedelta(
+            days=SALIENT_NUMBER_OF_DAYS
+        )
         logger.info(f'Salient dataset from {forecast_date} to {end_date}')
 
         # store as netcdf to S3
         filename = f'{str(uuid.uuid4())}.nc'
         netcdf_url = (
-            NetCDFMediaS3.get_netcdf_base_url(self.s3) + filename
+            NetCDFMediaS3.get_netcdf_base_url(self.s3) +
+            'salient_collector/' + filename
         )
         self.fs.put(file_path, netcdf_url)
 
@@ -197,6 +201,10 @@ class SalientCollector(BaseIngestor):
 
         self._store_as_netcdf_file(fcst_file, self._get_date_config())
 
+        # remove the temporary file
+        if os.path.exists(fcst_file):
+            os.remove(fcst_file)
+
     def run(self):
         """Run Salient Data Collector."""
         try:
@@ -221,6 +229,7 @@ class SalientIngestor(BaseZarrIngestor):
     }
     forecast_date_chunk = 10
     num_dates = SALIENT_NUMBER_OF_DAYS
+    DATE_VARIABLE = 'forecast_date'
 
     def __init__(self, session: IngestorSession, working_dir: str = '/tmp'):
         """Initialize SalientIngestor."""
@@ -243,7 +252,7 @@ class SalientIngestor(BaseZarrIngestor):
         self.reindex_tolerance = 0.01
         # init variables
         self.variables = list(
-                DatasetAttribute.objects.filter(
+            DatasetAttribute.objects.filter(
                 dataset=self.dataset
             ).values_list(
                 'source', flat=True
@@ -266,12 +275,30 @@ class SalientIngestor(BaseZarrIngestor):
         :return: s3 path to the file
         :rtype: str
         """
-        dir_prefix = os.environ.get('MINIO_AWS_DIR_PREFIX', '')
+        dir_prefix = os.environ.get('MINIO_GAP_AWS_DIR_PREFIX', '')
         return os.path.join(
             dir_prefix,
-            'salient',
+            'salient_collector',
             source_file.name
         )
+
+    def _remove_temporary_source_file(
+            self, source_file: DataSourceFile, file_path: str):
+        """Remove temporary file from collector.
+
+        :param source_file: Temporary File
+        :type source_file: DataSourceFile
+        :param file_path: s3 file path
+        :type file_path: str
+        """
+        try:
+            s3_storage: S3Boto3Storage = storages["gap_products"]
+            s3_storage.delete(file_path)
+        except Exception as ex:
+            logger.error(
+                f'Failed to remove original source_file {file_path}!', ex)
+        finally:
+            source_file.delete()
 
     def _open_dataset(self, source_file: DataSourceFile) -> xrDataset:
         """Open temporary NetCDF File.
@@ -281,7 +308,7 @@ class SalientIngestor(BaseZarrIngestor):
         :return: xarray dataset
         :rtype: xrDataset
         """
-        s3 = NetCDFMediaS3.get_s3_variables('salient')
+        s3 = BaseZarrReader.get_s3_variables()
         fs = s3fs.S3FileSystem(
             key=s3.get('AWS_ACCESS_KEY_ID'),
             secret=s3.get('AWS_SECRET_ACCESS_KEY'),
@@ -293,9 +320,20 @@ class SalientIngestor(BaseZarrIngestor):
         netcdf_url = f's3://{bucket_name}/{prefix}'
         if not netcdf_url.endswith('/'):
             netcdf_url += '/'
-        netcdf_url += f'{source_file.name}'
+        netcdf_url += 'salient_collector/' + f'{source_file.name}'
         return xr.open_dataset(
             fs.open(netcdf_url), chunks=self.default_chunks)
+
+    def _check_netcdf_file_exists(self, file_path: str) -> bool:
+        """Check if the NetCDF file exists in S3.
+
+        :param file_path: path to the NetCDF file
+        :type file_path: str
+        :return: True if exists, False otherwise
+        :rtype: bool
+        """
+        s3_storage: S3Boto3Storage = storages["gap_products"]
+        return s3_storage.exists(file_path)
 
     def _run(self):
         """Run Salient ingestor."""
@@ -309,14 +347,11 @@ class SalientIngestor(BaseZarrIngestor):
             )
             if source_file is None:
                 continue
-            s3_storage = default_storage
+
             file_path = self._get_s3_filepath(source_file)
-            if not s3_storage.exists(file_path):
+            if not self._check_netcdf_file_exists(file_path):
                 logger.warning(f'DataSource {file_path} does not exist!')
                 continue
-
-            # open the dataset
-            dataset = self._open_dataset(source_file)
 
             # convert to zarr
             forecast_date = source_file.start_date_time.date()
@@ -325,7 +360,7 @@ class SalientIngestor(BaseZarrIngestor):
             if not self._is_date_in_zarr(forecast_date):
                 self._append_new_forecast_date(forecast_date, self.created)
 
-            self._process_netcdf_file(dataset, forecast_date)
+            self._process_netcdf_file(source_file, forecast_date)
 
             # update start/end date of zarr datasource file
             self._update_zarr_source_file(forecast_date)
@@ -570,7 +605,7 @@ class SalientIngestor(BaseZarrIngestor):
                 storage_options=self.s3_options,
                 compute=False
             )
-        
+
         if is_new_dataset and init_number_of_months:
             # only generate the metadata
             pass
