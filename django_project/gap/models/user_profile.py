@@ -37,5 +37,6 @@ User = get_user_model()
 
 @receiver(post_save, sender=User)
 def create_user_profile(sender, instance, created, **kwargs):
+    """Create user profile when a new user is created."""
     if created and not hasattr(instance, 'userprofile'):
         UserProfile.objects.create(user=instance)
