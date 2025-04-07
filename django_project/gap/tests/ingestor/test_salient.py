@@ -312,6 +312,7 @@ class TestSalientIngestor(SalientIngestorBaseTest):
         self.ingestor = SalientIngestor(self.session, working_dir='/tmp')
 
     def tearDown(self):
+        """Tear down test case."""
         s3_storage: S3Boto3Storage = storages["gap_products"]
         path = self.ingestor._get_s3_filepath(self.datasourcefile)
         if s3_storage.exists(path):
