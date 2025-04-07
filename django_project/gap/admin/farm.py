@@ -132,7 +132,7 @@ class FarmAdmin(admin.ModelAdmin):
     search_fields = ('unique_id',)
     filter = ('unique_id',)
     list_filter = ('rsvp_status', 'category', 'crop')
-    actions = (assign_farm_grid)
+    actions = (assign_farm_grid,)
 
     def latitude(self, obj: Farm):
         """Latitude of farm."""
