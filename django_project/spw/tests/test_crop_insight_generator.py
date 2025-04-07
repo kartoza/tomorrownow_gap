@@ -19,7 +19,7 @@ from gap.factories.farm import FarmFactory, FarmGroupFactory
 from gap.factories.grid import GridFactory
 from gap.models.crop_insight import (
     FarmSuitablePlantingWindowSignal, CropInsightRequest,
-    FarmGroupIsNotSetException,
+    FarmGroupIsNotSetException, FarmShortTermForecast
 )
 from gap.models.pest import Pest
 from gap.models.preferences import Preferences
@@ -30,6 +30,7 @@ from gap.tasks.crop_insight import (
 )
 from spw.factories import RModelFactory
 from spw.generator.crop_insight import CropInsightFarmGenerator
+from spw.tasks import clean_duplicate_farm_short_term_forecast
 
 ltn_returns = {
     '07-20': {
@@ -514,3 +515,39 @@ class TestCropInsightGenerator(TestCase):
                 self.recipients,
                 [parent.user_1.email, parent.user_2.email]
             )
+
+    def test_clean_duplicate_farm_short_term_forecast(self):
+        """Test clean_duplicate_farm_short_term_forecast task."""
+
+        # create FarmShortTermForecast
+        FarmShortTermForecast.objects.create(
+            farm=self.farm,
+            forecast_date=date.today()
+        )
+        FarmShortTermForecast.objects.create(
+            farm=self.farm,
+            forecast_date=date.today()
+        )
+        FarmShortTermForecast.objects.create(
+            farm=self.farm_2,
+            forecast_date=date.today()
+        )
+
+        # Call the task
+        clean_duplicate_farm_short_term_forecast()
+
+        # Check that only one forecast per farm and date remains
+        self.assertEqual(
+            FarmShortTermForecast.objects.filter(
+                farm=self.farm,
+                forecast_date=date.today()
+            ).count(),
+            1
+        )
+        self.assertEqual(
+            FarmShortTermForecast.objects.filter(
+                farm=self.farm_2,
+                forecast_date=date.today()
+            ).count(),
+            1
+        )

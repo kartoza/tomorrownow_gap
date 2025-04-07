@@ -57,12 +57,18 @@ def clean_duplicate_farm_short_term_forecast():
     """Cleanup FarmShortTermForecast."""
     # group by farm and forecast_date
     # and keep the latest one
-    duplicates = FarmShortTermForecast.objects.values(
+    latests = FarmShortTermForecast.objects.values(
         'farm', 'forecast_date'
     ).annotate(
         latest_id=Max('id')
     ).values('latest_id')
+    # log the duplicates count
+    duplicates_count = FarmShortTermForecast.objects.exclude(
+        id__in=latests
+    ).count()
+    logger.info(f'Duplicates count: {duplicates_count}')
+    print(f'Duplicates count: {duplicates_count}')
     # delete all except the latest one
     FarmShortTermForecast.objects.exclude(
-        id__in=duplicates
+        id__in=latests
     ).delete()
