@@ -130,7 +130,8 @@ class GapInput(SPWDataInput):
         ltn_attrs = list(
             attrs.filter(
                 dataset__type__name=
-                TomorrowIODatasetReader.LONG_TERM_NORMALS_TYPE
+                TomorrowIODatasetReader.LONG_TERM_NORMALS_TYPE,
+                attribute__variable_name__in=self.LTN_MAPPING.keys()
             )
         )
         reader = TomorrowIODatasetReader(
