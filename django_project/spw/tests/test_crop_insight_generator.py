@@ -518,7 +518,6 @@ class TestCropInsightGenerator(TestCase):
 
     def test_clean_duplicate_farm_short_term_forecast(self):
         """Test clean_duplicate_farm_short_term_forecast task."""
-
         # create FarmShortTermForecast
         FarmShortTermForecast.objects.create(
             farm=self.farm,
