@@ -575,6 +575,9 @@ class CropInsightRequest(models.Model):
         # If there are already complete task
         # Skip it
         if self.background_tasks.filter(status=TaskStatus.COMPLETED):
+            self.update_note(
+                'Generate Report skip run because: Existing Completed task!'
+            )
             return True
 
         # If the last running background task is
@@ -583,19 +586,33 @@ class CropInsightRequest(models.Model):
         if last_running_background_task and (
                 last_running_background_task.id != last_background_task.id
         ):
+            self.update_note(
+                'Generate Report skip run because: Last running task!'
+            )
             return True
 
         # If there are already running task 2,
         # the current task is skipped
         if background_task_running.count() >= 2:
+            self.update_note(
+                'Generate Report skip run because: Two or more running tasks!'
+            )
             return True
 
         now = timezone.now()
         try:
             if self.requested_at.date() != now.date():
+                self.update_note(
+                    'Generate Report skip run because: '
+                    'Diff date on requested_date!'
+                )
                 return True
         except AttributeError:
             if self.requested_at != now.date():
+                self.update_note(
+                    'Generate Report skip run because: '
+                    'Diff date on requested_date!'
+                )
                 return True
         return False
 
