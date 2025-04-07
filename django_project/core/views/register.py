@@ -7,10 +7,12 @@ from django.contrib.auth import get_user_model
 from django.shortcuts import redirect
 from django.utils.http import urlsafe_base64_decode
 from django.contrib.auth.tokens import default_token_generator
+from django.utils import timezone
 
 from core.serializers import RegisterSerializer
 from core.utils.token_gen import generate_verification_token
 from core.utils.emails import send_verification_email
+from gap.models import UserProfile
 
 User = get_user_model()
 
@@ -49,5 +51,9 @@ class VerifyEmailView(generics.GenericAPIView):
 
         if default_token_generator.check_token(user, token):
             user.save()
-            return redirect("/signup-request/")
+            profile = UserProfile.objects.get(user=user)
+            profile.email_verified = True
+            profile.verified_at = timezone.now()  # set at time of verification
+            profile.save()
+            return redirect(f"/signup-request/?uid={uid}&token={token}")
         return Response({"detail": "Invalid or expired token."}, status=400)

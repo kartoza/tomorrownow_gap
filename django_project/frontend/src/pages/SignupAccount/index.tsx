@@ -13,8 +13,6 @@ import toast from 'react-hot-toast';
 const SignupAccountForm = () => {
 
   const [formData, setFormData] = useState({
-    first_name: '',
-    last_name: '',
     email: '',
     password: '',
     confirm_password: '',
@@ -77,7 +75,7 @@ const SignupAccountForm = () => {
       if (response.ok) {
         toast.success('Check your email. We’ve sent a verification link.');
 
-        setFormData({ first_name: '', last_name: '', email: '', password: '', confirm_password: '' });
+        setFormData({ email: '', password: '', confirm_password: '' });
       } else {
           if (data?.email?.[0] === "This email is already registered.") {
             console.log("Email already registered toasted triggered");
@@ -109,16 +107,6 @@ const SignupAccountForm = () => {
       </Heading>
       <form onSubmit={handleSubmit}>
         <Stack spacing={4}>
-          <FormControl isRequired>
-            <FormLabel>First Name</FormLabel>
-            <Input name="first_name" value={formData.first_name} onChange={handleChange} />
-          </FormControl>
-
-          <FormControl isRequired>
-            <FormLabel>Last Name</FormLabel>
-            <Input name="last_name" value={formData.last_name} onChange={handleChange} />
-          </FormControl>
-
           <FormControl isRequired>
             <FormLabel>Email</FormLabel>
             <Input type="email" name="email" value={formData.email} onChange={handleChange} />

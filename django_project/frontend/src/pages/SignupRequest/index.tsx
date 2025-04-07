@@ -63,8 +63,14 @@ const SignupRequestForm = ({ user }: SignupRequestFormProps) => {
           'Content-Type': 'application/json',
           'X-CSRFToken': getCookie('csrftoken'),
         },
+        credentials: 'include',
         body: JSON.stringify(formData),
       });
+
+      if (response.status === 403) {
+        toast.error("Please verify your email before submitting this request.");
+        return;
+      }
 
       if (response.ok) {
         toast.success('Request submitted');
