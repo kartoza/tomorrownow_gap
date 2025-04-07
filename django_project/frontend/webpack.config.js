@@ -18,6 +18,7 @@ let conf = {
         App: './src/index.tsx',
         Signup: './src/Signup.tsx',
         SignupRequest: './src/SignupRequest.tsx',
+        Login: './src/Login.tsx',
     },
     output: {
         path: path.resolve(__dirname, "./bundles/frontend"),

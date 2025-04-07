@@ -17,15 +17,6 @@ function Home() {
 
   return (
     <Box className="App">
-      {/* Navbar with just Sign Up */}
-      <Flex as="nav" p={4} bg="gray.900" color="white" align="center">
-        <Spacer />
-        <a href="/signup/">
-          <Button colorScheme="purple" size="sm">
-            Sign Up
-          </Button>
-        </a>
-      </Flex>
 
       {/* Main content */}
       <Box className="App-header">

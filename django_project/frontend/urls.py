@@ -4,7 +4,7 @@ from django.urls import path
 
 from .views import (
     HomeView, SentryProxyView, SignupView,
-    SignupRequestView,
+    SignupRequestView, LoginView,
 )
 
 urlpatterns = [
@@ -14,4 +14,5 @@ urlpatterns = [
     path(
         "signup-request/", SignupRequestView.as_view(), name="signup-request"
     ),
+    path('login/', LoginView.as_view(), name='login'),
 ]
