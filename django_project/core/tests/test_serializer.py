@@ -18,8 +18,6 @@ class RegisterSerializerTests(TestCase):
     def test_valid_data_creates_user(self):
         """Test that valid data creates a user."""
         data = {
-            "first_name": "John",
-            "last_name": "Doe",
             "email": "john@example.com",
             "password": "strongpassword",
             "confirm_password": "strongpassword",
@@ -33,8 +31,6 @@ class RegisterSerializerTests(TestCase):
     def test_password_mismatch(self):
         """Test that password mismatch raises an error."""
         data = {
-            "first_name": "Jane",
-            "last_name": "Doe",
             "email": "jane@example.com",
             "password": "pass123",
             "confirm_password": "pass456",
@@ -47,6 +43,4 @@ class RegisterSerializerTests(TestCase):
         """Test that missing required fields raises an error."""
         serializer = RegisterSerializer(data={})
         self.assertFalse(serializer.is_valid())
-        self.assertIn("first_name", serializer.errors)
-        self.assertIn("last_name", serializer.errors)
         self.assertIn("email", serializer.errors)
