@@ -42,7 +42,9 @@ class VerifyEmailViewTests(TestCase):
             self.url, {"uid": self.uid, "token": self.token}
         )
         self.assertEqual(response.status_code, status.HTTP_302_FOUND)
-        self.assertEqual(response.url, "/signup-request/")
+        self.assertEqual(
+            response.url,
+            f"/signup-request/?uid={self.uid}&token={self.token}")
         self.user.refresh_from_db()
 
     def test_verify_email_invalid_token(self):
