@@ -1,3 +1,9 @@
+# coding=utf-8
+"""
+Tomorrow Now GAP.
+
+.. note:: SPW Data Input using GAP.
+"""
 from datetime import datetime
 from django.contrib.gis.geos import Point
 

@@ -43,9 +43,7 @@ class SPWDataInput:
         self.end_date = current_date + timedelta(days=13)
 
     def get_data(self):
-        """
-        Returns the input data.
-        """
+        """Get the input data."""
         if not self.is_data_loaded:
             self.data = self.load_data()
             self.is_data_loaded = True
@@ -101,7 +99,7 @@ class SPWDataInput:
         return True
 
     def get_spw_data(self):
-        """"Returns data for SPW processing."""
+        """"Get data for SPW processing."""
         rows = []
         data = self.get_data()
         for month_day, val in data.items():
