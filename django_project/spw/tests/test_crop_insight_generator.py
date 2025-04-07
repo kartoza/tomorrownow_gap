@@ -237,7 +237,7 @@ class TestCropInsightGenerator(TestCase):
             10, 10, 100, 0, 50
         )
         mock_fetch_timelines_data.return_value = fetch_timelines_data_val
-        generator = CropInsightFarmGenerator(self.farm)
+        generator = CropInsightFarmGenerator(self.farm, self.farm_group)
 
         # ------------------------------------------------------------
         # Check if _fetch_ltn_data always returns exception
@@ -295,7 +295,7 @@ class TestCropInsightGenerator(TestCase):
             1, 0.5, 4, 3, 10
         )
         mock_fetch_timelines_data.return_value = fetch_timelines_data_val
-        generator = CropInsightFarmGenerator(self.farm_2)
+        generator = CropInsightFarmGenerator(self.farm_2, self.farm_group)
         generator.generate_spw()
         last_spw = FarmSuitablePlantingWindowSignal.objects.filter(
             farm=self.farm_2

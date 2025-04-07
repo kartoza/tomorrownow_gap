@@ -96,6 +96,9 @@ class SPWDataInput:
                         f"Value for {key} must be numeric {type(value)}."
                     )
 
+            # only check for the first item
+            break
+
         return True
 
     def get_spw_data(self):

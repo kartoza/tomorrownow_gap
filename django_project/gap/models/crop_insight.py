@@ -6,7 +6,7 @@ Tomorrow Now GAP.
 """
 import os.path
 import uuid
-from datetime import date, timedelta, datetime, tzinfo
+from datetime import date, timedelta, tzinfo, datetime
 from concurrent.futures import ThreadPoolExecutor
 
 from django.conf import settings
@@ -71,6 +71,12 @@ class FarmShortTermForecast(models.Model):
 
     class Meta:  # noqa: D106
         ordering = ['-forecast_date']
+        indexes = [
+            models.Index(
+                fields=['farm', 'forecast_date'],
+                name='farm_forecast_date_idx'
+            )
+        ]
 
     def __str__(self):
         return f'{self.farm.__str__()} - {self.forecast_date}'
@@ -95,6 +101,12 @@ class FarmShortTermForecastData(models.Model):
 
     class Meta:  # noqa: D106
         ordering = ['dataset_attribute', '-value_date']
+        indexes = [
+            models.Index(
+                fields=['forecast', 'dataset_attribute', 'value_date'],
+                name='frcst_ds_val_date_idx'
+            )
+        ]
 
 
 class FarmProbabilisticWeatherForcast(models.Model):
@@ -210,6 +222,12 @@ class FarmSuitablePlantingWindowSignal(models.Model):
 
     class Meta:  # noqa: D106
         ordering = ['-generated_date']
+        indexes = [
+            models.Index(
+                fields=['farm', 'generated_date'],
+                name='farm_generated_date_idx'
+            )
+        ]
 
 
 class FarmPlantingWindowTable(models.Model):
@@ -674,7 +692,11 @@ class CropInsightRequest(models.Model):
         count = 0
         for farm in farms:
             if farm.pk:
-                CropInsightFarmGenerator(farm, port=port).generate_spw()
+                CropInsightFarmGenerator(
+                    farm,
+                    self.farm_group,
+                    port=port
+                ).generate_spw()
             count += 1
             if count % 500 == 0:
                 print(
@@ -730,7 +752,10 @@ class CropInsightRequest(models.Model):
             # If it has farm id, generate spw
             if farm.pk:
                 # self.update_note('Generating SPW for farm: {}'.format(farm))
-                CropInsightFarmGenerator(farm).generate_spw()
+                CropInsightFarmGenerator(
+                    farm,
+                    self.farm_group
+                ).generate_spw()
 
             data = CropPlanData(
                 farm, self.requested_at.date(),
