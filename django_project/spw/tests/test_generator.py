@@ -25,10 +25,9 @@ from gap.utils.reader import (
 from spw.factories import (
     RModelFactory
 )
+from spw.generator.gap_input import GapInput
 from spw.generator.main import (
     SPWOutput,
-    _fetch_timelines_data,
-    _fetch_ltn_data,
     calculate_from_point,
     calculate_from_point_attrs,
     VAR_MAPPING_REVERSE
@@ -153,9 +152,8 @@ class TestSPWFetchDataFunctions(TestCase):
                 self.location_input.point
             )
         ]
-        result = _fetch_timelines_data(
-            self.location_input, self.attrs, self.start_dt, self.end_dt
-        )
+        gap_input = GapInput(0, 0, self.dt_now)
+        result = gap_input._fetch_timelines_data()
         expected_result = {
             '07-20': {
                 'date': '2023-07-20',
@@ -188,9 +186,8 @@ class TestSPWFetchDataFunctions(TestCase):
                 'rainAccumulationSum': 5
             }
         }
-        result = _fetch_ltn_data(
-            self.location_input, self.attrs,
-            self.start_dt, self.end_dt, historical_dict)
+        gap_input = GapInput(0, 0, self.dt_now)
+        result = gap_input._fetch_ltn_data(historical_dict)
         expected_result = {
             '07-20': {
                 'date': '2023-07-20',
@@ -222,13 +219,17 @@ class TestSPWGenerator(TestCase):
         self.location_input = DatasetReaderInput.from_point(Point(0, 0))
         self.r_model = RModelFactory.create(name='test')
 
+    @patch('spw.generator.main.datetime')
     @patch('spw.generator.main.execute_spw_model')
-    @patch('spw.generator.main._fetch_timelines_data')
-    @patch('spw.generator.main._fetch_ltn_data')
+    @patch('spw.generator.gap_input.GapInput._fetch_timelines_data')
+    @patch('spw.generator.gap_input.GapInput._fetch_ltn_data')
     def test_calculate_from_point(
             self, mock_fetch_ltn_data, mock_fetch_timelines_data,
-            mock_execute_spw_model):
+            mock_execute_spw_model, mock_now):
         """Test calculate_from_point function."""
+        mock_now.now.return_value = datetime(
+            2023, 7, 20, 0, 0, 0, tzinfo=pytz.UTC
+        )
         mock_fetch_ltn_data.return_value = {
             '07-20': {
                 'date': '2023-07-20',
