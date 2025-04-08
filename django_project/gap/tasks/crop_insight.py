@@ -10,19 +10,10 @@ from django.contrib.auth import get_user_model
 
 from core.celery import app
 from gap.models.crop_insight import CropInsightRequest
-from gap.models.farm import Farm
 from gap.models.farm_group import FarmGroup
-from spw.generator.crop_insight import CropInsightFarmGenerator
 
 logger = get_task_logger(__name__)
 User = get_user_model()
-
-
-@app.task(name='generate_spw')
-def generate_spw(farms_id: list):
-    """Generate spw."""
-    for farm in Farm.objects.filter(id__in=farms_id):
-        CropInsightFarmGenerator(farm).generate_spw()
 
 
 @app.task(name='generate_insight_report')

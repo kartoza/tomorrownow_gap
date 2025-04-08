@@ -15,6 +15,7 @@ from gap.models.crop_insight import (
     FarmSuitablePlantingWindowSignal, FarmShortTermForecast,
     FarmShortTermForecastData
 )
+from gap.models.farm_group import FarmGroup
 from gap.models.farm import Farm
 from spw.generator.main import (
     calculate_from_point, calculate_from_polygon, VAR_MAPPING_REVERSE,
@@ -26,9 +27,10 @@ from spw.utils.plumber import PLUMBER_PORT
 class CropInsightFarmGenerator:
     """Insight Farm Generator."""
 
-    def __init__(self, farm: Farm, port=PLUMBER_PORT):
+    def __init__(self, farm: Farm, farm_group: FarmGroup, port=PLUMBER_PORT):
         """Init Generator."""
         self.farm = farm
+        self.farm_group = farm_group
         self.today = timezone.now()
         self.today.replace(tzinfo=pytz.UTC)
         self.today = self.today.date()
@@ -137,7 +139,9 @@ class CropInsightFarmGenerator:
         # Save to all farm that has same grid
         farms = [self.farm]
         if self.farm.grid:
-            farms = Farm.objects.filter(grid=self.farm.grid)
+            farms = self.farm_group.farms.filter(
+                grid=self.farm.grid
+            )
 
         for farm in farms:
             self.save_spw(
