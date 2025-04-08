@@ -15,7 +15,9 @@ from gap.models.crop_insight import (
     FarmSuitablePlantingWindowSignal, FarmShortTermForecast,
     FarmShortTermForecastData
 )
+from gap.models.farm_group import FarmGroup
 from gap.models.farm import Farm
+from spw.models import SPWErrorLog
 from spw.generator.main import (
     calculate_from_point, calculate_from_polygon, VAR_MAPPING_REVERSE,
     calculate_from_point_attrs
@@ -26,9 +28,10 @@ from spw.utils.plumber import PLUMBER_PORT
 class CropInsightFarmGenerator:
     """Insight Farm Generator."""
 
-    def __init__(self, farm: Farm, port=PLUMBER_PORT):
+    def __init__(self, farm: Farm, farm_group: FarmGroup, port=PLUMBER_PORT):
         """Init Generator."""
         self.farm = farm
+        self.farm_group = farm_group
         self.today = timezone.now()
         self.today.replace(tzinfo=pytz.UTC)
         self.today = self.today.date()
@@ -36,6 +39,7 @@ class CropInsightFarmGenerator:
         self.tomorrow = self.today + timedelta(days=1)
         self.attributes = calculate_from_point_attrs()
         self.port = port
+        self.errors = []
 
     def return_float(self, value):
         """Return float value."""
@@ -66,40 +70,65 @@ class CropInsightFarmGenerator:
     def save_shortterm_forecast(self, historical_dict, farm: Farm):
         """Save spw data."""
         # Save the short term forecast
+        c, is_created = FarmShortTermForecast.objects.get_or_create(
+            farm=farm,
+            forecast_date=self.today
+        )
+        if not is_created:
+            # Delete the FarmShortTermForecastData
+            FarmShortTermForecastData.objects.filter(
+                forecast=c
+            ).delete()
+
+        # get the attributes
+        attributes_dict = {}
+        for k, v in VAR_MAPPING_REVERSE.items():
+            attributes_dict[k] = self.attributes.filter(
+                attribute__variable_name=v
+            ).first()
+
+        batch_insert = []
+        # Save the short term forecast data
         for k, v in historical_dict.items():
             _date = datetime.strptime(v['date'], "%Y-%m-%d")
             _date = _date.replace(tzinfo=pytz.UTC)
             if self.tomorrow <= _date.date():
                 for attr_name, val in v.items():
                     try:
-                        attr = self.attributes.filter(
-                            attribute__variable_name=VAR_MAPPING_REVERSE[
-                                attr_name
-                            ]
-                        ).first()
+                        attr = attributes_dict[attr_name]
                         if attr:
-                            c, _ = FarmShortTermForecast.objects.get_or_create(
-                                farm=farm,
-                                forecast_date=self.today
-                            )
-                            FarmShortTermForecastData.objects.update_or_create(
-                                forecast=c,
-                                value_date=_date,
-                                dataset_attribute=attr,
-                                defaults={
-                                    'value': val
-                                }
+                            batch_insert.append(
+                                FarmShortTermForecastData(
+                                    forecast=c,
+                                    value_date=_date,
+                                    dataset_attribute=attr,
+                                    value=val
+                                )
                             )
                     except KeyError:
                         pass
+        # Save the batch insert
+        if batch_insert:
+            FarmShortTermForecastData.objects.bulk_create(
+                batch_insert, ignore_conflicts=True
+            )
 
     def generate_spw(self):
         """Generate spw.
 
         Do atomic because need all data to be saved.
         """
-        with transaction.atomic():
-            self._generate_spw()
+        try:
+            with transaction.atomic():
+                self._generate_spw()
+        except Exception as e:
+            print(f'Generate SPW Error: {str(e)}')
+            raise e
+        finally:
+            # save error logs
+            if self.errors:
+                SPWErrorLog.objects.bulk_create(self.errors)
+                self.errors = []
 
     def _generate_spw(self):
         """Generate Farm SPW."""
@@ -107,7 +136,7 @@ class CropInsightFarmGenerator:
         if FarmSuitablePlantingWindowSignal.objects.filter(
                 farm=self.farm,
                 generated_date=self.today
-        ).first():
+        ).exists():
             return
 
         # Generate the spw
@@ -128,8 +157,15 @@ class CropInsightFarmGenerator:
                 # When error, retry until 3 times
                 # If it is 3 times, raise the error
                 if retry >= 3:
+                    self._add_error(
+                        'SPW Error: {}'.format(str(e))
+                    )
                     raise e
                 retry += 1
+
+        if output is None:
+            self._add_error('SPW Output is empty')
+            return
 
         # TODO:
         #  This will deprecated after we save shorterm
@@ -137,7 +173,9 @@ class CropInsightFarmGenerator:
         # Save to all farm that has same grid
         farms = [self.farm]
         if self.farm.grid:
-            farms = Farm.objects.filter(grid=self.farm.grid)
+            farms = self.farm_group.farms.filter(
+                grid=self.farm.grid
+            )
 
         for farm in farms:
             self.save_spw(
@@ -146,3 +184,18 @@ class CropInsightFarmGenerator:
                 output.data.last2Days, output.data.todayTomorrow
             )
             self.save_shortterm_forecast(historical_dict, farm)
+
+    def _add_error(self, error):
+        """Save error log of SPW."""
+        self.errors.append(
+            SPWErrorLog(
+                farm=self.farm,
+                farm_group=self.farm_group,
+                grid_unique_id=(
+                    self.farm.grid.unique_id if self.farm.grid else
+                    None
+                ),
+                generated_date=self.today,
+                error=error
+            )
+        )

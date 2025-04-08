@@ -2,7 +2,7 @@
 """
 Tomorrow Now GAP.
 
-.. note:: Generato
+.. note:: Generator
 """
 
 from .main import *

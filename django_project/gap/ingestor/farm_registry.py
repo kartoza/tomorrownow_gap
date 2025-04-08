@@ -20,8 +20,7 @@ from gap.ingestor.exceptions import (
 from gap.models import (
     FarmRegistryGroup,
     IngestorSession,
-    IngestorSessionStatus,
-    IngestorSessionProgress
+    IngestorSessionStatus
 )
 
 logger = logging.getLogger(__name__)
@@ -136,20 +135,17 @@ class DCASFarmRegistryIngestor(BaseIngestor):
 
     def _create_registry_group(self):
         """Create a new FarmRegistryGroup."""
+        group_id = self.get_config('group_id', None)
+        if group_id:
+            self.group = FarmRegistryGroup.objects.get(id=group_id)
+            return
+
         group_name = "farm_registry_" + \
             datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M')
         self.group = FarmRegistryGroup.objects.create(
             name=group_name,
             date_time=datetime.now(timezone.utc),
             is_latest=True
-        )
-
-    def _add_progress(self, progress_name):
-        """Add progress to the session."""
-        return IngestorSessionProgress.objects.create(
-            session=self.session,
-            filename=progress_name,
-            row_count=0
         )
 
     def _execute_query(self, query, query_name):
@@ -175,6 +171,39 @@ class DCASFarmRegistryIngestor(BaseIngestor):
             """)
             table_exists = cursor.fetchone()[0]
         return table_exists
+
+    def _drop_table(self):
+        """Drop the temporary table if it exists."""
+        # remove temporary table
+        self._execute_query(
+            f'DROP TABLE IF EXISTS {self.table_name_sql}',
+            'drop_temp_table'
+        )
+
+    def _create_table(self):
+        self._drop_table()
+        # create temporary table
+        self._execute_query(
+            f"""
+            CREATE unlogged TABLE {self.table_name_sql} (
+                ogc_fid serial4 NOT NULL,
+                farmer_id varchar NULL,
+                crop varchar NULL,
+                planting_date date NULL,
+                grid_id int4 NULL,
+                farm_id int4 NULL,
+                crop_txt varchar NULL,
+                crop_stage_txt varchar NULL,
+                crop_id int4 NULL,
+                crop_stage_id int4 NULL,
+                farm_registry_id int4 NULL,
+                wkb_geometry public.geometry(point, 4326) NULL,
+                CONSTRAINT farm_registry_session_{self.session.id}_pkey
+                PRIMARY KEY (ogc_fid)
+            );
+            """,
+            'create_temp_table'
+        )
 
     def _run(self):
         """Run the ingestion logic."""
@@ -223,6 +252,7 @@ class DCASFarmRegistryIngestor(BaseIngestor):
                     <Field name="crop_stage_txt" type="String"/>
                     <Field name="crop_id" type="Integer"/>
                     <Field name="crop_stage_id" type="Integer"/>
+                    <Field name="farm_registry_id" type="Integer"/>
                 </OGRVRTLayer>
             </OGRVRTDataSource>"""
         )
@@ -234,6 +264,9 @@ class DCASFarmRegistryIngestor(BaseIngestor):
         # create temp schema if not exist
         with connection.cursor() as cursor:
             cursor.execute('CREATE SCHEMA IF NOT EXISTS temp;')
+
+        # create temporary table
+        self._create_table()
 
         # run ogr2ogr command
         progress = self._add_progress('ogr2ogr')
@@ -252,7 +285,10 @@ class DCASFarmRegistryIngestor(BaseIngestor):
             vrt_file_path,
             '-nln',
             self.table_name,
-            '-overwrite'
+            '-append',
+            '--config',
+            'PG_USE_COPY',
+            'YES'
         ]
         subprocess.run(cmd_list, check=True)
         ogr2_total_time = time.time() - ogr2_start_time
@@ -289,6 +325,16 @@ class DCASFarmRegistryIngestor(BaseIngestor):
         progress.status = IngestorSessionStatus.SUCCESS
         progress.save()
 
+        # create gist index
+        self._execute_query(
+            f"""
+            CREATE INDEX
+            frs_{self.session.id}_wkb_geometry_geom_idx ON
+            {self.table_name_sql} USING gist (wkb_geometry);
+            """,
+            'create_gist_index'
+        )
+
         # create index on columns: farmer_id, crop_txt, crop_stage_txt
         progress = self._add_progress('create_index')
         with connection.cursor() as cursor:
@@ -300,6 +346,10 @@ class DCASFarmRegistryIngestor(BaseIngestor):
             )
             cursor.execute(
                 f'CREATE INDEX ON {self.table_name_sql} (crop_stage_txt)'
+            )
+            cursor.execute(
+                f'CREATE INDEX ON {self.table_name_sql} '
+                '(farm_id, crop_id, crop_stage_id, planting_date)'
             )
         progress.status = IngestorSessionStatus.SUCCESS
         progress.save()
@@ -380,7 +430,7 @@ class DCASFarmRegistryIngestor(BaseIngestor):
             SELECT DISTINCT ON (tfrs.farmer_id)
             tfrs.farmer_id, tfrs.wkb_geometry, tfrs.grid_id
             FROM {self.table_name_sql} tfrs
-            WHERE tfrs.farm_id IS NULL;
+            WHERE tfrs.farm_id IS NULL AND tfrs.grid_id IS NOT NULL;
         """, 'insert_farm')
 
         # update back the farm_id
@@ -398,6 +448,24 @@ class DCASFarmRegistryIngestor(BaseIngestor):
             WHERE tfrs.ogc_fid = m.ogc_fid;
         """, 'update_farm_id_2')
 
+        # update existing farm_registry_id
+        self._execute_query(f"""
+            WITH matched AS (
+                SELECT gf.id as existing_id, tfrs.ogc_fid
+                FROM {self.table_name_sql} tfrs
+                JOIN gap_farmregistry gf ON
+                gf.farm_id = tfrs.farm_id AND
+                gf.crop_id = tfrs.crop_id AND
+                gf.crop_stage_type_id = tfrs.crop_stage_id AND
+                gf.planting_date = tfrs.planting_date
+                WHERE gf.group_id = {self.group.id}
+            )
+            UPDATE {self.table_name_sql} tfrs
+            SET farm_registry_id = m.existing_id
+            FROM matched m
+            WHERE tfrs.ogc_fid = m.ogc_fid;
+        """, 'update_farm_registry_id')
+
         # Count rows that will be inserted into gap_farmregistry
         with connection.cursor() as cursor:
             cursor.execute(f"""
@@ -407,7 +475,8 @@ class DCASFarmRegistryIngestor(BaseIngestor):
                 tfrs.crop_id IS NOT NULL AND
                 tfrs.crop_stage_id IS NOT NULL AND
                 tfrs.planting_date IS NOT NULL AND
-                tfrs.grid_id IS NOT NULL;
+                tfrs.grid_id IS NOT NULL AND
+                tfrs.farm_registry_id IS NULL;
             """)
             self.execution_times['farmregistry_insert_count'] = (
                 cursor.fetchone()[0]
@@ -418,12 +487,30 @@ class DCASFarmRegistryIngestor(BaseIngestor):
             self.execution_times['farmregistry_insert_count'] !=
             self.execution_times['total_rows']
         ):
-            raise FarmRegistryException(
+            self._add_progress(
+                'mismatch_row_count',
                 "Mismatch in row counts: "
                 "farmregistry_insert_count "
                 f"({self.execution_times['farmregistry_insert_count']}) "
                 "does not match total_rows "
                 f"({self.execution_times['total_rows']})."
+            )
+
+        # Check existing farmregistry_id
+        with connection.cursor() as cursor:
+            cursor.execute(f"""
+                SELECT COUNT(*)
+                FROM {self.table_name_sql} tfrs
+                WHERE tfrs.farm_registry_id IS NOT NULL;
+            """)
+            self.execution_times['existing_farmregistry_count'] = (
+                cursor.fetchone()[0]
+            )
+        if self.execution_times['existing_farmregistry_count'] > 0:
+            self._add_progress(
+                'existing_farmregistry_count',
+                f"Existing farm_registry_id count: "
+                f"{self.execution_times['existing_farmregistry_count']}"
             )
 
         # insert into gap_farmregistry
@@ -435,7 +522,8 @@ class DCASFarmRegistryIngestor(BaseIngestor):
             FROM {self.table_name_sql} tfrs
             WHERE tfrs.farm_id IS NOT NULL AND tfrs.crop_id IS NOT NULL AND
             tfrs.crop_stage_id IS NOT NULL AND
-            tfrs.planting_date IS NOT NULL AND tfrs.grid_id IS NOT NULL;
+            tfrs.planting_date IS NOT NULL AND tfrs.grid_id IS NOT NULL AND
+            tfrs.farm_registry_id IS NULL;
         """, 'insert_farmregistry')
 
     def run(self):
@@ -449,13 +537,15 @@ class DCASFarmRegistryIngestor(BaseIngestor):
             raise e
         finally:
             # remove temporary table
-            self._execute_query(
-                f'DROP TABLE IF EXISTS {self.table_name_sql}',
-                'drop_temp_table'
-            )
+            self._drop_table()
 
             # store execution times in session
             if self.session.additional_config:
                 self.session.additional_config.update(self.execution_times)
             else:
                 self.session.additional_config = self.execution_times
+
+            # store the farm registry group id
+            self.session.additional_config['farm_registry_group_id'] = (
+                self.group.id
+            )
