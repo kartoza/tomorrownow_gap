@@ -27,7 +27,10 @@ class DCASOutputsTest(DCASPipelineBaseTest):
         data_output._setup_s3fs()
         os.makedirs(data_output.TMP_BASE_DIR, exist_ok=True)
         with open(
-            os.path.join(data_output.TMP_BASE_DIR, 'output_20250101.csv'),
+            os.path.join(
+                data_output.TMP_BASE_DIR,
+                'DCAS_output_20250101.csv'
+            ),
             'w',
             newline=''
         ) as file:
@@ -44,7 +47,7 @@ class DCASOutputsTest(DCASPipelineBaseTest):
         mock_conn.load_extension.assert_any_call("spatial")
         mock_conn.sql.assert_called_once()
         mock_conn.close.assert_called_once()
-        self.assertIn('output_20250101.csv', csv_file)
+        self.assertIn('DCAS_output_20250101.csv', csv_file)
 
     @patch("paramiko.SFTPClient.from_transport")
     @patch("paramiko.Transport", autospec=True)

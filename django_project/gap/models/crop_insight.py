@@ -677,10 +677,10 @@ class CropInsightRequest(models.Model):
         east_africa_timezone, east_africa_time = self.time_description
         group = ''
         if self.farm_group:
-            group = f' {self.farm_group} -'
+            group = f'{self.farm_group.normalize_name()}_'
         return (
-            f"{group} {east_africa_time.strftime('%Y-%m-%d')} "
-            f'({self.unique_id}).csv'
+            f"{group}{east_africa_time.strftime('%Y_%m_%d')}_"
+            f'({str(self.unique_id).replace('-', '_')}).csv'
         )
 
     def _process_chunk(self, chunk, port):
