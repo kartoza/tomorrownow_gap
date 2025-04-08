@@ -679,7 +679,7 @@ class CropInsightRequest(models.Model):
         if self.farm_group:
             group = f'{self.farm_group.normalize_name()}_'
         return (
-            f"{group}{east_africa_time.strftime('%Y_%m_%d')}_"
+            f"SPW_{group}{east_africa_time.strftime('%Y_%m_%d')}_"
             f'({str(self.unique_id).replace('-', '_')}).csv'
         )
 
