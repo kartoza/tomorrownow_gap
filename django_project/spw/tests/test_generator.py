@@ -10,13 +10,20 @@ from unittest.mock import patch, MagicMock
 import pytz
 from django.contrib.gis.geos import Point
 from django.test import TestCase
+import xarray as xr
+import numpy as np
+import pandas as pd
 
 from gap.models import (
     DatasetAttribute,
-    Dataset
+    Dataset,
+    DataSourceFile,
+    DatasetStore
 )
 from gap.providers.tio import (
-    TomorrowIODatasetReader
+    TomorrowIODatasetReader,
+    TioZarrReader,
+    TioZarrReaderValue
 )
 from gap.utils.reader import (
     DatasetReaderInput,
@@ -198,6 +205,91 @@ class TestSPWFetchDataFunctions(TestCase):
             }
         }
         self.assertEqual(result, expected_result)
+
+    @patch.object(TioZarrReader, 'read')
+    @patch.object(TioZarrReader, 'get_data_values')
+    def test_fetch_from_zarr(self, mocked_results, mocked_read):
+        """Test fetch data for SPW from zarr."""
+        gap_input = GapInput(0, 0, self.dt_now)
+        dataset = Dataset.objects.get(
+            name='Tomorrow.io Short-term Forecast',
+            store_type=DatasetStore.ZARR
+        )
+        attrs = DatasetAttribute.objects.filter(
+            dataset=dataset,
+            source__in=[
+                'total_evapotranspiration_flux',
+                'total_rainfall',
+                'max_temperature',
+                'min_temperature',
+                'precipitation_probability'
+            ]
+        )
+        # create DataSourceFile
+        DataSourceFile.objects.create(
+            name='test.zarr',
+            format='ZARR',
+            start_date_time=self.start_dt,
+            end_date_time=self.end_dt,
+            created_on=self.start_dt,
+            dataset=dataset,
+            is_latest=True,
+        )
+
+        mocked_read.side_effect = MagicMock()
+        new_lat = [0]
+        new_lon = [0]
+        forecast_date_array = pd.date_range('2023-07-14', periods=16)
+        empty_shape = (16, len(new_lat), len(new_lon))
+        data_vars = {
+            'total_evapotranspiration_flux': (
+                ('date', 'lat', 'lon'),
+                np.full(empty_shape, 5)
+            ),
+            'precipitation_probability': (
+                ('date', 'lat', 'lon'),
+                np.full(empty_shape, 10)
+            ),
+            'total_rainfall': (
+                ('date', 'lat', 'lon'),
+                np.full(empty_shape, 15)
+            ),
+            'max_temperature': (
+                ('date', 'lat', 'lon'),
+                np.full(empty_shape, 20)
+            ),
+            'min_temperature': (
+                ('date', 'lat', 'lon'),
+                np.full(empty_shape, 15)
+            )
+        }
+        xr_ds = xr.Dataset(
+            data_vars=data_vars,
+            coords={
+                'date': ('date', forecast_date_array),
+                'lat': ('lat', new_lat),
+                'lon': ('lon', new_lon)
+            }
+        )
+        mocked_results.return_value = TioZarrReaderValue(
+            xr_ds, self.location_input, attrs,
+            self.start_dt
+        )
+        result = gap_input._read_forecast_from_zarr()
+        expected_result = {
+            '07-20': {
+                'date': '2023-07-20',
+                'evapotranspirationSum': 5,
+                'precipitationProbability': 10,
+                'rainAccumulationSum': 15,
+                'temperatureMax': 20,
+                'temperatureMin': 15
+            }
+        }
+        # find 07-20 in result
+        self.assertIn('07-20', result)
+        # check if the values are correct
+        self.assertEqual(result['07-20'], expected_result['07-20'])
 
 
 class TestSPWGenerator(TestCase):
