@@ -62,7 +62,7 @@ class SPWDataInputTest(TestCase):
                 "rainAccumulationSum": 1.0,
                 "temperatureMax": 30.0,
                 "temperatureMin": 15.0,
-                "precipitationProbability": 0.8,
+                "precipitationProbability": None,
             }
         }
         data_input = SPWDataInput(

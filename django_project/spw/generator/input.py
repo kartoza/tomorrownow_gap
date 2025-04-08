@@ -88,6 +88,8 @@ class SPWDataInput:
             for key, value in val.items():
                 if key not in self.variables + ['date', 'month_day']:
                     raise ValueError(f"Invalid variable: {key}")
+                if value is None:
+                    continue
                 if (
                     key not in ['date', 'month_day'] and
                     not isinstance(value, (int, float))
