@@ -87,7 +87,7 @@ class DCASPipelineOutput:
         dt = self.request_date.strftime('%Y%m%d')
         return os.path.join(
             self.TMP_BASE_DIR,
-            f'output_{dt}.csv'
+            f'DCAS_output_{dt}.csv'
         )
 
     def _setup_s3fs(self):
