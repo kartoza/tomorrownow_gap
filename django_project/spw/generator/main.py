@@ -16,7 +16,7 @@ from django.contrib.gis.geos import Point, Polygon
 from django.utils import timezone
 
 from gap.models import DatasetAttribute, DatasetStore
-from gap.providers import TomorrowIODatasetReader, TIO_PROVIDER
+from gap.providers import TIO_PROVIDER
 from spw.models import RModel, RModelExecutionLog, RModelExecutionStatus
 from spw.utils.plumber import (
     execute_spw_model,
