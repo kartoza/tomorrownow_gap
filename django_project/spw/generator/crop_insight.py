@@ -17,6 +17,7 @@ from gap.models.crop_insight import (
 )
 from gap.models.farm_group import FarmGroup
 from gap.models.farm import Farm
+from spw.models import SPWErrorLog
 from spw.generator.main import (
     calculate_from_point, calculate_from_polygon, VAR_MAPPING_REVERSE,
     calculate_from_point_attrs
@@ -38,6 +39,7 @@ class CropInsightFarmGenerator:
         self.tomorrow = self.today + timedelta(days=1)
         self.attributes = calculate_from_point_attrs()
         self.port = port
+        self.errors = []
 
     def return_float(self, value):
         """Return float value."""
@@ -116,8 +118,17 @@ class CropInsightFarmGenerator:
 
         Do atomic because need all data to be saved.
         """
-        with transaction.atomic():
-            self._generate_spw()
+        try:
+            with transaction.atomic():
+                self._generate_spw()
+        except Exception as e:
+            print(f'Generate SPW Error: {str(e)}')
+            raise e
+        finally:
+            # save error logs
+            if self.errors:
+                SPWErrorLog.objects.bulk_create(self.errors)
+                self.errors = []
 
     def _generate_spw(self):
         """Generate Farm SPW."""
@@ -146,8 +157,15 @@ class CropInsightFarmGenerator:
                 # When error, retry until 3 times
                 # If it is 3 times, raise the error
                 if retry >= 3:
+                    self._add_error(
+                        'SPW Error: {}'.format(str(e))
+                    )
                     raise e
                 retry += 1
+
+        if output is None:
+            self._add_error('SPW Output is empty')
+            return
 
         # TODO:
         #  This will deprecated after we save shorterm
@@ -166,3 +184,18 @@ class CropInsightFarmGenerator:
                 output.data.last2Days, output.data.todayTomorrow
             )
             self.save_shortterm_forecast(historical_dict, farm)
+
+    def _add_error(self, error):
+        """Save error log of SPW."""
+        self.errors.append(
+            SPWErrorLog(
+                farm=self.farm,
+                farm_group=self.farm_group,
+                grid_unique_id=(
+                    self.farm.grid.unique_id if self.farm.grid else
+                    None
+                ),
+                generated_date=self.today,
+                error=error
+            )
+        )

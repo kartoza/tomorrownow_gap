@@ -177,3 +177,25 @@ class SPWOutput(models.Model):
         Plant Now or DO NOT PLANT
         """
         return 'Plant Now' if self.is_plant_now else 'DO NOT PLANT'
+
+
+class SPWErrorLog(models.Model):
+    """Model that stores SPW error log."""
+
+    farm = models.ForeignKey(
+        'gap.Farm',
+        on_delete=models.CASCADE,
+        related_name='spw_error_log'
+    )
+    farm_group = models.ForeignKey(
+        'gap.FarmGroup',
+        null=True, blank=True,
+        on_delete=models.SET_NULL
+    )
+    grid_unique_id = models.CharField(
+        max_length=100,
+        null=True, blank=True
+    )
+    generated_date = models.DateField()
+    error = models.TextField()
+    created_on = models.DateTimeField(auto_now_add=True)
