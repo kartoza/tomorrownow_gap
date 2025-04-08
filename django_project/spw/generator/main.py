@@ -112,7 +112,6 @@ def calculate_from_point(
     :return: Output with GoNoGo classification
     :rtype: Tuple[SPWOutput, dict]
     """
-    TomorrowIODatasetReader.init_provider()
     return _calculate_from_point(point, port)
 
 
@@ -126,7 +125,6 @@ def calculate_from_polygon(
     :return: Output with GoNoGo classification
     :rtype: Tuple[SPWOutput, dict]
     """
-    TomorrowIODatasetReader.init_provider()
     return _calculate_from_point(polygon.centroid, port)
 
 

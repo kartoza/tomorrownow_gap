@@ -68,32 +68,48 @@ class CropInsightFarmGenerator:
     def save_shortterm_forecast(self, historical_dict, farm: Farm):
         """Save spw data."""
         # Save the short term forecast
+        c, is_created = FarmShortTermForecast.objects.get_or_create(
+            farm=farm,
+            forecast_date=self.today
+        )
+        if not is_created:
+            # Delete the FarmShortTermForecastData
+            FarmShortTermForecastData.objects.filter(
+                forecast=c
+            ).delete()
+
+        # get the attributes
+        attributes_dict = {}
+        for k, v in VAR_MAPPING_REVERSE.items():
+            attributes_dict[k] = self.attributes.filter(
+                attribute__variable_name=v
+            ).first()
+
+        batch_insert = []
+        # Save the short term forecast data
         for k, v in historical_dict.items():
             _date = datetime.strptime(v['date'], "%Y-%m-%d")
             _date = _date.replace(tzinfo=pytz.UTC)
             if self.tomorrow <= _date.date():
                 for attr_name, val in v.items():
                     try:
-                        attr = self.attributes.filter(
-                            attribute__variable_name=VAR_MAPPING_REVERSE[
-                                attr_name
-                            ]
-                        ).first()
+                        attr = attributes_dict[attr_name]
                         if attr:
-                            c, _ = FarmShortTermForecast.objects.get_or_create(
-                                farm=farm,
-                                forecast_date=self.today
-                            )
-                            FarmShortTermForecastData.objects.update_or_create(
-                                forecast=c,
-                                value_date=_date,
-                                dataset_attribute=attr,
-                                defaults={
-                                    'value': val
-                                }
+                            batch_insert.append(
+                                FarmShortTermForecastData(
+                                    forecast=c,
+                                    value_date=_date,
+                                    dataset_attribute=attr,
+                                    value=val
+                                )
                             )
                     except KeyError:
                         pass
+        # Save the batch insert
+        if batch_insert:
+            FarmShortTermForecastData.objects.bulk_create(
+                batch_insert, ignore_conflicts=True
+            )
 
     def generate_spw(self):
         """Generate spw.
@@ -109,7 +125,7 @@ class CropInsightFarmGenerator:
         if FarmSuitablePlantingWindowSignal.objects.filter(
                 farm=self.farm,
                 generated_date=self.today
-        ).first():
+        ).exists():
             return
 
         # Generate the spw
