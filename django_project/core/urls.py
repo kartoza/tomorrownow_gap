@@ -8,7 +8,7 @@ from django.urls import path, include, re_path
 from core.views import (
     PreferencesRedirectView, FlowerProxyView,
     RegisterView, VerifyEmailView, SignUpRequestView,
-    LoginView, LogoutView
+    LoginView, LogoutView, UserFromUIDView
 )
 
 
@@ -44,6 +44,10 @@ urlpatterns = [
     path(
         'api/auth/verify-email/',
         VerifyEmailView.as_view(), name='verify-email'
+    ),
+    path(
+        'api/user-uid/<str:uid>/',
+        UserFromUIDView.as_view(), name='user-uid'
     ),
     path('admin/', admin.site.urls),
     path('', include('frontend.urls')),

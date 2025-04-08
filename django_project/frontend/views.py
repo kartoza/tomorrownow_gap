@@ -119,3 +119,21 @@ class LoginView(TemplateView):
         })
 
         return context
+
+
+class EmailCheckView(TemplateView):
+    """Email check page view."""
+
+    template_name = 'check_email.html'
+
+    def get_context_data(self, **kwargs):
+        """Get context data for Email Check view."""
+        context = super().get_context_data(**kwargs)
+        preferences = Preferences.load()
+
+        context['gap_base_context'] = json.dumps({
+            'api_swagger_url': reverse('api:v1:schema-swagger'),
+            'api_docs_url': preferences.documentation_url
+        })
+
+        return context

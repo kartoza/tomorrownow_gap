@@ -10,17 +10,6 @@ const App = () => (
     <GapContextProvider>
       <ErrorBoundary>
         <Home />
-        <Toaster
-          position="top-center"
-          reverseOrder={false}
-          toastOptions={{
-            duration: 5000,
-            style: {
-              background: '#1a202c',
-              color: '#fff',
-            },
-          }}
-        />
       </ErrorBoundary>
     </GapContextProvider>
   </ChakraProvider>

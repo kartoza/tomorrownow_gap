@@ -8,7 +8,6 @@ import {
 } from '@chakra-ui/react';
 import { FormControl, FormLabel } from '@chakra-ui/form-control';
 import { Stack } from '@chakra-ui/layout';
-import toast from 'react-hot-toast';
 
 interface SignupRequestFormProps {
   user: {
@@ -27,8 +26,9 @@ const SignupRequestForm = ({ user }: SignupRequestFormProps) => {
   });
 
   const [loading, setLoading] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
 
-  // Load saved form data if available
   useEffect(() => {
     const saved = sessionStorage.getItem('signup-request');
     if (saved) {
@@ -40,7 +40,31 @@ const SignupRequestForm = ({ user }: SignupRequestFormProps) => {
     }
   }, []);
 
-  // Save form data on each change
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const uid = params.get("uid");
+  
+    if (uid) {
+      fetch(`/api/user-uid/${uid}/`)
+        .then((res) => {
+          if (!res.ok) throw new Error('User fetch failed');
+          return res.json();
+        })
+        .then((data) => {
+          setFormData(prev => ({
+            ...prev,
+            email: data.email || '',
+            first_name: data.first_name || '',
+            last_name: data.last_name || ''
+          }));
+        })
+        .catch((err) => {
+          console.error("Error loading user from uid:", err);
+          setErrorMessage("Could not preload user information.");
+        });
+    }
+  }, []);
+
   useEffect(() => {
     sessionStorage.setItem('signup-request', JSON.stringify(formData));
   }, [formData]);
@@ -55,6 +79,8 @@ const SignupRequestForm = ({ user }: SignupRequestFormProps) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setSuccessMessage('');
+    setErrorMessage('');
 
     try {
       const response = await fetch('/api/signup-request/', {
@@ -68,19 +94,19 @@ const SignupRequestForm = ({ user }: SignupRequestFormProps) => {
       });
 
       if (response.status === 403) {
-        toast.error("Please verify your email before submitting this request.");
+        setErrorMessage("Please verify your email before submitting this request.");
         return;
       }
 
       if (response.ok) {
-        toast.success('Request submitted');
+        setSuccessMessage('Request submitted successfully.');
         sessionStorage.removeItem('signup-request');
         setFormData(prev => ({ ...prev, description: '' }));
       } else {
-        toast.error('Submission failed');
+        setErrorMessage('Submission failed. Please try again.');
       }
     } catch {
-      toast.error('Server error');
+      setErrorMessage('Server error occurred.');
     } finally {
       setLoading(false);
     }
@@ -96,6 +122,18 @@ const SignupRequestForm = ({ user }: SignupRequestFormProps) => {
   return (
     <Box maxW="md" mx="auto" mt={8} px={4}>
       <Heading size="md" mb={4}>Submit Sign-Up Request</Heading>
+
+      {successMessage && (
+        <Box bg="green.100" border="1px solid" borderColor="green.300" p={4} mb={4} borderRadius="md" color="green.800">
+          {successMessage}
+        </Box>
+      )}
+      {errorMessage && (
+        <Box bg="red.100" border="1px solid" borderColor="red.300" p={4} mb={4} borderRadius="md" color="red.800">
+          {errorMessage}
+        </Box>
+      )}
+
       <form onSubmit={handleSubmit}>
         <Stack spacing={4}>
           <FormControl isRequired>
@@ -125,7 +163,7 @@ const SignupRequestForm = ({ user }: SignupRequestFormProps) => {
               name="email"
               autoComplete='email'
               value={formData.email}
-              onChange={handleChange}
+              readOnly
             />
           </FormControl>
 

@@ -5,6 +5,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
 from django.contrib.auth import get_user_model
+from django.utils.http import urlsafe_base64_decode
 from core.serializers import SignUpRequestSerializer
 from gap.models import UserProfile
 
@@ -59,3 +60,20 @@ class SignUpRequestView(APIView):
                 status=status.HTTP_200_OK
             )
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class UserFromUIDView(APIView):
+    """Get user details from UID."""
+
+    permission_classes = [AllowAny]
+
+    def get(self, request, uid):
+        """Get user details from UID."""
+        try:
+            user_id = urlsafe_base64_decode(uid).decode()
+            user = User.objects.get(pk=user_id)
+            return Response({
+                "email": user.email,
+            })
+        except Exception as e:
+            return Response({"detail": str(e)}, status=400)

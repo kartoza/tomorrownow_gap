@@ -8,10 +8,8 @@ import {
 import { FormControl, FormLabel } from '@chakra-ui/form-control';
 import { Stack } from '@chakra-ui/layout';
 import { isPasswordStrong } from '../../utils/validation';
-import toast from 'react-hot-toast';
 
 const SignupAccountForm = () => {
-
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -19,6 +17,8 @@ const SignupAccountForm = () => {
   });
 
   const [loading, setLoading] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -28,25 +28,25 @@ const SignupAccountForm = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setSuccessMessage('');
+    setErrorMessage('');
 
-    // Validate password strength
     const passwordError = isPasswordStrong(formData.password);
     if (passwordError) {
-      toast.error(`Weak password: ${passwordError}`);
-      return;
-    }
-
-    // Confirm passwords match before submitting
-    if (formData.password.trim() !== formData.confirm_password.trim()) {
-      toast.error('Passwords do not match');
+      setErrorMessage(`Weak password: ${passwordError}`);
       setLoading(false);
       return;
     }
 
-    // Check if the email is already registered
+    if (formData.password.trim() !== formData.confirm_password.trim()) {
+      setErrorMessage('Passwords do not match');
+      setLoading(false);
+      return;
+    }
+
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(formData.email)) {
-      toast.error('Invalid email address');
+      setErrorMessage('Invalid email address');
       setLoading(false);
       return;
     }
@@ -61,33 +61,28 @@ const SignupAccountForm = () => {
         body: JSON.stringify(formData),
       });
 
+      const text = await response.text();
       let data;
       try {
-        const text = await response.text();
-        console.log("Raw response text:", text);
         data = JSON.parse(text);
       } catch (err) {
-        console.log("Error parsing response:", err);
-        data = {};
+        console.log("Response parsing error", err);
       }
-      console.log("Parsed response:", data);
 
       if (response.ok) {
-        toast.success('Check your email. We’ve sent a verification link.');
-
+        window.location.href = "check_email/";
         setFormData({ email: '', password: '', confirm_password: '' });
       } else {
-          if (data?.email?.[0] === "This email is already registered.") {
-            console.log("Email already registered toasted triggered");
-            toast.error("Email already in use");
-          } else if (typeof data.detail === 'string') {
-            toast.error(`Signup failed: ${data.detail}`);
-          } else {
-            toast.error("Signup failed. Please check your input.");
-          }
+        if (data?.email?.[0] === "This email is already registered.") {
+          setErrorMessage("Email already in use");
+        } else if (typeof data.detail === 'string') {
+          setErrorMessage(`Signup failed: ${data.detail}`);
+        } else {
+          setErrorMessage("Signup failed. Please check your input.");
+        }
       }
     } catch (err) {
-      toast.error('Server error. Something went wrong.');
+      setErrorMessage('Server error. Something went wrong.');
     } finally {
       setLoading(false);
     }
@@ -103,8 +98,20 @@ const SignupAccountForm = () => {
   return (
     <Box maxW="sm" mx="auto" mt={8} px={4}>
       <Heading as="h1" size="lg" textAlign="center" mb={6}>
-      Create Your Account
+        Create Your Account
       </Heading>
+
+      {successMessage && (
+        <Box bg="green.100" border="1px solid" borderColor="green.300" p={4} mb={4} borderRadius="md" color="green.800">
+          {successMessage}
+        </Box>
+      )}
+      {errorMessage && (
+        <Box bg="red.100" border="1px solid" borderColor="red.300" p={4} mb={4} borderRadius="md" color="red.800">
+          {errorMessage}
+        </Box>
+      )}
+
       <form onSubmit={handleSubmit}>
         <Stack spacing={4}>
           <FormControl isRequired>

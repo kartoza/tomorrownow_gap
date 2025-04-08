@@ -5,7 +5,6 @@ import { ChakraProvider, defaultSystem } from '@chakra-ui/react';
 import { SignupAccountForm } from './pages/SignupAccount';
 import { GapContextProvider } from './contexts/GapContext';
 import ErrorBoundary from './components/ErrorBoundary';
-import { Toaster } from 'react-hot-toast';
 
 const root = createRoot(document.getElementById('app')!);
 
@@ -14,17 +13,6 @@ root.render(
     <GapContextProvider>
       <ErrorBoundary>
         <SignupAccountForm />
-        <Toaster
-          position="top-center"
-          reverseOrder={false}
-          toastOptions={{
-            duration: 3000,
-            style: {
-              background: '#1a202c',
-              color: '#fff',
-            },
-          }}
-        />
       </ErrorBoundary>
     </GapContextProvider>
   </ChakraProvider>

@@ -3,11 +3,10 @@ import {
   Box,
   Button,
   Input,
-  Heading,
+  Heading
 } from '@chakra-ui/react';
 import { FormControl, FormLabel } from '@chakra-ui/form-control';
 import { Stack } from '@chakra-ui/layout';
-import toast from 'react-hot-toast';
 
 const LoginAccountForm = () => {
   const [formData, setFormData] = useState({
@@ -16,6 +15,8 @@ const LoginAccountForm = () => {
   });
 
   const [loading, setLoading] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -25,6 +26,8 @@ const LoginAccountForm = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setErrorMessage('');
+    setSuccessMessage('');
 
     try {
       const response = await fetch('/api/auth/login/', {
@@ -34,20 +37,22 @@ const LoginAccountForm = () => {
           'X-CSRFToken': getCookie('csrftoken'),
         },
         body: JSON.stringify({
-            username: formData.username,
-            password: formData.password,
+          username: formData.username,
+          password: formData.password,
         }),
       });
 
       if (response.ok) {
-        toast.success('Logged in successfully!');
         const data = await response.json();
-        window.location.href = data.redirect_url;
+        setSuccessMessage('Login successful! Redirecting...');
+        setTimeout(() => {
+          window.location.href = data.redirect_url;
+        }, 1500);
       } else {
-        toast.error('Invalid username or password');
+        setErrorMessage('Invalid username or password.');
       }
     } catch (err) {
-      toast.error('Server error. Please try again.');
+      setErrorMessage('Server error. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -65,6 +70,18 @@ const LoginAccountForm = () => {
       <Heading as="h1" size="lg" textAlign="center" mb={6}>
         Log In
       </Heading>
+
+      {successMessage && (
+        <Box bg="green.100" border="1px solid" borderColor="green.300" p={4} mb={4} borderRadius="md" color="green.800">
+          {successMessage}
+        </Box>
+      )}
+      {errorMessage && (
+        <Box bg="red.100" border="1px solid" borderColor="red.300" p={4} mb={4} borderRadius="md" color="red.800">
+          {errorMessage}
+        </Box>
+      )}
+
       <form onSubmit={handleSubmit}>
         <Stack spacing={4}>
           <FormControl isRequired>
@@ -87,7 +104,12 @@ const LoginAccountForm = () => {
             />
           </FormControl>
 
-          <Button type="submit" colorScheme="purple" loading={loading} width="full">
+          <Button
+            type="submit"
+            colorScheme="purple"
+            loading={loading}
+            width="full"
+          >
             Log In
           </Button>
         </Stack>

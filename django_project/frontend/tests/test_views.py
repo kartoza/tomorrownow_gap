@@ -34,3 +34,16 @@ class TestSignupView(BaseAPIViewTest):
         self.assertTrue(response.has_header('Content-Type'))
         self.assertIn('text/html', response.headers['Content-Type'])
         self.assertIn('gap_base_context', response.context)
+
+
+class TestSignupRequestView(BaseAPIViewTest):
+    """Test SignupRequestView class."""
+
+    def test_signup_request_view(self):
+        """Test Signup Request View."""
+        c = Client()
+        response = c.get('/signup-request/')
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.has_header('Content-Type'))
+        self.assertIn('text/html', response.headers['Content-Type'])
+        self.assertIn('gap_base_context', response.context)
