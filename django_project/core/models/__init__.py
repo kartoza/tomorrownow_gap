@@ -6,3 +6,4 @@ Tomorrow Now GAP.
 """
 
 from core.models.background_task import *
+from core.models.table_usage import *
