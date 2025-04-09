@@ -54,10 +54,11 @@ class GapInput(SPWDataInput):
     CACHE_KEY_TIO_ZARR_EXPIRY = 60 * 60 * 2  # 2 hours
 
     def __init__(
-        self, latitude: float, longitude: float, current_date: datetime
+        self, latitude: float, longitude: float, current_date: datetime,
+        is_grid=True
     ) -> None:
         """Initialize the SPWDataInput class."""
-        super().__init__(latitude, longitude, current_date)
+        super().__init__(latitude, longitude, current_date, is_grid)
         self.location_input = DatasetReaderInput.from_point(
             Point(longitude, latitude),
         )
@@ -253,11 +254,11 @@ class GapInput(SPWDataInput):
 
     def load_data(self):
         """Load the input data."""
-        # load the preferences
+        # use_tio_zarr if only it's grid and config is True
         use_tio_zarr = Preferences.load().crop_plan_config.get(
             'use_tio_zarr',
             True
-        )
+        ) and self.is_grid
         is_date_in_zarr = False
         if use_tio_zarr:
             # Check if the date is in zarr

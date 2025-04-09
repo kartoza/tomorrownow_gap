@@ -84,7 +84,7 @@ def calculate_from_point_attrs():
 
 
 def _calculate_from_point(
-        point: Point, port=PLUMBER_PORT
+        point: Point, port=PLUMBER_PORT, is_grid=True
 ) -> Tuple[SPWOutput, dict]:
     """Calculate from point."""
     today = datetime.now(tz=pytz.UTC)
@@ -95,11 +95,13 @@ def _calculate_from_point(
         f'start_dt: {start_dt} - end_dt: {end_dt}'
     )
 
-    data_input = GapInput(point.y, point.x, today)
+    data_input = GapInput(point.y, point.x, today, is_grid=is_grid)
     historical_dict = data_input.get_data()
     rows = data_input.get_spw_data()
 
-    return _execute_spw_model(rows, point, port), historical_dict
+    return _execute_spw_model(
+        rows, point, port=port, start_time=today
+    ), historical_dict
 
 
 def calculate_from_point(
@@ -112,11 +114,11 @@ def calculate_from_point(
     :return: Output with GoNoGo classification
     :rtype: Tuple[SPWOutput, dict]
     """
-    return _calculate_from_point(point, port)
+    return _calculate_from_point(point, port=port, is_grid=False)
 
 
-def calculate_from_polygon(
-    polygon: Polygon, port=PLUMBER_PORT
+def calculate_from_grid(
+    grid_point: Point, port=PLUMBER_PORT
 ) -> Tuple[SPWOutput, dict]:
     """Calculate SPW from given point.
 
@@ -125,11 +127,11 @@ def calculate_from_polygon(
     :return: Output with GoNoGo classification
     :rtype: Tuple[SPWOutput, dict]
     """
-    return _calculate_from_point(polygon.centroid, port)
+    return _calculate_from_point(grid_point, port=port, is_grid=True)
 
 
 def _execute_spw_model(
-    rows: List, point: Point, port=PLUMBER_PORT
+    rows: List, point: Point, port=PLUMBER_PORT, start_time=None
 ) -> SPWOutput:
     """Execute SPW Model and return the output.
 
@@ -146,7 +148,7 @@ def _execute_spw_model(
     execution_log = RModelExecutionLog.objects.create(
         model=model,
         location_input=point,
-        start_date_time=timezone.now()
+        start_date_time=start_time if start_time else timezone.now()
     )
     with open(data_file_path, 'rb') as output_file:
         execution_log.input_file.save(filename, output_file)

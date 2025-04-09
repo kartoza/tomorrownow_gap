@@ -30,7 +30,8 @@ class SPWDataInput:
     ]
 
     def __init__(
-        self, latitude: float, longitude: float, current_date: datetime
+        self, latitude: float, longitude: float, current_date: datetime,
+        is_grid=True
     ) -> None:
         """Initialize the SPWDataInput class."""
         self.data = None
@@ -41,6 +42,7 @@ class SPWDataInput:
         self.current_date = current_date
         self.start_date = current_date - timedelta(days=6)
         self.end_date = current_date + timedelta(days=13)
+        self.is_grid = is_grid
 
     def get_data(self):
         """Get the input data."""

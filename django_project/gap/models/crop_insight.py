@@ -679,7 +679,7 @@ class CropInsightRequest(models.Model):
 
     def _process_chunk(self, chunk, port):
         from spw.generator.crop_insight import CropInsightFarmGenerator
-        farms = self.farm_group.farms.filter(
+        farms = self.farm_group.farms.select_related('grid').filter(
             grid_id__in=chunk
         )
         print(f'{timezone.now()} Farms in port {port} count {farms.count()}')
@@ -732,7 +732,7 @@ class CropInsightRequest(models.Model):
 
         # If farm is empty, put empty farm
         if self.farm_group:
-            farms = self.farm_group.farms.all()
+            farms = self.farm_group.farms.select_related('grid').all()
         else:
             raise FarmGroupIsNotSetException()
 
