@@ -101,12 +101,6 @@ class FarmShortTermForecastData(models.Model):
 
     class Meta:  # noqa: D106
         ordering = ['dataset_attribute', '-value_date']
-        indexes = [
-            models.Index(
-                fields=['forecast', 'dataset_attribute', 'value_date'],
-                name='frcst_ds_val_date_idx'
-            )
-        ]
 
 
 class FarmProbabilisticWeatherForcast(models.Model):
