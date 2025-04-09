@@ -75,13 +75,13 @@ class SPWDataInput:
                 date = date.replace(
                     year=self.start_date.year,
                     tzinfo=timezone.utc
-                )
+                ).date()
             except ValueError:
                 raise ValueError("month_day must be in %m-%d format.")
-            if not (self.start_date <= date <= self.end_date):
+            if not (self.start_date.date() <= date <= self.end_date.date()):
                 raise ValueError(
                     f"month_day {month_day} is out of range "
-                    f"({self.start_date} to {self.end_date})."
+                    f"({self.start_date.date()} to {self.end_date.date()})."
                 )
             if not isinstance(val, dict):
                 raise ValueError("Values must be a dictionary.")
