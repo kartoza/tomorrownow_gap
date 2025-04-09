@@ -12,7 +12,7 @@ from types import SimpleNamespace
 from typing import List, Tuple
 
 import pytz
-from django.contrib.gis.geos import Point, Polygon
+from django.contrib.gis.geos import Point
 from django.utils import timezone
 
 from gap.models import DatasetAttribute, DatasetStore
