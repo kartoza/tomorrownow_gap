@@ -12,7 +12,7 @@ from django.core.cache import cache
 
 from gap.models import (
     Dataset, DatasetAttribute, CastType,
-    DatasetStore, DataSourceFile
+    DatasetStore, DataSourceFile, Preferences
 )
 from gap.providers import (
     TomorrowIODatasetReader, TIO_PROVIDER,
@@ -253,8 +253,16 @@ class GapInput(SPWDataInput):
 
     def load_data(self):
         """Load the input data."""
-        # Check if the date is in zarr
-        is_date_in_zarr = self._is_date_in_zarr(self.current_date)
+        # load the preferences
+        use_tio_zarr = Preferences.load().crop_plan_config.get(
+            'use_tio_zarr',
+            True
+        )
+        is_date_in_zarr = False
+        if use_tio_zarr:
+            # Check if the date is in zarr
+            is_date_in_zarr = self._is_date_in_zarr(self.current_date)
+
         if is_date_in_zarr:
             historical_dict = self._read_forecast_from_zarr()
         else:
