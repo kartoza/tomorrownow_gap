@@ -44,7 +44,18 @@ class RModelAdmin(admin.ModelAdmin):
 class RModelExecutionLogAdmin(admin.ModelAdmin):
     """Admin page for RModelExecutionLog."""
 
-    list_display = ('model', 'start_date_time', 'status')
+    list_display = (
+        'model', 'start_date_time', 'status', 'total_time'
+    )
+
+    def total_time(self, obj):
+        """Calculate total time in seconds."""
+        if obj.start_date_time and obj.end_date_time:
+            delta = obj.end_date_time - obj.start_date_time
+            return delta.total_seconds()
+        return None
+
+    total_time.short_description = 'Total Time (s)'
 
 
 @admin.register(SPWOutput)
