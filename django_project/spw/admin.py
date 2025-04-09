@@ -55,7 +55,7 @@ class RModelExecutionLogAdmin(admin.ModelAdmin):
             return delta.total_seconds()
         return None
 
-    total_time.short_description = 'Total Time (seconds)'
+    total_time.short_description = 'Total Time (s)'
 
 
 @admin.register(SPWOutput)
