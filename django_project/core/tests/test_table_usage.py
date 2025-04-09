@@ -46,6 +46,7 @@ class TableUsageModelTest(TestCase):
 
 class MockRequest:
     """Mock request object for testing."""
+
     pass
 
 
