@@ -7,6 +7,8 @@ Tomorrow Now GAP.
 
 # import uuid
 # import os
+from datetime import datetime
+from unittest import mock
 from mock import patch, MagicMock
 import pandas as pd
 import dask.dataframe as dd
@@ -80,15 +82,17 @@ class DCASPipelineTest(DCASPipelineBaseTest):
         expected_df['config_id'] = expected_df['config_id'].astype('Int64')
         pd.testing.assert_frame_equal(df, expected_df)
 
-    def test_process_farm_registry_data(self):
-        """Test running process_farm_registry_data."""
+    @patch("dcas.queries.DataQuery.read_grid_data_crop_meta_parquet")
+    def test_process_farm_registry_data(self, mock_read_parquet):
+        """Test running process_farm_registry_data with chunked data."""
         pipeline = DCASDataPipeline(
             [self.farm_registry_group.id], self.request_date
         )
         conn_engine = create_engine(pipeline._conn_str())
         pipeline.data_query.setup(conn_engine)
 
-        grid_crop_meta_df = pd.DataFrame({
+        # Mock chunked DataFrame results for local grid_crop processing
+        grid_crop_meta_df_1 = pd.DataFrame({
             'crop_id': [1],
             'crop_stage_type_id': [1],
             'planting_date': ['2025-01-01'],
@@ -98,24 +102,57 @@ class DCASPipelineTest(DCASPipelineBaseTest):
             'temperature': [10],
             'grid_crop_key': ['1_1_1']
         })
-        pipeline.data_query.read_grid_data_crop_meta_parquet = MagicMock(
-            return_value=grid_crop_meta_df
-        )
+        grid_crop_meta_df_2 = pd.DataFrame({
+            'crop_id': [2],
+            'crop_stage_type_id': [1],
+            'planting_date': ['2025-02-01'],
+            'grid_id': [2],
+            'planting_date_epoch': [2],
+            '__null_dask_index__': [0],
+            'temperature': [12],
+            'grid_crop_key': ['2_1_2']
+        })
+
+        # Mock chunked DataFrame for S3 Parquet processing
+        s3_parquet_chunk_1 = pd.DataFrame({
+            "grid_id": [1, 2],
+            "registry_id": [1001, 1002],
+            "growth_stage_id": [10, 20],
+            "growth_stage_start_date": ["2024-01-01", "2024-02-15"],
+        })
+
+        # Ensure the correct calls return different mock data
+        def mock_read_parquet_side_effect(parquet_path):
+            if "s3://" in parquet_path:
+                return iter([s3_parquet_chunk_1])  # Mock S3 Parquet read
+            else:
+                return iter([grid_crop_meta_df_1, grid_crop_meta_df_2])
+
+        mock_read_parquet.side_effect = mock_read_parquet_side_effect
+
         pipeline.data_output.save = MagicMock()
 
         # Mock the map_partitions method
         with patch.object(
-            dd.DataFrame, 'map_partitions', autospec=True
+            dd.DataFrame,
+            'map_partitions',
+            autospec=True
         ) as mock_map_partitions:
-            # Set up the mock to call the mock function
             mock_map_partitions.side_effect = mock_function_do_nothing
-
             pipeline.process_farm_registry_data()
-
             mock_map_partitions.assert_called_once()
 
-        pipeline.data_query.read_grid_data_crop_meta_parquet.\
-            assert_called_once()
+        # Validate correct call arguments
+        mock_read_parquet.assert_any_call("/tmp/dcas/grid_crop")
+        expected_s3_path = pipeline.data_output._get_directory_path(
+            pipeline.data_output.DCAS_OUTPUT_DIR
+        ) + "/iso_a3=*/year=*/month=*/day=*/*.parquet"
+
+        mock_read_parquet.assert_any_call(expected_s3_path)
+
+        # Ensure the function was called
+        self.assertEqual(mock_read_parquet.call_count, 2)
+
         pipeline.data_output.save.assert_called_once()
         conn_engine.dispose()
 
@@ -236,3 +273,87 @@ class DCASPipelineTest(DCASPipelineBaseTest):
 #                 dtype='float64'
 #             )
 #         )
+
+
+    @patch("gap.models.FarmRegistry.objects.bulk_update")
+    @patch("gap.models.FarmRegistry.objects.filter")
+    @patch("dcas.queries.DataQuery.read_grid_data_crop_meta_parquet")
+    @patch("gap.models.Farm.objects.values")
+    def test_update_farm_registry_growth_stage(
+        self,
+        mock_farm_values,
+        mock_read_parquet,
+        mock_farmregistry_filter,
+        mock_bulk_update
+    ):
+        """Test update_farm_registry_growth_stage function in DCAS Pipeline."""
+        # Mock Farm.objects.values() to return grid_id → farm_id mappings
+        mock_farm_values.return_value = [
+            {"grid_id": 1, "id": 1001},
+            {"grid_id": 2, "id": 1002},
+        ]
+
+        # Mock read_grid_data_crop_meta_parquet to return DataFrame
+        mock_read_parquet.return_value = iter([
+            pd.DataFrame({
+                "grid_id": [1, 2],
+                "registry_id": [1001, 1002],  # Ensure these match `farm_id`
+                "growth_stage_id": [10, 20],
+                "growth_stage_start_date": ["2024-01-01", "2024-02-15"],
+            })
+        ])
+
+        # Mock FarmRegistry objects with same `id` as in Parquet data
+        farm_registry_mock_1 = mock.Mock()
+        farm_registry_mock_1.id = 1001
+        farm_registry_mock_1.crop_growth_stage_id = None
+        farm_registry_mock_1.growth_stage_start_date = None
+
+        farm_registry_mock_2 = mock.Mock()
+        farm_registry_mock_2.id = 1002
+        farm_registry_mock_2.crop_growth_stage_id = None
+        farm_registry_mock_2.growth_stage_start_date = None
+
+        # Ensure filter returns the same IDs as in Parquet
+        mock_farmregistry_filter.return_value = [
+            farm_registry_mock_1,
+            farm_registry_mock_2
+        ]
+
+        # Run the method
+        pipeline = DCASDataPipeline(
+            self.farm_registry_group, self.request_date
+        )
+        pipeline.update_farm_registry_growth_stage()
+
+        # Ensure bulk_update() was called with the correct updates
+        expected_updates = [
+            farm_registry_mock_1,
+            farm_registry_mock_2
+        ]
+
+        # Validate `crop_growth_stage_id` and `growth_stage_start_date`
+        self.assertEqual(farm_registry_mock_1.crop_growth_stage_id, 10)
+        self.assertEqual(
+            farm_registry_mock_1.growth_stage_start_date,
+            datetime.strptime("2024-01-01", "%Y-%m-%d").date()
+        )
+        self.assertEqual(farm_registry_mock_2.crop_growth_stage_id, 20)
+        self.assertEqual(
+            farm_registry_mock_2.growth_stage_start_date,
+            datetime.strptime("2024-02-15", "%Y-%m-%d").date()
+        )
+
+        # Ensure bulk_update() was called with the correct objects
+        expected_updates = [farm_registry_mock_1, farm_registry_mock_2]
+        mock_bulk_update.assert_called_once_with(
+            expected_updates, [
+                "crop_growth_stage_id",
+                "growth_stage_start_date"
+            ]
+        )
+
+        # Ensure bulk_update() was called exactly once
+        mock_bulk_update.assert_called_once_with(expected_updates, [
+            "crop_growth_stage_id", "growth_stage_start_date"
+        ])
