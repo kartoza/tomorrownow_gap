@@ -18,6 +18,17 @@
   window.sentryDsn = "{{ SENTRY_DSN }}";
 </script>
 <body>
+  <nav style="padding: 1rem; background: #2d3748; color: white;">
+    <div style="display: flex; justify-content: flex-end; gap: 1rem;">
+      {% if request.user.is_authenticated %}
+        <span>Welcome, {{ request.user.email }}</span>
+        <a href="{% url 'logout' %}" style="color: white;">Logout</a>
+      {% else %}
+        <a href="{% url 'login' %}" style="color: white;">Log In</a>
+        <a href="{% url 'signup' %}" style="color: white;">Sign Up</a>
+      {% endif %}
+    </div>
+  </nav>
 {% block content %}
 {% endblock %}
 <script id="gap-base-context" type="application/json">{{ gap_base_context | safe }}</script>

@@ -1,0 +1,7 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <div id="app"></div>
+  {% load render_bundle from webpack_loader %}
+  {% render_bundle 'Login' 'js' %}
+{% endblock %}

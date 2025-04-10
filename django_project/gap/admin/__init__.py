@@ -15,3 +15,4 @@ from gap.admin.preferences import *
 from gap.admin.station import *
 from gap.admin.farm_registry import *
 from gap.admin.signup_request import *
+from gap.admin.user_profile import *

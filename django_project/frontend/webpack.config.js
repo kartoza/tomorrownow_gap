@@ -4,6 +4,7 @@ const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const { CleanWebpackPlugin } = require('clean-webpack-plugin'); // require clean-webpack-plugin
 const ReactRefreshWebpackPlugin = require('@pmmmwh/react-refresh-webpack-plugin');
 const webpack = require("webpack");
+const { Sign } = require("crypto");
 
 const mode = process.env.npm_lifecycle_script;
 const isDev = (mode.includes('dev'));
@@ -14,7 +15,10 @@ const minimized = !isDev;
 
 let conf = {
     entry: {
-        App: './src/App.tsx'
+        App: './src/index.tsx',
+        Signup: './src/Signup.tsx',
+        SignupRequest: './src/SignupRequest.tsx',
+        Login: './src/Login.tsx',
     },
     output: {
         path: path.resolve(__dirname, "./bundles/frontend"),

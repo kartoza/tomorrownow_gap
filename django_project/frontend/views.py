@@ -65,3 +65,75 @@ class SentryProxyView(View):
             return HttpResponse(response.content, status=response.status_code)
 
         return HttpResponse(status=400)
+
+
+class SignupView(TemplateView):
+    """User signup page view."""
+
+    template_name = 'signup.html'
+
+    def get_context_data(self, **kwargs):
+        """Get context data for Signup view."""
+        context = super().get_context_data(**kwargs)
+        preferences = Preferences.load()
+
+        context['gap_base_context'] = json.dumps({
+            'api_swagger_url': reverse('api:v1:schema-swagger'),
+            'api_docs_url': preferences.documentation_url
+        })
+
+        return context
+
+
+class SignupRequestView(TemplateView):
+    """User signup request page view."""
+
+    template_name = 'signup_request.html'
+
+    def get_context_data(self, **kwargs):
+        """Get context data for Signup Request view."""
+        context = super().get_context_data(**kwargs)
+        preferences = Preferences.load()
+
+        context['gap_base_context'] = json.dumps({
+            'api_swagger_url': reverse('api:v1:schema-swagger'),
+            'api_docs_url': preferences.documentation_url
+        })
+
+        return context
+
+
+class LoginView(TemplateView):
+    """User login page view."""
+
+    template_name = 'login.html'
+
+    def get_context_data(self, **kwargs):
+        """Get context data for Login view."""
+        context = super().get_context_data(**kwargs)
+        preferences = Preferences.load()
+
+        context['gap_base_context'] = json.dumps({
+            'api_swagger_url': reverse('api:v1:schema-swagger'),
+            'api_docs_url': preferences.documentation_url
+        })
+
+        return context
+
+
+class EmailCheckView(TemplateView):
+    """Email check page view."""
+
+    template_name = 'check_email.html'
+
+    def get_context_data(self, **kwargs):
+        """Get context data for Email Check view."""
+        context = super().get_context_data(**kwargs)
+        preferences = Preferences.load()
+
+        context['gap_base_context'] = json.dumps({
+            'api_swagger_url': reverse('api:v1:schema-swagger'),
+            'api_docs_url': preferences.documentation_url
+        })
+
+        return context
