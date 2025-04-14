@@ -101,12 +101,6 @@ class FarmShortTermForecastData(models.Model):
 
     class Meta:  # noqa: D106
         ordering = ['dataset_attribute', '-value_date']
-        indexes = [
-            models.Index(
-                fields=['forecast', 'dataset_attribute', 'value_date'],
-                name='frcst_ds_val_date_idx'
-            )
-        ]
 
 
 class FarmProbabilisticWeatherForcast(models.Model):
@@ -685,7 +679,7 @@ class CropInsightRequest(models.Model):
 
     def _process_chunk(self, chunk, port):
         from spw.generator.crop_insight import CropInsightFarmGenerator
-        farms = self.farm_group.farms.filter(
+        farms = self.farm_group.farms.select_related('grid').filter(
             grid_id__in=chunk
         )
         print(f'{timezone.now()} Farms in port {port} count {farms.count()}')
@@ -738,7 +732,7 @@ class CropInsightRequest(models.Model):
 
         # If farm is empty, put empty farm
         if self.farm_group:
-            farms = self.farm_group.farms.all()
+            farms = self.farm_group.farms.select_related('grid').all()
         else:
             raise FarmGroupIsNotSetException()
 

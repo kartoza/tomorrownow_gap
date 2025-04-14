@@ -19,7 +19,7 @@ from gap.models.farm_group import FarmGroup
 from gap.models.farm import Farm
 from spw.models import SPWErrorLog
 from spw.generator.main import (
-    calculate_from_point, calculate_from_polygon, VAR_MAPPING_REVERSE,
+    calculate_from_point, calculate_from_grid, VAR_MAPPING_REVERSE,
     calculate_from_point_attrs
 )
 from spw.utils.plumber import PLUMBER_PORT
@@ -134,8 +134,8 @@ class CropInsightFarmGenerator:
         """Generate Farm SPW."""
         # Check already being generated, no regenereated!
         if FarmSuitablePlantingWindowSignal.objects.filter(
-                farm=self.farm,
-                generated_date=self.today
+            farm=self.farm,
+            generated_date=self.today
         ).exists():
             return
 
@@ -145,8 +145,8 @@ class CropInsightFarmGenerator:
         while not generated:
             try:
                 if self.farm.grid:
-                    output, historical_dict = calculate_from_polygon(
-                        self.farm.grid.geometry, port=self.port
+                    output, historical_dict = calculate_from_grid(
+                        self.farm.grid.geometry.centroid, port=self.port
                     )
                 else:
                     output, historical_dict = calculate_from_point(

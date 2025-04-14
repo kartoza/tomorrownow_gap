@@ -11,10 +11,11 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.admin import GroupAdmin, UserAdmin
 from django.contrib.auth.models import Group
 
-from core.celery import cancel_task
+from core.celery import cancel_task, app
 from core.forms import CreateKnoxTokenForm, CreateAuthToken
 from core.group_email_receiver import crop_plan_receiver
 from core.models.background_task import BackgroundTask
+from core.models.table_usage import TableUsage
 from core.settings.utils import absolute_path
 
 User = get_user_model()
@@ -148,3 +149,36 @@ class CreateAuthTokenAdmin(admin.ModelAdmin):
     def has_view_permission(self, request, obj=None):
         """Return view permission."""
         return False
+
+
+@app.task(name='fetch_table_stats_task')
+def fetch_table_stats_task(_id: int):
+    """Fetch table stats."""
+    TableUsage.get_table_stats_for_schema(_id)
+
+
+@admin.action(description='Run fetch table stats task')
+def run_fetch_table_stats(modeladmin, request, queryset):
+    """Run fetch table stats in background task."""
+    for table_usage in queryset:
+        fetch_table_stats_task.delay(table_usage.id)
+        break
+    modeladmin.message_user(
+        request,
+        'Fetch table stats task has been started.',
+        level='success'
+    )
+
+
+@admin.register(TableUsage)
+class TableUsageAdmin(AbstractDefinitionAdmin):
+    """Admin class for TableUsage model."""
+
+    list_display = (
+        'schema_name', 'created_on'
+    )
+    search_fields = ('schema_name',)
+    list_filter = ('schema_name',)
+    ordering = ['-created_on']
+    readonly_fields = ('schema_name', 'created_on')
+    actions = [run_fetch_table_stats]

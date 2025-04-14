@@ -30,7 +30,8 @@ class SPWDataInput:
     ]
 
     def __init__(
-        self, latitude: float, longitude: float, current_date: datetime
+        self, latitude: float, longitude: float, current_date: datetime,
+        is_grid=True
     ) -> None:
         """Initialize the SPWDataInput class."""
         self.data = None
@@ -41,6 +42,7 @@ class SPWDataInput:
         self.current_date = current_date
         self.start_date = current_date - timedelta(days=6)
         self.end_date = current_date + timedelta(days=13)
+        self.is_grid = is_grid
 
     def get_data(self):
         """Get the input data."""
@@ -75,13 +77,13 @@ class SPWDataInput:
                 date = date.replace(
                     year=self.start_date.year,
                     tzinfo=timezone.utc
-                )
+                ).date()
             except ValueError:
                 raise ValueError("month_day must be in %m-%d format.")
-            if not (self.start_date <= date <= self.end_date):
+            if not (self.start_date.date() <= date <= self.end_date.date()):
                 raise ValueError(
                     f"month_day {month_day} is out of range "
-                    f"({self.start_date} to {self.end_date})."
+                    f"({self.start_date.date()} to {self.end_date.date()})."
                 )
             if not isinstance(val, dict):
                 raise ValueError("Values must be a dictionary.")
