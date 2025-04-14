@@ -5,7 +5,11 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import path, include, re_path
 
-from core.views import PreferencesRedirectView, FlowerProxyView
+from core.views import (
+    PreferencesRedirectView, FlowerProxyView,
+    RegisterView, VerifyEmailView, SignUpRequestView,
+    LoginView, LogoutView, UserFromUIDView
+)
 
 
 urlpatterns = [
@@ -17,6 +21,34 @@ urlpatterns = [
         name='index'
     ),
     FlowerProxyView.as_url(),
+    path(
+        'api/auth/login/',
+        LoginView.as_view(),
+        name='login'
+    ),
+    path(
+        'api/auth/logout/',
+        LogoutView.as_view(),
+        name='logout'
+    ),
+    path(
+        'api/signup-request/',
+        SignUpRequestView.as_view(),
+        name='signup-request'
+    ),
+    path(
+        'api/auth/register/',
+        RegisterView.as_view(),
+        name='register'
+    ),
+    path(
+        'api/auth/verify-email/',
+        VerifyEmailView.as_view(), name='verify-email'
+    ),
+    path(
+        'api/user-uid/<str:uid>/',
+        UserFromUIDView.as_view(), name='user-uid'
+    ),
     path('admin/', admin.site.urls),
     path('', include('frontend.urls')),
 ]
