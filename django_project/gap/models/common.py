@@ -92,5 +92,7 @@ class Language(Definition):
     code = models.CharField(
         max_length=10,
         unique=True,
-        help_text='Language code'
+        help_text='Language code',
+        null=True,
+        blank=True
     )

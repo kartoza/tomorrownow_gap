@@ -288,11 +288,10 @@ class DCASFarmRegistryIngestor(BaseIngestor):
                     <GeometryType>wkbPoint</GeometryType>
                     <LayerSRS>EPSG:4326</LayerSRS>
                     <GeometryField encoding="PointFromColumns"
-                        x="FinalLongitude" y="FinalLatitude"/>
+                        x="final_longitude" y="final_latitude"/>
                     <Field name="farmer_id" type="String"/>
                     <Field name="crop" type="String"/>
-                    <Field name="planting_date"
-                        src="plantingDate" type="Date"/>
+                    <Field name="planting_date" type="Date"/>
                     <Field name="county" type="String"/>
                     <Field name="subcounty" type="String"/>
                     <Field name="ward" type="String"/>
