@@ -325,13 +325,6 @@ class DCASDataPipeline:
         grid_crop_df_meta = self.data_query.grid_data_with_crop_meta(
             self.farm_registry_group_ids
         )
-        # add farm_id
-        if "farm_id" not in grid_crop_df_meta.columns:
-            grid_crop_df_meta = grid_crop_df_meta.assign(
-                farm_id=pd.Series(dtype='Int64')
-            )
-        # Ensure the column order in `meta` matches the expected DataFrame
-        grid_crop_df_meta = grid_crop_df_meta[grid_crop_df.columns]
 
         # Process gdd cumulative
         # for Total GDD, we use date from planting_date to request_date - 1
@@ -445,8 +438,6 @@ class DCASDataPipeline:
             self.duck_db_num_threads,
             meta=farm_df_meta
         )
-        if Preferences.load().enable_message_filtering:
-            self.filter_message_output()
 
         self.data_output.save(OutputType.FARM_CROP_DATA, farm_df)
 
