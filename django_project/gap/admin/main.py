@@ -16,7 +16,7 @@ from gap.models import (
     Attribute, Country, Provider, Measurement, IngestorSession,
     IngestorSessionProgress, Dataset, DatasetAttribute, DataSourceFile,
     DatasetType, Unit, Village, CollectorSession, DatasetStore,
-    DataSourceFileCache
+    DataSourceFileCache, County, SubCounty, Ward, Language
 )
 from gap.tasks.collector import run_collector_session
 from gap.tasks.ingestor import (
@@ -317,5 +317,33 @@ class DataSourceFileCacheAdmin(admin.ModelAdmin):
 @admin.register(Village)
 class VillageAdmin(AbstractDefinitionAdmin):
     """Village admin."""
+
+    pass
+
+
+@admin.register(County)
+class CountyAdmin(AbstractDefinitionAdmin):
+    """County admin."""
+
+    pass
+
+
+@admin.register(SubCounty)
+class SubCountyAdmin(AbstractDefinitionAdmin):
+    """SubCounty admin."""
+
+    pass
+
+
+@admin.register(Ward)
+class WardAdmin(AbstractDefinitionAdmin):
+    """Ward admin."""
+
+    pass
+
+
+@admin.register(Language)
+class LanguageAdmin(AbstractDefinitionAdmin):
+    """Language admin."""
 
     pass
