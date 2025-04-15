@@ -66,3 +66,31 @@ class Village(Definition):
     """Model representing village."""
 
     pass
+
+
+class County(Definition):
+    """Model representing a county."""
+
+    pass
+
+
+class SubCounty(Definition):
+    """Model representing a sub-county."""
+
+    pass
+
+
+class Ward(Definition):
+    """Model representing a ward."""
+
+    pass
+
+
+class Language(Definition):
+    """Model representing a language."""
+
+    code = models.CharField(
+        max_length=10,
+        unique=True,
+        help_text='Language code'
+    )

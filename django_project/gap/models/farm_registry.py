@@ -11,7 +11,7 @@ from django.utils import timezone
 from core.models.common import Definition
 from gap.models.farm import Farm
 from gap.models.crop_insight import Crop, CropStageType, CropGrowthStage
-from gap.models.common import Country
+from gap.models.common import Country, County, SubCounty, Ward, Language
 
 
 class FarmRegistryGroup(Definition):
@@ -52,6 +52,30 @@ class FarmRegistry(models.Model):
         blank=True,
         null=True,
         help_text='Start date when the growth stage is updated.'
+    )
+    county = models.ForeignKey(
+        County,
+        on_delete=models.SET_NULL,
+        blank=True,
+        null=True
+    )
+    sub_county = models.ForeignKey(
+        SubCounty,
+        on_delete=models.SET_NULL,
+        blank=True,
+        null=True
+    )
+    ward = models.ForeignKey(
+        Ward,
+        on_delete=models.SET_NULL,
+        blank=True,
+        null=True
+    )
+    language = models.ForeignKey(
+        Language,
+        on_delete=models.SET_NULL,
+        blank=True,
+        null=True
     )
 
     class Meta:  # noqa
