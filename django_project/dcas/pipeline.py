@@ -18,8 +18,7 @@ from django.contrib.gis.db.models import Union
 from sqlalchemy import create_engine
 
 from gap.models import (
-    FarmRegistry, Grid, CropGrowthStage,
-    Preferences
+    FarmRegistry, Grid, CropGrowthStage
 )
 from dcas.models import DCASConfig, DCASConfigCountry
 from dcas.partitions import (

@@ -197,6 +197,14 @@ class DCASFarmRegistryIngestor(BaseIngestor):
                 crop_id int4 NULL,
                 crop_stage_id int4 NULL,
                 farm_registry_id int4 NULL,
+                county varchar NULL,
+                county_id int4 NULL,
+                subcounty varchar NULL,
+                subcounty_id int4 NULL,
+                ward varchar NULL,
+                ward_id int4 NULL,
+                language varchar NULL,
+                language_id int4 NULL,
                 wkb_geometry public.geometry(point, 4326) NULL,
                 CONSTRAINT farm_registry_session_{self.session.id}_pkey
                 PRIMARY KEY (ogc_fid)
@@ -204,6 +212,45 @@ class DCASFarmRegistryIngestor(BaseIngestor):
             """,
             'create_temp_table'
         )
+
+    def _merge_lookup_field(self, field_name, table_name, ref_name):
+        """Merge join to fill county_id."""
+        # update county_id
+        self._execute_query(f"""
+            WITH matched AS (
+                SELECT gc.id as {field_name}, tfrs.ogc_fid
+                FROM {self.table_name_sql} tfrs
+                JOIN {table_name} gc ON
+                    LOWER(gc.name) = LOWER(tfrs.{ref_name})
+            )
+            UPDATE {self.table_name_sql} tfrs
+            SET {field_name} = m.{field_name}
+            FROM matched m
+            WHERE tfrs.ogc_fid = m.ogc_fid;
+        """, f'update_{field_name}')
+
+        # insert into gap_county for missing counties
+        self._execute_query(f"""
+            INSERT INTO {table_name} (name)
+            SELECT DISTINCT ON (tfrs.{ref_name}) tfrs.{ref_name}
+            FROM {self.table_name_sql} tfrs
+            WHERE tfrs.{field_name} IS NULL AND tfrs.{ref_name} IS NOT NULL;
+        """, f'insert_{field_name}')
+
+        # update back the county_id
+        self._execute_query(f"""
+            WITH matched AS (
+                SELECT gc.id as {field_name}, tfrs.ogc_fid
+                FROM {self.table_name_sql} tfrs
+                JOIN {table_name} gc ON
+                    LOWER(gc.name) = LOWER(tfrs.{ref_name})
+                WHERE tfrs.{field_name} IS NULL
+            )
+            UPDATE {self.table_name_sql} tfrs
+            SET {field_name} = m.{field_name}
+            FROM matched m
+            WHERE tfrs.ogc_fid = m.ogc_fid;
+        """, f'update_{field_name}_2')
 
     def _run(self):
         """Run the ingestion logic."""
@@ -246,6 +293,10 @@ class DCASFarmRegistryIngestor(BaseIngestor):
                     <Field name="crop" type="String"/>
                     <Field name="planting_date"
                         src="plantingDate" type="Date"/>
+                    <Field name="county" type="String"/>
+                    <Field name="subcounty" type="String"/>
+                    <Field name="ward" type="String"/>
+                    <Field name="language" type="String"/>
                     <Field name="grid_id" type="Integer"/>
                     <Field name="farm_id" type="Integer"/>
                     <Field name="crop_txt" type="String"/>
@@ -253,6 +304,10 @@ class DCASFarmRegistryIngestor(BaseIngestor):
                     <Field name="crop_id" type="Integer"/>
                     <Field name="crop_stage_id" type="Integer"/>
                     <Field name="farm_registry_id" type="Integer"/>
+                    <Field name="county_id" type="Integer"/>
+                    <Field name="subcounty_id" type="Integer"/>
+                    <Field name="ward_id" type="Integer"/>
+                    <Field name="language_id" type="Integer"/>
                 </OGRVRTLayer>
             </OGRVRTDataSource>"""
         )
@@ -336,6 +391,7 @@ class DCASFarmRegistryIngestor(BaseIngestor):
         )
 
         # create index on columns: farmer_id, crop_txt, crop_stage_txt
+        # and other text columns
         progress = self._add_progress('create_index')
         with connection.cursor() as cursor:
             cursor.execute(
@@ -346,6 +402,18 @@ class DCASFarmRegistryIngestor(BaseIngestor):
             )
             cursor.execute(
                 f'CREATE INDEX ON {self.table_name_sql} (crop_stage_txt)'
+            )
+            cursor.execute(
+                f'CREATE INDEX ON {self.table_name_sql} (county)'
+            )
+            cursor.execute(
+                f'CREATE INDEX ON {self.table_name_sql} (subcounty)'
+            )
+            cursor.execute(
+                f'CREATE INDEX ON {self.table_name_sql} (ward)'
+            )
+            cursor.execute(
+                f'CREATE INDEX ON {self.table_name_sql} (language)'
             )
             cursor.execute(
                 f'CREATE INDEX ON {self.table_name_sql} '
@@ -423,6 +491,23 @@ class DCASFarmRegistryIngestor(BaseIngestor):
             FROM matched m
             WHERE tfrs.ogc_fid = m.ogc_fid;
         """, 'update_crop_stage_id')
+
+        # merge county
+        self._merge_lookup_field(
+            'county_id', 'gap_county', 'county'
+        )
+        # merge subcounty
+        self._merge_lookup_field(
+            'subcounty_id', 'gap_subcounty', 'subcounty'
+        )
+        # merge ward
+        self._merge_lookup_field(
+            'ward_id', 'gap_ward', 'ward'
+        )
+        # merge language (using name)
+        self._merge_lookup_field(
+            'language_id', 'gap_language', 'language'
+        )
 
         # insert into gap_farm
         self._execute_query(f"""
@@ -516,9 +601,12 @@ class DCASFarmRegistryIngestor(BaseIngestor):
         # insert into gap_farmregistry
         self._execute_query(f"""
             INSERT INTO public.gap_farmregistry
-            (planting_date, crop_id, crop_stage_type_id, farm_id, group_id)
+            (planting_date, crop_id, crop_stage_type_id, farm_id, group_id,
+            county_id, subcounty_id, ward_id, language_id)
             SELECT tfrs.planting_date, tfrs.crop_id,
-            tfrs.crop_stage_id, tfrs.farm_id, {self.group.id} as group_id
+            tfrs.crop_stage_id, tfrs.farm_id, {self.group.id} as group_id,
+            tfrs.county_id, tfrs.subcounty_id,
+            tfrs.ward_id, tfrs.language_id
             FROM {self.table_name_sql} tfrs
             WHERE tfrs.farm_id IS NOT NULL AND tfrs.crop_id IS NOT NULL AND
             tfrs.crop_stage_id IS NOT NULL AND

@@ -59,7 +59,7 @@ class FarmRegistry(models.Model):
         blank=True,
         null=True
     )
-    sub_county = models.ForeignKey(
+    subcounty = models.ForeignKey(
         SubCounty,
         on_delete=models.SET_NULL,
         blank=True,
