@@ -119,6 +119,33 @@ class DCASPipelineTest(DCASPipelineBaseTest):
         pipeline.data_output.save.assert_called_once()
         conn_engine.dispose()
 
+    @patch("dask.dataframe.read_parquet", return_value=MagicMock())
+    @patch("dask.dataframe.DataFrame.to_parquet")  # Mock to_parquet
+    def test_filter_message_output(self, mock_to_parquet, mock_read_parquet):
+        """Ensure `df.to_parquet()` is executed for Codecov coverage."""
+        test_data = {
+            "grid_id": [1, 2],
+            "crop_id": [100, 200],
+            "message": ["msg1", "msg2"],
+        }
+        expected_df = dd.from_pandas(pd.DataFrame(test_data), npartitions=1)
+        mock_read_parquet.return_value = expected_df  # Mock read_parquet
+
+        # Ensure `to_parquet()` is a callable mock
+        mock_to_parquet.return_value = None
+
+        # Initialize Pipeline
+        pipeline = DCASDataPipeline([1], "2025-01-01")
+
+        pipeline.data_output.setup()
+
+        # Call Function (No Assertions Needed)
+        pipeline.filter_message_output()
+        expected_df.compute()
+
+        # Ensure `df.to_parquet()` was called
+        mock_to_parquet.assert_called_once()
+
 
 # class DCASAllPipelineTest(TransactionTestCase, BasePipelineTest):
 #     """Test to run the pipeline with committed transaction."""

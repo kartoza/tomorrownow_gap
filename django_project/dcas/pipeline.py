@@ -17,7 +17,10 @@ from dask.dataframe.core import DataFrame as dask_df
 from django.contrib.gis.db.models import Union
 from sqlalchemy import create_engine
 
-from gap.models import FarmRegistry, Grid, CropGrowthStage
+from gap.models import (
+    FarmRegistry, Grid, CropGrowthStage,
+    Preferences
+)
 from dcas.models import DCASConfig, DCASConfigCountry
 from dcas.partitions import (
     process_partition_total_gdd,
@@ -31,6 +34,7 @@ from dcas.partitions import (
 from dcas.queries import DataQuery
 from dcas.outputs import DCASPipelineOutput, OutputType
 from dcas.inputs import DCASPipelineInput
+from dcas.functions import filter_messages_by_weeks
 from dcas.service import GrowthStageService
 
 
@@ -321,6 +325,13 @@ class DCASDataPipeline:
         grid_crop_df_meta = self.data_query.grid_data_with_crop_meta(
             self.farm_registry_group_ids
         )
+        # add farm_id
+        if "farm_id" not in grid_crop_df_meta.columns:
+            grid_crop_df_meta = grid_crop_df_meta.assign(
+                farm_id=pd.Series(dtype='Int64')
+            )
+        # Ensure the column order in `meta` matches the expected DataFrame
+        grid_crop_df_meta = grid_crop_df_meta[grid_crop_df.columns]
 
         # Process gdd cumulative
         # for Total GDD, we use date from planting_date to request_date - 1
@@ -434,6 +445,8 @@ class DCASDataPipeline:
             self.duck_db_num_threads,
             meta=farm_df_meta
         )
+        if Preferences.load().enable_message_filtering:
+            self.filter_message_output()
 
         self.data_output.save(OutputType.FARM_CROP_DATA, farm_df)
 
@@ -465,6 +478,51 @@ class DCASDataPipeline:
 
         return file_path
 
+    def filter_message_output(self):
+        """Filter messages before extracting CSV."""
+        # Read Parquet file (processed farm crop data)
+        df = dd.read_parquet(self.data_output.grid_crop_data_path)
+
+        if "farm_id" not in df.columns:
+            df["farm_id"] = df["grid_id"]
+
+        df["farm_id"] = df["farm_id"].astype(int)
+        df["crop_id"] = df["crop_id"].astype(int)
+
+        meta = {
+            "farm_id": np.int64,
+            "crop_id": np.int64,
+            "growth_stage_id": np.int64,
+            "message": "object",
+            "message_2": "object",
+            "message_3": "object",
+            "message_4": "object",
+            "message_5": "object",
+            "message_date": "datetime64[ns]",
+        }
+        data_parquet_path = self.data_output._get_directory_path(
+            self.data_output.DCAS_OUTPUT_DIR
+        ) + '/iso_a3=*/year=*/month=*/day=*/*.parquet'
+
+        # Apply message filtering
+        df = df.map_partitions(
+            filter_messages_by_weeks,
+            data_parquet_path,
+            2,  # Weeks constraint (default: 2 weeks)
+            meta=meta
+        )
+
+        parquet_path = self.data_output._get_directory_path(
+            self.data_output.DCAS_OUTPUT_DIR
+        ) + '/iso_a3=*/year=*/month=*/day=*/*.parquet'
+
+        # Save the filtered Parquet file (overwrite previous Parquet)
+        df.to_parquet(
+            parquet_path,
+            write_index=False,
+            storage_options=self.data_output.s3_options
+        )
+
     def run(self):
         """Run data pipeline."""
         self.setup()
@@ -472,6 +530,11 @@ class DCASDataPipeline:
         self.data_collection()
         self.process_grid_crop_data()
         self.process_farm_registry_data()
+
+        self.extract_csv_output()
+
+        self.cleanup_gdd_matrix()
+
         print(f'Finished {time.time() - start_time} seconds.')
 
     def cleanup(self):

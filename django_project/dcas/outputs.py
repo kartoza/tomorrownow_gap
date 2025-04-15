@@ -82,6 +82,12 @@ class DCASPipelineOutput:
         return self.grid_crop_data_dir_path + '/*.parquet'
 
     @property
+    def farm_crop_data_path(self):
+        """Return full path to the farm crop data parquet file."""
+        return self._get_directory_path(
+            self.DCAS_OUTPUT_DIR) + '/*.parquet'
+
+    @property
     def output_csv_file_path(self):
         """Return full path to output csv file."""
         dt = self.request_date.strftime('%Y%m%d')
