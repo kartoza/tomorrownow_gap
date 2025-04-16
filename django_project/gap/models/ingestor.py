@@ -40,6 +40,7 @@ class IngestorType:
     CBAM_BIAS_ADJUST = 'CBAM Bias Adjusted'
     DCAS_RULE = 'DCAS Rules'
     FARM_REGISTRY = 'Farm Registry'
+    DCAS_MESSAGE = 'DCAS Message'
 
 
 class IngestorSessionStatus:
@@ -85,6 +86,7 @@ class BaseSession(models.Model):
             (IngestorType.CBAM_BIAS_ADJUST, IngestorType.CBAM_BIAS_ADJUST),
             (IngestorType.DCAS_RULE, IngestorType.DCAS_RULE),
             (IngestorType.FARM_REGISTRY, IngestorType.FARM_REGISTRY),
+            (IngestorType.DCAS_MESSAGE, IngestorType.DCAS_MESSAGE),
         ),
         max_length=512
     )

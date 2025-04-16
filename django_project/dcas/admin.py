@@ -185,4 +185,4 @@ class DCASMessagePriorityAdmin(admin.ModelAdmin):
     """Admin interface for DCASMessagePriority."""
 
     list_display = ('code', 'priority', 'config')
-    list_filter = ('config')
+    list_filter = ('config',)
