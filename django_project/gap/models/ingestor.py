@@ -40,6 +40,7 @@ class IngestorType:
     CBAM_BIAS_ADJUST = 'CBAM Bias Adjusted'
     DCAS_RULE = 'DCAS Rules'
     FARM_REGISTRY = 'Farm Registry'
+    DCAS_MESSAGE = 'DCAS Message'
 
 
 class IngestorSessionStatus:
@@ -85,6 +86,7 @@ class BaseSession(models.Model):
             (IngestorType.CBAM_BIAS_ADJUST, IngestorType.CBAM_BIAS_ADJUST),
             (IngestorType.DCAS_RULE, IngestorType.DCAS_RULE),
             (IngestorType.FARM_REGISTRY, IngestorType.FARM_REGISTRY),
+            (IngestorType.DCAS_MESSAGE, IngestorType.DCAS_MESSAGE),
         ),
         max_length=512
     )
@@ -221,6 +223,7 @@ class IngestorSession(BaseSession):
             ParquetIngestorAppender,
             WindborneParquetIngestorAppender
         )
+        from gap.ingestor.dcas_message import DCASMessageIngestor
 
         ingestor = None
         if self.ingestor_type == IngestorType.TAHMO:
@@ -249,6 +252,8 @@ class IngestorSession(BaseSession):
             ingestor = DcasRuleIngestor
         elif self.ingestor_type == IngestorType.FARM_REGISTRY:
             ingestor = DCASFarmRegistryIngestor
+        elif self.ingestor_type == IngestorType.DCAS_MESSAGE:
+            ingestor = DCASMessageIngestor
 
         if ingestor:
             ingestor_obj = ingestor(self, working_dir)

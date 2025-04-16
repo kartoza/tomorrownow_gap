@@ -18,6 +18,7 @@ class MessageApplication:
     """The application that will use the message."""
 
     PRISE = 'PRISE'  # Message that will be used for CABI PRISE
+    DCAS = 'DCAS'
 
 
 class MessageTemplate(models.Model):
@@ -36,6 +37,7 @@ class MessageTemplate(models.Model):
         default=MessageApplication.PRISE,
         choices=(
             (MessageApplication.PRISE, _(MessageApplication.PRISE)),
+            (MessageApplication.DCAS, _(MessageApplication.DCAS)),
         ),
         max_length=512
     )
