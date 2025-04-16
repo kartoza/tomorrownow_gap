@@ -23,6 +23,7 @@ class DCASMessagePriority(models.Model):
         return f'{self.code}'
 
     class Meta:
+        """Meta class for DCASMessagePriority."""
         indexes = [
             models.Index(fields=['code']),
             models.Index(fields=['priority']),
