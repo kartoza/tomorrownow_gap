@@ -35,7 +35,9 @@ class TestMessagePriorityService(TestCase):
 
     @patch('dcas.service.cache.get')
     @patch('dcas.service.cache.set', side_effect=set_cache_dummy)
-    def test_get_priority_from_db_and_set_cache(self, mock_cache_set, mock_cache_get):
+    def test_get_priority_from_db_and_set_cache(
+        self, mock_cache_set, mock_cache_get
+    ):
         """Test retrieving priority from DB and setting it in cache."""
         mock_cache_get.return_value = None
         DCASMessagePriority.objects.create(
@@ -47,7 +49,11 @@ class TestMessagePriorityService(TestCase):
         priority = service.get_priority('test_key', 1)
         self.assertEqual(priority, 2)
         mock_cache_get.assert_called_once_with('message_priority:test_key:1')
-        mock_cache_set.assert_called_once_with('message_priority:test_key:1', 2, timeout=None)
+        mock_cache_set.assert_called_once_with(
+            'message_priority:test_key:1',
+            2,
+            timeout=None
+        )
 
     @patch('dcas.service.cache.get')
     def test_get_priority_key_not_found(self, mock_cache_get):
@@ -56,4 +62,6 @@ class TestMessagePriorityService(TestCase):
         service = MessagePriorityService()
         priority = service.get_priority('non_existent_key', 1)
         self.assertIsNone(priority)
-        mock_cache_get.assert_called_once_with('message_priority:non_existent_key:1')
+        mock_cache_get.assert_called_once_with(
+            'message_priority:non_existent_key:1'
+        )
