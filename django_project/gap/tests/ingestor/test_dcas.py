@@ -13,7 +13,8 @@ from gap.models import (
     IngestorSession, IngestorType, IngestorSessionStatus,
     Attribute, CropGrowthStage, CropStageType, Crop
 )
-from dcas.models import DCASConfig, DCASRule
+from dcas.models import DCASConfig, DCASRule, DCASMessagePriority
+from message.models import MessageTemplate, MessageApplication
 
 
 class DCASRuleIngestorTest(TestCase):
@@ -115,4 +116,50 @@ class DCASRuleIngestorTest(TestCase):
         self.assertEqual(
             DCASRule.objects.filter(config=self.default_config).count(),
             1
+        )
+
+
+class DCASMessageIngestorTest(TestCase):
+    """DCAS Message ingestor test case."""
+
+    fixtures = [
+        '6.unit.json',
+        '7.attribute.json',
+        '12.crop_stage_type.json',
+        '13.crop_growth_stage.json',
+        '1.dcas_config.json'
+    ]
+
+    def setUp(self):
+        """Set the test class."""
+        self.default_config = DCASConfig.objects.get(id=1)
+
+    def test_success_ingestor(self):
+        """Test with success data."""
+        file_path = absolute_path(
+            'gap', 'tests', 'ingestor', 'data', 'dcas', 'messages.csv'
+        )
+        _file = open(file_path, 'rb')
+        session = IngestorSession.objects.create(
+            file=SimpleUploadedFile(_file.name, _file.read()),
+            ingestor_type=IngestorType.DCAS_MESSAGE,
+            additional_config={
+                'config_id': self.default_config.id
+            },
+            trigger_task=False
+        )
+        session.run()
+        session.delete()
+        self.assertEqual(session.status, IngestorSessionStatus.SUCCESS)
+        self.assertEqual(
+            DCASMessagePriority.objects.filter(
+                config=self.default_config
+            ).count(),
+            50
+        )
+        self.assertEqual(
+            MessageTemplate.objects.filter(
+                application=MessageApplication.DCAS
+            ).count(),
+            50
         )

@@ -223,6 +223,7 @@ class IngestorSession(BaseSession):
             ParquetIngestorAppender,
             WindborneParquetIngestorAppender
         )
+        from gap.ingestor.dcas_message import DCASMessageIngestor
 
         ingestor = None
         if self.ingestor_type == IngestorType.TAHMO:
@@ -251,6 +252,8 @@ class IngestorSession(BaseSession):
             ingestor = DcasRuleIngestor
         elif self.ingestor_type == IngestorType.FARM_REGISTRY:
             ingestor = DCASFarmRegistryIngestor
+        elif self.ingestor_type == IngestorType.DCAS_MESSAGE:
+            ingestor = DCASMessageIngestor
 
         if ingestor:
             ingestor_obj = ingestor(self, working_dir)
