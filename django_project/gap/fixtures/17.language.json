@@ -1,0 +1,20 @@
+[
+{
+    "model": "gap.language",
+    "pk": 1,
+    "fields": {
+        "name": "English",
+        "description": null,
+        "code": "en"
+    }
+},
+{
+    "model": "gap.language",
+    "pk": 2,
+    "fields": {
+        "name": "Swahili",
+        "description": null,
+        "code": "sw"
+    }
+}
+]
