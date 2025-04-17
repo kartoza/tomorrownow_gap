@@ -34,7 +34,7 @@ from dcas.queries import DataQuery
 from dcas.outputs import DCASPipelineOutput, OutputType
 from dcas.inputs import DCASPipelineInput
 from dcas.functions import filter_messages_by_weeks
-from dcas.service import GrowthStageService
+from dcas.service import GrowthStageService, MessagePriorityService
 
 
 logger = logging.getLogger(__name__)
@@ -117,6 +117,7 @@ class DCASDataPipeline:
     def cleanup_gdd_matrix(self):
         """Cleanup GDD Matrix."""
         GrowthStageService.cleanup_matrix()
+        MessagePriorityService.cleanup_priority()
 
     def load_grid_data(self) -> pd.DataFrame:
         """Load grid data from FarmRegistry table.
@@ -316,6 +317,8 @@ class DCASDataPipeline:
         """Process Grid and Crop Data."""
         # Load GDD Matrix before processing grid crop data
         GrowthStageService.load_matrix()
+        # Load Message priority
+        MessagePriorityService.load_priority()
 
         grid_data_file_path = self.data_output.grid_data_file_path
 
@@ -406,7 +409,11 @@ class DCASDataPipeline:
             message_2=None,
             message_3=None,
             message_4=None,
-            message_5=None
+            message_5=None,
+            is_empty_message=False,
+            is_found_repetitive=False,
+            final_message=None,
+            prev_week_message=None
         )
         grid_crop_df = grid_crop_df.map_partitions(
             process_partition_message_output,

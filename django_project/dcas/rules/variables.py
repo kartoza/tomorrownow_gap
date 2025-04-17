@@ -58,3 +58,7 @@ class DCASData:
         if np.isinf(val):
             return 999999
         return val
+
+    def is_empty(self):
+        """Check if message_codes is empty."""
+        return len(self.message_codes) == 0

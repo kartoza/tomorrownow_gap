@@ -265,7 +265,7 @@ def process_partition_growth_stage_precipitation(
 def process_partition_message_output(df: pd.DataFrame) -> pd.DataFrame:
     """Calculate message codes for DataFrame partition.
 
-    :param df: DataFrame partition to be processed
+    :param df: Grid crop DataFrame partition to be processed
     :type df: pd.DataFrame
     :return: DataFrame with message columns
     :rtype: pd.DataFrame
@@ -275,8 +275,14 @@ def process_partition_message_output(df: pd.DataFrame) -> pd.DataFrame:
         message_2=None,
         message_3=None,
         message_4=None,
-        message_5=None
+        message_5=None,
+        is_empty_message=False,
+        is_found_repetitive=False,
+        final_message=None,
+        prev_week_message=None
     )
+
+    # TODO: load previous final message by grid_id and crop_id
 
     attrib_dict = {
         'temperature': Attribute.objects.get(variable_name='temperature').id,

@@ -67,6 +67,8 @@ class DataQuery:
         self.crop = self.base_schema.classes['gap_crop'].__table__
         self.grid = self.base_schema.classes['gap_grid'].__table__
         self.country = self.base_schema.classes['gap_country'].__table__
+        self.county = self.base_schema.classes['gap_county'].__table__
+        self.language = self.base_schema.classes['gap_language'].__table__
 
     def grid_data_query(self, farm_registry_group_ids):
         """Get query for Grid Data."""
@@ -208,6 +210,8 @@ class DataQuery:
                 cast(self.cropstagetype.c.id, SqlString) + '_' +
                 cast(self.grid.c.id, SqlString)
             ).label('grid_crop_key'),
+            self.county.c.name.label('county'),
+            self.language.c.code.label('preferred_language')
         ).select_from(self.farmregistry).join(
             self.farm, self.farmregistry.c.farm_id == self.farm.c.id
         ).join(
@@ -219,6 +223,13 @@ class DataQuery:
             self.farmregistry.c.crop_stage_type_id == self.cropstagetype.c.id
         ).join(
             self.country, self.grid.c.country_id == self.country.c.id
+        ).join(
+            self.county, self.farmregistry.c.county_id == self.county.c.id,
+            isouter=True
+        ).join(
+            self.language,
+            self.farmregistry.c.language_id == self.language.c.id,
+            isouter=True
         ).where(
             self.farmregistry.c.group_id.in_(farm_registry_group_ids)
         ).order_by(
