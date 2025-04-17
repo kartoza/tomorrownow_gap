@@ -10,6 +10,7 @@ import os
 import shutil
 import fsspec
 import pandas as pd
+from django.db import connection
 from dask.dataframe.core import DataFrame as dask_df
 import dask_geopandas as dg
 from dask_geopandas.io.parquet import to_parquet
@@ -273,25 +274,32 @@ class DCASPipelineOutput:
         conn.load_extension("httpfs")
         conn.install_extension("spatial")
         conn.load_extension("spatial")
+        conn.install_extension("postgres_scanner")
+        conn.load_extension("postgres_scanner")
         return conn
 
     def convert_to_csv(self):
         """Convert output to csv file."""
         file_path = self.output_csv_file_path
         column_list = [
-            'farm_unique_id as farmer_id', 'crop',
-            'planting_date as plantingDate', 'growth_stage as growthStage',
-            'message', 'message_2', 'message_3', 'message_4', 'message_5',
-            'humidity as relativeHumidity',
-            'seasonal_precipitation as seasonalPrecipitation',
-            'temperature', 'p_pet as PPET',
-            'growth_stage_precipitation as growthStagePrecipitation'
+            'farm_unique_id as farmer_id',
+            'message_final', 'message_english',
+            "final_message as message_code",
+            'crop', 'planting_date', 'growth_stage',
+            'county',
+            'humidity as relative_humidity',
+            'seasonal_precipitation',
+            'temperature', 'p_pet as ppet',
+            'growth_stage_precipitation',
+            "strftime(to_timestamp(growth_stage_start_date)" +
+            ", '%Y-%m-%d') as growth_stage_date",
+            'ST_X(geometry) as final_longitude',
+            'ST_Y(geometry) as final_latitude',
+            'grid_id'
         ]
         if self.extract_additional_columns:
             column_list.extend([
-                "total_gdd", "grid_id",
-                "strftime(to_timestamp(growth_stage_start_date)" +
-                ", '%Y-%m-%d') as growth_stage_date"
+                "total_gdd"                
             ])
 
         parquet_path = (
@@ -300,13 +308,63 @@ class DCASPipelineOutput:
         )
         s3 = self._get_s3_variables()
         conn = self._get_connection(s3)
-        sql = (
-            f"""
-            SELECT {','.join(column_list)}
+
+        # Copy data from parquet to duckdb table
+        conn.execute(f"""
+            CREATE TABLE dcas AS
+            SELECT *, "" as message_final, "" as message_english
             FROM read_parquet({parquet_path}, hive_partitioning=true)
             WHERE year={self.request_date.year} AND
             month={self.request_date.month} AND
             day={self.request_date.day}
+        """)
+
+        # Read message code and en/sw translations from template
+        pg_conn_str = (
+            "host={HOST} port={PORT} user={USER} "
+            "password={PASSWORD} dbname={NAME}".format(
+                **connection.settings_dict
+            )
+        )
+        conn.execute(f"""
+            CREATE TABLE message_template AS
+            SELECT * FROM postgres_scan(
+                '{pg_conn_str}', 'public', 'message_template'
+            )
+            WHERE application = 'DCAS';
+        """)
+
+        # Merge en/sw translations into dcas table
+        sql = (
+            f"""
+            WITH matched AS (
+                SELECT
+                d.farmregistry_id,
+                d.farm m.template_en AS message_english,
+                CASE d.preferred_language
+                    WHEN 'en' THEN m.template_en
+                    WHEN 'sw' THEN m.template_sw
+                    ELSE m.template_en
+                END AS message_final
+                FROM message_template m
+                JOIN dcas d
+                ON d.final_message = m.code
+                WHERE d.final_message IS NOT NULL
+            )
+            UPDATE dcas d
+            SET message_final = matched.message_final,
+            message_english = matched.message_english
+            FROM matched
+            WHERE d.farmregistry_id = matched.farmregistry_id
+            """
+        )
+        conn.execute(sql)
+
+        # export to csv
+        sql = (
+            f"""
+            SELECT {','.join(column_list)}
+            FROM dcas
             """
         )
         final_query = (
