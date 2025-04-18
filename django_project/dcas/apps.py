@@ -15,4 +15,4 @@ class DcasConfig(AppConfig):
 
     def ready(self):
         """App ready handler."""
-        from dcas.tasks import run_dcas, export_dcas_sftp, export_dcas_minio  # noqa
+        from dcas.tasks import run_dcas, export_dcas_sftp, export_dcas_minio, cleanup_dcas_old_output_files  # noqa

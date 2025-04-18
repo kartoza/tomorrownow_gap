@@ -124,7 +124,7 @@ class DCASOutputAdmin(admin.ModelAdmin):
     list_display = (
         'delivered_at', 'request',
         'file_name', 'status',
-        'get_size', 'delivery_by')
+        'get_size', 'delivery_by', 'file_exists')
     list_filter = ('request', 'status', 'delivery_by')
 
     def get_size(self, obj: DCASOutput):
