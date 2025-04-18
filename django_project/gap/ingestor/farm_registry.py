@@ -596,6 +596,22 @@ class DCASFarmRegistryIngestor(BaseIngestor):
                 f"Existing farm_registry_id count: "
                 f"{self.execution_times['existing_farmregistry_count']}"
             )
+            # update county_id, subcounty_id, ward_id, language_id
+            self._execute_query(f"""
+                WITH matched AS (
+                    SELECT tfrs.farm_registry_id,
+                        tfrs.county_id, tfrs.subcounty_id,
+                        tfrs.ward_id, tfrs.language_id
+                    FROM {self.table_name_sql} tfrs
+                    WHERE tfrs.farm_registry_id IS NOT NULL
+                )
+                UPDATE gap_farmregistry gfr
+                SET county_id = m.county_id,
+                    subcounty_id = m.subcounty_id,
+                    ward_id = m.ward_id, language_id = m.language_id
+                FROM matched m
+                WHERE gfr.id = m.farm_registry_id;
+            """, 'update_existing_farm_registry')
 
         # insert into gap_farmregistry
         self._execute_query(f"""
