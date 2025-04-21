@@ -14,7 +14,7 @@ from django.contrib.auth.models import Group
 from core.celery import cancel_task, app
 from core.forms import CreateKnoxTokenForm, CreateAuthToken
 from core.group_email_receiver import crop_plan_receiver
-from core.models.background_task import BackgroundTask
+from core.models.background_task import BackgroundTask, TaskContextIdModel
 from core.models.table_usage import TableUsage
 from core.settings.utils import absolute_path
 
@@ -182,3 +182,10 @@ class TableUsageAdmin(AbstractDefinitionAdmin):
     ordering = ['-created_on']
     readonly_fields = ('schema_name', 'created_on')
     actions = [run_fetch_table_stats]
+
+
+@admin.register(TaskContextIdModel)
+class TaskContextIdModelAdmin(admin.ModelAdmin):
+    """Admin class for TaskContextIdModel."""
+
+    list_display = ('task_name', 'model_name',)

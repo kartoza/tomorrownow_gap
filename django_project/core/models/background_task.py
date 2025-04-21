@@ -10,6 +10,8 @@ import logging
 import uuid
 from ast import literal_eval as make_tuple
 from traceback import format_tb
+from django.apps import apps
+from django.core.exceptions import ObjectDoesNotExist
 
 from django.conf import settings
 from django.db import models
@@ -326,3 +328,47 @@ class BackgroundTask(models.Model):
                 diff_seconds = timezone.now() - self.last_update
                 return diff_seconds.total_seconds() >= delta
         return False
+
+    def is_task_completed(self, check_context=True):
+        """Check if task is completed."""
+        result = self.status == TaskStatus.COMPLETED
+        if not result:
+            return result
+
+        if check_context and self.context_id:
+            context_model = TaskContextIdModel.objects.filter(
+                task_name=self.task_name
+            ).first()
+            if not context_model:
+                return result
+
+            obj = context_model.get_object(self.context_id)
+            # TODO: check if obj status is also completed without error
+
+        return result
+
+
+class TaskContextIdModel(models.Model):
+    """Class that represents the mapping between Task and Context Model."""
+
+    task_name = models.CharField(max_length=255)
+    model_name = models.CharField(max_length=512)
+
+    def get_object(self, context_id):
+        """Get object by model name and context id."""
+        try:
+            # Get the model class from the string
+            model_string = self.model_name
+            app_label, model_name = model_string.split(".")
+            model_class = apps.get_model(app_label, model_name)
+
+            if not model_class:
+                raise LookupError(f"Model '{model_string}' not found.")
+
+            # Retrieve the object
+            obj = model_class.objects.get(pk=context_id)
+            return obj
+        except ObjectDoesNotExist:
+            return None  # or handle not found case
+        except Exception as e:
+            raise e
