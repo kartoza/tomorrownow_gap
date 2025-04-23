@@ -106,3 +106,6 @@ paramiko==3.5.0
 # djngo-import-export
 django-import-export==4.3.4
 django-import-export-celery==1.7.1
+
+# fix zarr numcodecs issue #733
+numcodecs==0.15.1
