@@ -47,8 +47,8 @@ def notify_spw_error(date, farm_group_id, error_message):
 def generate_insight_report(_id: list):
     """Generate insight report."""
     request = CropInsightRequest.objects.get(id=_id)
-    error_message = None    
-    try:        
+    error_message = None
+    try:
         request.run()
     except Exception as e:
         error_message = str(e)

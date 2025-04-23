@@ -92,6 +92,11 @@ app.conf.beat_schedule = {
         # Run everyday at 00:15 UTC
         'schedule': crontab(minute='15', hour='00'),
     },
+    'check-running-tasks': {
+        'task': 'check_running_tasks',
+        # Run every 6 hours
+        'schedule': crontab(minute='0', hour='*/6'),
+    },
 }
 
 
