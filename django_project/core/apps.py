@@ -7,6 +7,7 @@ Tomorrow Now GAP.
 
 from django.apps import AppConfig
 
+
 class CoreConfig(AppConfig):
     """App Config for Core."""
 
