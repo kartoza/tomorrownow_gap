@@ -213,6 +213,80 @@ class DCASFarmRegistryIngestorTest(TransactionTestCase):
         self.assertEqual(Farm.objects.count(), 2)
         self.assertEqual(FarmRegistry.objects.count(), 2)
 
+        # Test update query
+        session = IngestorSession.objects.create(
+            ingestor_type='Farm Registry',
+            trigger_task=False,
+            additional_config={
+                'group_id': group.id
+            }
+        )
+        ingestor = DCASFarmRegistryIngestor(session, self.working_dir)
+
+        test_zip_path = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            'data',  # Test data directory
+            'farm_registry',
+            'test_farm_registry.zip'  # Pre-existing ZIP file
+        )
+        with open(test_zip_path, 'rb') as _file:
+            test_file = SimpleUploadedFile(_file.name, _file.read())
+
+        # set file in session
+        session.file = test_file
+        session.save()
+
+        ingestor.run()
+
+        # Verify FarmRegistryGroup was created
+        self.assertEqual(FarmRegistryGroup.objects.count(), 1)
+        group = FarmRegistryGroup.objects.first()
+
+        # Verify Farm and FarmRegistry were created
+        self.assertEqual(Farm.objects.count(), 2)
+        self.assertEqual(FarmRegistry.objects.count(), 2)
+
+    def test_ingestion_using_nearest_grid(self):
+        """Test ingestion using nearest grid."""
+        session = IngestorSession.objects.create(
+            ingestor_type='Farm Registry',
+            trigger_task=False,
+            additional_config={
+                'use_nearest': True
+            }
+        )
+        ingestor = DCASFarmRegistryIngestor(session, self.working_dir)
+
+        test_zip_path = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            'data',  # Test data directory
+            'farm_registry',
+            'test_farm_registry.zip'  # Pre-existing ZIP file
+        )
+        with open(test_zip_path, 'rb') as _file:
+            test_file = SimpleUploadedFile(_file.name, _file.read())
+
+        # set file in session
+        session.file = test_file
+        session.save()
+
+        ingestor.run()
+
+        # Verify session status
+        session.refresh_from_db()
+
+        # Verify FarmRegistryGroup was created
+        self.assertEqual(FarmRegistryGroup.objects.count(), 1)
+        group = FarmRegistryGroup.objects.first()
+        self.assertTrue(group.is_latest)
+
+        # Verify Farm and FarmRegistry were created
+        self.assertEqual(Farm.objects.count(), 2)
+        self.assertEqual(FarmRegistry.objects.count(), 2)
+
+        # verify temp table has been deleted
+        self.assertFalse(ingestor._check_table_exists())
+
 
 class TestKeysStaticMethods(unittest.TestCase):
     """Test static methods in Keys class."""
