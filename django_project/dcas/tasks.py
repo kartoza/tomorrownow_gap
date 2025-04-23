@@ -13,8 +13,11 @@ import logging
 import tempfile
 from django.core.files.storage import storages
 from django.utils import timezone
+from django.core.mail import send_mail
+from django.conf import settings
 
 from core.models.background_task import TaskStatus
+from core.utils.emails import get_admin_emails
 from gap.models import FarmRegistryGroup, FarmRegistry, Preferences, Farm
 from dcas.models import (
     DCASErrorLog, DCASRequest, DCASErrorType,
@@ -122,6 +125,29 @@ class DCASPreferences:
             f'{dir_prefix}{DCAS_OBJECT_STORAGE_DIR}/'
             f'{filename}'
         )
+
+
+@shared_task(name="notify_dcas_error")
+def notify_dcas_error(date, request_id, error_message):
+    """Notify dcas error to the user."""
+    # Send an email notification to admins
+    admin_emails = get_admin_emails()
+    if admin_emails:
+        send_mail(
+            subject="DCAS Failure Alert",
+            message=(
+                f"DCAS for request #{request_id} - {date} "
+                "has failed.\n\n"
+                f"Error: {error_message}\n\n"
+                "Please check the logs for more details."
+            ),
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=admin_emails,
+            fail_silently=False,
+        )
+        logger.info(f"Sent DCAS failure email to {admin_emails}")
+    else:
+        logger.warning("No admin email found.")
 
 
 def save_dcas_ouput_to_object_storage(file_path):
@@ -240,6 +266,11 @@ def run_dcas(request_id=None):
         dcas_request.progress_text = 'DCAS: No farm registry group!'
         dcas_request.save()
         logger.warning(dcas_request)
+        notify_dcas_error.delay(
+            dcas_request.requested_at.date(),
+            dcas_request.id,
+            'No farm registry group!'
+        )
         return
 
     # check total count
@@ -253,6 +284,11 @@ def run_dcas(request_id=None):
         )
         dcas_request.save()
         logger.warning(dcas_request)
+        notify_dcas_error.delay(
+            dcas_request.requested_at.date(),
+            dcas_request.id,
+            'No farm registry in the registry groups'
+        )
         return
 
     dcas_request.start_time = current_dt
@@ -303,6 +339,13 @@ def run_dcas(request_id=None):
             # Trigger error handling task
             if dcas_config.trigger_error_handling:
                 log_farms_without_messages.delay(dcas_request.id)
+        elif dcas_request.status == TaskStatus.STOPPED:
+            # Notify the user about the error
+            notify_dcas_error.delay(
+                dcas_request.requested_at.date(),
+                dcas_request.id,
+                errors
+            )
 
         # cleanup
         pipeline.cleanup()
