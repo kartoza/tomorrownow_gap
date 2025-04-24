@@ -139,6 +139,7 @@ class CollectorSession(BaseSession):
             TioShortTermDuckDBCollector
         )
         from gap.ingestor.cbam_bias_adjust import CBAMBiasAdjustCollector
+        from gap.ingestor.tio_hourly import TioHourlyShortTermCollector
 
         ingestor = None
         if self.ingestor_type == IngestorType.CBAM:
@@ -149,6 +150,8 @@ class CollectorSession(BaseSession):
             ingestor = TioShortTermDuckDBCollector(self, working_dir)
         elif self.ingestor_type == IngestorType.CBAM_BIAS_ADJUST:
             ingestor = CBAMBiasAdjustCollector(self, working_dir)
+        elif self.ingestor_type == IngestorType.HOURLY_TOMORROWIO:
+            ingestor = TioHourlyShortTermCollector(self, working_dir)
 
         if ingestor:
             ingestor.run()
