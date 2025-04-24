@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <div id="gap-base-context" style="display: none;">
+    {{ gap_base_context|safe }}
+  </div>
+
+  <div id="app"></div>
+
+  {% load render_bundle from webpack_loader %}
+  {% render_bundle 'Signup' 'css' %}
+  {% render_bundle 'Signup' 'js' %}
+{% endblock %}

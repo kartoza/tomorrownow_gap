@@ -40,6 +40,7 @@ class IngestorType:
     CBAM_BIAS_ADJUST = 'CBAM Bias Adjusted'
     DCAS_RULE = 'DCAS Rules'
     FARM_REGISTRY = 'Farm Registry'
+    DCAS_MESSAGE = 'DCAS Message'
 
 
 class IngestorSessionStatus:
@@ -85,6 +86,7 @@ class BaseSession(models.Model):
             (IngestorType.CBAM_BIAS_ADJUST, IngestorType.CBAM_BIAS_ADJUST),
             (IngestorType.DCAS_RULE, IngestorType.DCAS_RULE),
             (IngestorType.FARM_REGISTRY, IngestorType.FARM_REGISTRY),
+            (IngestorType.DCAS_MESSAGE, IngestorType.DCAS_MESSAGE),
         ),
         max_length=512
     )
@@ -131,7 +133,9 @@ class CollectorSession(BaseSession):
         """Run the collector session."""
         from gap.ingestor.cbam import CBAMCollector
         from gap.ingestor.salient import SalientCollector
-        from gap.ingestor.tio_shortterm import TioShortTermCollector
+        from gap.ingestor.tio_shortterm import (
+            TioShortTermDuckDBCollector
+        )
         from gap.ingestor.cbam_bias_adjust import CBAMBiasAdjustCollector
 
         ingestor = None
@@ -140,7 +144,7 @@ class CollectorSession(BaseSession):
         elif self.ingestor_type == IngestorType.SALIENT:
             ingestor = SalientCollector(self, working_dir)
         elif self.ingestor_type == IngestorType.TIO_FORECAST_COLLECTOR:
-            ingestor = TioShortTermCollector(self, working_dir)
+            ingestor = TioShortTermDuckDBCollector(self, working_dir)
         elif self.ingestor_type == IngestorType.CBAM_BIAS_ADJUST:
             ingestor = CBAMBiasAdjustCollector(self, working_dir)
 
@@ -210,7 +214,7 @@ class IngestorSession(BaseSession):
         from gap.ingestor.arable import ArableIngestor
         from gap.ingestor.tahmo_api import TahmoAPIIngestor
         from gap.ingestor.wind_borne_systems import WindBorneSystemsIngestor
-        from gap.ingestor.tio_shortterm import TioShortTermIngestor
+        from gap.ingestor.tio_shortterm import TioShortTermDuckDBIngestor
         from gap.ingestor.cabi_prise import CabiPriseIngestor
         from gap.ingestor.cbam_bias_adjust import CBAMBiasAdjustIngestor
         from gap.ingestor.dcas_rule import DcasRuleIngestor
@@ -219,6 +223,7 @@ class IngestorSession(BaseSession):
             ParquetIngestorAppender,
             WindborneParquetIngestorAppender
         )
+        from gap.ingestor.dcas_message import DCASMessageIngestor
 
         ingestor = None
         if self.ingestor_type == IngestorType.TAHMO:
@@ -238,7 +243,7 @@ class IngestorSession(BaseSession):
         elif self.ingestor_type == IngestorType.WIND_BORNE_SYSTEMS_API:
             ingestor = WindBorneSystemsIngestor
         elif self.ingestor_type == IngestorType.TOMORROWIO:
-            ingestor = TioShortTermIngestor
+            ingestor = TioShortTermDuckDBIngestor
         elif self.ingestor_type == IngestorType.CABI_PRISE_EXCEL:
             ingestor = CabiPriseIngestor
         elif self.ingestor_type == IngestorType.CBAM_BIAS_ADJUST:
@@ -247,6 +252,8 @@ class IngestorSession(BaseSession):
             ingestor = DcasRuleIngestor
         elif self.ingestor_type == IngestorType.FARM_REGISTRY:
             ingestor = DCASFarmRegistryIngestor
+        elif self.ingestor_type == IngestorType.DCAS_MESSAGE:
+            ingestor = DCASMessageIngestor
 
         if ingestor:
             ingestor_obj = ingestor(self, working_dir)

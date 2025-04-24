@@ -6,8 +6,9 @@ Tomorrow Now GAP.
 """
 
 import csv
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime
 from unittest.mock import patch
+import pytz
 
 from django.contrib.gis.geos import Point
 from django.test import TestCase
@@ -18,18 +19,18 @@ from gap.factories.crop_insight import CropInsightRequestFactory
 from gap.factories.farm import FarmFactory, FarmGroupFactory
 from gap.factories.grid import GridFactory
 from gap.models.crop_insight import (
-    FarmSuitablePlantingWindowSignal, CropInsightRequest,
-    FarmGroupIsNotSetException,
+    FarmSuitablePlantingWindowSignal, FarmGroupIsNotSetException,
+    FarmShortTermForecast
 )
 from gap.models.pest import Pest
 from gap.models.preferences import Preferences
 from gap.models.farm_group import FarmGroupCropInsightField
 from gap.tasks.crop_insight import (
-    generate_insight_report,
-    generate_crop_plan
+    generate_insight_report
 )
 from spw.factories import RModelFactory
 from spw.generator.crop_insight import CropInsightFarmGenerator
+from spw.tasks import clean_duplicate_farm_short_term_forecast
 
 ltn_returns = {
     '07-20': {
@@ -43,7 +44,7 @@ ltn_returns = {
 
 
 def always_retrying(
-        location_input, attrs, start_dt, end_dt, historical_dict: dict
+    self
 ):
     """Mock the function that always retry."""
     raise Exception('Test exception')
@@ -55,14 +56,25 @@ retry = {
 
 
 def retrying_2_times(
-        location_input, attrs, start_dt, end_dt, historical_dict: dict
+        self, historical_dict: dict
 ):
     """Mock the function just retry 2 times."""
     if retry['count'] <= 2:
         retry['count'] += 1
         raise Exception('Test exception')
     else:
-        return ltn_returns
+        for k, v in historical_dict.items():
+            historical_dict[k]['LTNPET'] = 8
+            historical_dict[k]['LTNPrecip'] = 3
+        return historical_dict
+
+
+def create_ltn_data(historical_dict: dict):
+    """Mock LTN Data."""
+    for k, v in historical_dict.items():
+        historical_dict[k]['LTNPET'] = 8
+        historical_dict[k]['LTNPrecip'] = 3
+    return historical_dict
 
 
 class TestCropInsightGenerator(TestCase):
@@ -134,7 +146,9 @@ class TestCropInsightGenerator(TestCase):
             self.farm, self.farm_2, self.farm_3, self.farm_4, self.farm_5
         )
         self.r_model = RModelFactory.create(name='test')
-        self.today = date.today()
+        self.today = datetime(
+            2023, 7, 18, 0, 0, 0, tzinfo=pytz.UTC
+        ).date()
         self.superuser = UserF.create(
             is_staff=True,
             is_superuser=True,
@@ -161,15 +175,25 @@ class TestCropInsightGenerator(TestCase):
             field__startswith=f'prise_{self.pest.short_name}_'
         ).update(active=True)
 
+    @patch('gap.models.crop_insight.timezone')
+    @patch('spw.generator.crop_insight.timezone')
+    @patch('spw.generator.main.datetime')
     @patch('prise.generator.generate_prise_message')
     @patch('spw.generator.main.execute_spw_model')
-    @patch('spw.generator.main._fetch_timelines_data')
-    @patch('spw.generator.main._fetch_ltn_data')
+    @patch('spw.generator.gap_input.GapInput._fetch_timelines_data')
+    @patch('spw.generator.gap_input.GapInput._fetch_ltn_data')
     def test_spw_generator(
             self, mock_fetch_ltn_data, mock_fetch_timelines_data,
-            mock_execute_spw_model, mock_prise
+            mock_execute_spw_model, mock_prise, mock_now, mock_timezone,
+            mock_timezone_2
     ):
         """Test calculate_from_point function."""
+        mock_dt = datetime(
+            2023, 7, 18, 0, 0, 0, tzinfo=pytz.UTC
+        )
+        mock_now.now.return_value = mock_dt
+        mock_timezone.now.return_value = mock_dt
+        mock_timezone_2.now.return_value = mock_dt
         last_day = self.today + timedelta(days=12)
 
         def create_timeline_data(
@@ -209,21 +233,31 @@ class TestCropInsightGenerator(TestCase):
         )
         fetch_timelines_data_val = {}
         create_timeline_data(
-            fetch_timelines_data_val, self.today - timedelta(days=10),
+            fetch_timelines_data_val, self.today - timedelta(days=6),
             10, 10, 100, 0, 50
         )
         mock_fetch_timelines_data.return_value = fetch_timelines_data_val
-        generator = CropInsightFarmGenerator(self.farm)
+        generator = CropInsightFarmGenerator(self.farm, self.farm_group)
 
         # ------------------------------------------------------------
         # Check if _fetch_ltn_data always returns exception
-        with patch('spw.generator.main._fetch_ltn_data', always_retrying):
+        with (
+            patch(
+                'spw.generator.gap_input.GapInput._fetch_ltn_data',
+                always_retrying
+            )
+        ):
             with self.assertRaises(Exception):
                 generator.generate_spw()
 
         # ------------------------------------------------------------
         # Check if _fetch_ltn_data always returns exception
-        with patch('spw.generator.main._fetch_ltn_data', retrying_2_times):
+        with (
+            patch(
+                'spw.generator.gap_input.GapInput._fetch_ltn_data',
+                retrying_2_times
+            )
+        ):
             generator.generate_spw()
         # ------------------------------------------------------------
 
@@ -238,15 +272,9 @@ class TestCropInsightGenerator(TestCase):
         )
 
         # For farm 2
-        mock_fetch_ltn_data.return_value = {
-            '07-20': {
-                'date': '2023-07-20',
-                'evapotranspirationSum': 10,
-                'rainAccumulationSum': 5,
-                'LTNPET': 8,
-                'LTNPrecip': 3
-            }
-        }
+        mock_fetch_ltn_data.return_value = create_ltn_data(
+            fetch_timelines_data_val
+        )
         mock_execute_spw_model.return_value = (
             True, {
                 'metadata': {
@@ -267,7 +295,7 @@ class TestCropInsightGenerator(TestCase):
             1, 0.5, 4, 3, 10
         )
         mock_fetch_timelines_data.return_value = fetch_timelines_data_val
-        generator = CropInsightFarmGenerator(self.farm_2)
+        generator = CropInsightFarmGenerator(self.farm_2, self.farm_group)
         generator.generate_spw()
         last_spw = FarmSuitablePlantingWindowSignal.objects.filter(
             farm=self.farm_2
@@ -300,7 +328,9 @@ class TestCropInsightGenerator(TestCase):
 
         # Farm group is required, raise error
         with self.assertRaises(FarmGroupIsNotSetException):
-            request = CropInsightRequestFactory.create()
+            request = CropInsightRequestFactory.create(
+                requested_at=mock_dt
+            )
             generate_insight_report(request.id)
 
         # We mock the send email to get the attachments
@@ -319,12 +349,14 @@ class TestCropInsightGenerator(TestCase):
         with patch("django.core.mail.EmailMessage.send", mock_send_fn):
             # Crop insight report
             self.request = CropInsightRequestFactory.create(
-                farm_group=self.farm_group
+                farm_group=self.farm_group,
+                requested_at=mock_dt
             )
             generate_insight_report(self.request.id)
             self.request.refresh_from_db()
 
             # Check the if of farm group in the path
+            print('filename ', self.request.file.name)
             self.assertTrue(f'{self.farm_group.id}/' in self.request.file.name)
 
             # Check the attachment on email
@@ -407,9 +439,9 @@ class TestCropInsightGenerator(TestCase):
                         self.assertEqual(row[9], '80.0')  # todayTomorrow
 
                         # First day forecast
-                        self.assertEqual(row[10], '0.5')  # Precip (daily)
-                        self.assertEqual(row[11], '10.0')  # Precip % chance
-                        self.assertEqual(row[12], 'No Rain')  # Precip Type
+                        self.assertEqual(row[10], '10.0')  # Precip (daily)
+                        self.assertEqual(row[11], '50.0')  # Precip % chance
+                        self.assertEqual(row[12], 'Light rain')  # Precip Type
 
                     # Farm 3
                     elif row_num == 4:
@@ -452,9 +484,9 @@ class TestCropInsightGenerator(TestCase):
                         self.assertEqual(row[9], '80.0')  # todayTomorrow
 
                         # First day forecast
-                        self.assertEqual(row[10], '0.5')  # Precip (daily)
-                        self.assertEqual(row[11], '10.0')  # Precip % chance
-                        self.assertEqual(row[12], 'No Rain')  # Precip Type
+                        self.assertEqual(row[10], '10.0')  # Precip (daily)
+                        self.assertEqual(row[11], '50.0')  # Precip % chance
+                        self.assertEqual(row[12], 'Light rain')  # Precip Type
 
                     # Farm 5 has same grid with farm 3
                     elif row_num == 6:
@@ -476,17 +508,6 @@ class TestCropInsightGenerator(TestCase):
                         self.assertEqual(row[11], '')  # Precip % chance
                         self.assertEqual(row[12], '')  # Precip Type
                     row_num += 1
-
-    @patch('spw.generator.crop_insight.CropInsightFarmGenerator.generate_spw')
-    def test_generate_crop_plan(
-            self, mock_generate_spw
-    ):
-        """Test generate crop plan for all farms."""
-        generate_crop_plan()
-        self.assertEqual(
-            CropInsightRequest.objects.count(), 1
-        )
-        self.assertEqual(mock_generate_spw.call_count, 5)
 
     def test_email_send(self):
         """Test email send when report created."""
@@ -514,3 +535,38 @@ class TestCropInsightGenerator(TestCase):
                 self.recipients,
                 [parent.user_1.email, parent.user_2.email]
             )
+
+    def test_clean_duplicate_farm_short_term_forecast(self):
+        """Test clean_duplicate_farm_short_term_forecast task."""
+        # create FarmShortTermForecast
+        FarmShortTermForecast.objects.create(
+            farm=self.farm,
+            forecast_date=date.today()
+        )
+        FarmShortTermForecast.objects.create(
+            farm=self.farm,
+            forecast_date=date.today()
+        )
+        FarmShortTermForecast.objects.create(
+            farm=self.farm_2,
+            forecast_date=date.today()
+        )
+
+        # Call the task
+        clean_duplicate_farm_short_term_forecast()
+
+        # Check that only one forecast per farm and date remains
+        self.assertEqual(
+            FarmShortTermForecast.objects.filter(
+                farm=self.farm,
+                forecast_date=date.today()
+            ).count(),
+            1
+        )
+        self.assertEqual(
+            FarmShortTermForecast.objects.filter(
+                farm=self.farm_2,
+                forecast_date=date.today()
+            ).count(),
+            1
+        )

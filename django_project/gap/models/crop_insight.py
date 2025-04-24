@@ -6,7 +6,8 @@ Tomorrow Now GAP.
 """
 import os.path
 import uuid
-from datetime import date, timedelta, datetime, tzinfo
+from datetime import date, timedelta, tzinfo, datetime
+from concurrent.futures import ThreadPoolExecutor
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
@@ -70,6 +71,12 @@ class FarmShortTermForecast(models.Model):
 
     class Meta:  # noqa: D106
         ordering = ['-forecast_date']
+        indexes = [
+            models.Index(
+                fields=['farm', 'forecast_date'],
+                name='farm_forecast_date_idx'
+            )
+        ]
 
     def __str__(self):
         return f'{self.farm.__str__()} - {self.forecast_date}'
@@ -209,6 +216,12 @@ class FarmSuitablePlantingWindowSignal(models.Model):
 
     class Meta:  # noqa: D106
         ordering = ['-generated_date']
+        indexes = [
+            models.Index(
+                fields=['farm', 'generated_date'],
+                name='farm_generated_date_idx'
+            )
+        ]
 
 
 class FarmPlantingWindowTable(models.Model):
@@ -574,6 +587,9 @@ class CropInsightRequest(models.Model):
         # If there are already complete task
         # Skip it
         if self.background_tasks.filter(status=TaskStatus.COMPLETED):
+            self.update_note(
+                'Generate Report skip run because: Existing Completed task!'
+            )
             return True
 
         # If the last running background task is
@@ -582,19 +598,33 @@ class CropInsightRequest(models.Model):
         if last_running_background_task and (
                 last_running_background_task.id != last_background_task.id
         ):
+            self.update_note(
+                'Generate Report skip run because: Last running task!'
+            )
             return True
 
         # If there are already running task 2,
         # the current task is skipped
         if background_task_running.count() >= 2:
+            self.update_note(
+                'Generate Report skip run because: Two or more running tasks!'
+            )
             return True
 
         now = timezone.now()
         try:
             if self.requested_at.date() != now.date():
+                self.update_note(
+                    'Generate Report skip run because: '
+                    'Diff date on requested_date!'
+                )
                 return True
         except AttributeError:
             if self.requested_at != now.date():
+                self.update_note(
+                    'Generate Report skip run because: '
+                    'Diff date on requested_date!'
+                )
                 return True
         return False
 
@@ -610,6 +640,9 @@ class CropInsightRequest(models.Model):
         """Run the generate report."""
         if self.skip_run:
             return
+        # fetch and generate spw using parallel
+        self.generate_spw_by_grid()
+        # generate the report
         self._generate_report()
 
     @property
@@ -638,11 +671,60 @@ class CropInsightRequest(models.Model):
         east_africa_timezone, east_africa_time = self.time_description
         group = ''
         if self.farm_group:
-            group = f' {self.farm_group} -'
+            group = f'{self.farm_group.normalize_name()}_'
         return (
-            f"{group} {east_africa_time.strftime('%Y-%m-%d')} "
-            f'({self.unique_id}).csv'
+            f"SPW_{group}{east_africa_time.strftime('%Y_%m_%d')}_"
+            f'({str(self.unique_id).replace('-', '_')}).csv'
         )
+
+    def _process_chunk(self, chunk, port):
+        from spw.generator.crop_insight import CropInsightFarmGenerator
+        farms = self.farm_group.farms.select_related('grid').filter(
+            grid_id__in=chunk
+        )
+        print(f'{timezone.now()} Farms in port {port} count {farms.count()}')
+        count = 0
+        for farm in farms:
+            if farm.pk:
+                CropInsightFarmGenerator(
+                    farm,
+                    self.farm_group,
+                    port=port
+                ).generate_spw()
+            count += 1
+            if count % 500 == 0:
+                print(
+                    f'{timezone.now()} Farms in port {port} processed {count}'
+                )
+
+    def _chunk_list(self, data):
+        """Split the list into smaller chunks."""
+        chunk_size = max(1, len(data) // self.num_threads)
+        for i in range(0, len(data), chunk_size):
+            yield data[i:i + chunk_size]
+
+    def generate_spw_by_grid(self):
+        """Generate spw by grid."""
+        self.num_threads = 4
+        # If farm is empty, put empty farm
+        if self.farm_group:
+            farms = self.farm_group.farms.all()
+        else:
+            raise FarmGroupIsNotSetException()
+
+        # get distinct grid from farms
+        grids = farms.values('grid').distinct()
+        grid_ids = list(grids.values_list('grid', flat=True))
+        chunks = list(self._chunk_list(grid_ids))
+        ports = [8282, 8282, 8282, 8282]
+        with ThreadPoolExecutor(max_workers=self.num_threads) as executor:
+            results = list(
+                executor.map(
+                    lambda args: self._process_chunk(*args), zip(chunks, ports)
+                )
+            )
+        for result in results:
+            print(result)
 
     def _generate_report(self):
         """Generate reports."""
@@ -650,7 +732,7 @@ class CropInsightRequest(models.Model):
 
         # If farm is empty, put empty farm
         if self.farm_group:
-            farms = self.farm_group.farms.all()
+            farms = self.farm_group.farms.select_related('grid').all()
         else:
             raise FarmGroupIsNotSetException()
 
@@ -663,8 +745,11 @@ class CropInsightRequest(models.Model):
         for farm in farms:
             # If it has farm id, generate spw
             if farm.pk:
-                self.update_note('Generating SPW for farm: {}'.format(farm))
-                CropInsightFarmGenerator(farm).generate_spw()
+                # self.update_note('Generating SPW for farm: {}'.format(farm))
+                CropInsightFarmGenerator(
+                    farm,
+                    self.farm_group
+                ).generate_spw()
 
             data = CropPlanData(
                 farm, self.requested_at.date(),

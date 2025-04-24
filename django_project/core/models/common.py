@@ -29,3 +29,7 @@ class Definition(models.Model):
     class Meta:  # noqa: D106
         abstract = True
         ordering = ['name']
+
+    def normalize_name(self):
+        """Normalize name to lowercase and remove spaces."""
+        return self.name.replace(' ', '_').replace('-', '_')

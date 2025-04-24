@@ -13,3 +13,4 @@ from .main import *
 from .measurement import *
 from .preferences import *
 from .station import *
+from .signup_request import *

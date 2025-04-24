@@ -3,7 +3,7 @@
     "model": "gap.datasettype",
     "pk": 1,
     "fields": {
-      "name": "CBAM Daily Historical Reanalysis (2012 - 2023)",
+      "name": "CBAM Daily V2.1 Reanalysis (2012 - 2023)",
       "description": "",
       "type": "historical",
       "variable_name": "cbam_historical_analysis"
@@ -87,6 +87,16 @@
       "description": "",
       "type": "historical",
       "variable_name": "cbam_historical_analysis_bias_adjust"
+    }
+  },
+  {
+    "model": "gap.datasettype",
+    "pk": 10,
+    "fields": {
+      "name": "Tomorrow.io Historical",
+      "description": "",
+      "type": "historical",
+      "variable_name": "default"
     }
   }
 ]

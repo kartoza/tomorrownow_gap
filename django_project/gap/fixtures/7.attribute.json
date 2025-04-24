@@ -403,7 +403,7 @@
       "description": "The mean relative humidity (between 0 and 1) in the day",
       "variable_name": "mean_relative_humidity",
       "unit": 6,
-      "is_active": true
+      "is_active": false
     }
   },
   {
@@ -414,7 +414,7 @@
       "description": "Daily mean temperature",
       "variable_name": "mean_day_temperature",
       "unit": 5,
-      "is_active": true
+      "is_active": false
     }
   },
   {
@@ -700,6 +700,39 @@
       "description": "",
       "variable_name": "precipitation_total_chirps_qflag",
       "unit": 21,
+      "is_active": true
+    }
+  },
+  {
+    "model": "gap.attribute",
+    "pk": 65,
+    "fields": {
+      "name": "Weather Code",
+      "description": "Description of a weather.",
+      "variable_name": "weather_code",
+      "unit": 22,
+      "is_active": true
+    }
+  },
+  {
+    "model": "gap.attribute",
+    "pk": 66,
+    "fields": {
+      "name": "Flood Index",
+      "description": "Global combined fluvial, pluvial and streamflow flood index based on 10, 50, 100, 500 and 5,000 year return period intervals.",
+      "variable_name": "flood_index",
+      "unit": 23,
+      "is_active": true
+    }
+  },
+  {
+    "model": "gap.attribute",
+    "pk": 67,
+    "fields": {
+      "name": "Average Vapor Pressure",
+      "description": "Average Vapor Pressure",
+      "variable_name": "average_vapor_pressure",
+      "unit": 24,
       "is_active": true
     }
   }

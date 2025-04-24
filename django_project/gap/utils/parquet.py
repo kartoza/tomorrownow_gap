@@ -28,7 +28,7 @@ from gap.models import (
     Measurement, Dataset, DataSourceFile, Station,
     DatasetAttribute, StationHistory
 )
-from gap.providers.observation import ST_X, ST_Y
+from gap.utils.geometry import ST_X, ST_Y
 from gap.utils.ingestor_config import get_ingestor_config_from_preferences
 from core.utils.date import split_epochs_by_year, split_epochs_by_year_month
 
@@ -519,6 +519,8 @@ class ParquetIngestorAppender(ParquetConverter):
 
     def run(self):
         """Run the converter."""
+        if self.start_date is None or self.end_date is None:
+            return
         s3_path = self._get_directory_path(self.data_source)
         date_list = split_epochs_by_year(
             int(self.start_date.timestamp()),
@@ -582,6 +584,8 @@ class WindborneParquetIngestorAppender(WindborneParquetConverter):
 
     def run(self):
         """Run the converter."""
+        if self.start_date is None or self.end_date is None:
+            return
         s3_path = self._get_directory_path(self.data_source)
         date_list = split_epochs_by_year_month(
             int(self.start_date.timestamp()),

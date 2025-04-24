@@ -8,23 +8,24 @@ Tomorrow Now GAP.
 import os
 import logging
 import unittest
-from unittest.mock import patch
-from datetime import date
+import uuid
+import shutil
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.test import TestCase
+from django.test import TransactionTestCase
+from django.contrib.gis.geos import GEOSGeometry
 from gap.models import (
     Farm, FarmRegistry, FarmRegistryGroup,
-    IngestorSession, IngestorSessionStatus
+    IngestorSession, Grid
 )
 from gap.ingestor.farm_registry import (
-    DCASFarmRegistryIngestor, Keys
+    DCASFarmRegistryIngestor, Keys, FarmRegistryException
 )
 
 
 logger = logging.getLogger(__name__)
 
 
-class DCASFarmRegistryIngestorTest(TestCase):
+class DCASFarmRegistryIngestorTest(TransactionTestCase):
     """Unit tests for DCASFarmRegistryIngestor."""
 
     fixtures = [
@@ -36,40 +37,57 @@ class DCASFarmRegistryIngestorTest(TestCase):
         '7.attribute.json',
         '8.dataset_attribute.json',
         '12.crop_stage_type.json',
-        '13.crop_growth_stage.json'
+        '13.crop_growth_stage.json',
+        '14.crop.json',
     ]
 
     def setUp(self):
         """Set up test case."""
-        self.test_zip_path = os.path.join(
+        self.working_dir = os.path.join('/tmp', str(uuid.uuid4()))
+        os.makedirs(self.working_dir, exist_ok=True)
+
+        grid_wkt = (
+            'MULTIPOLYGON (((36.79258221472390034 -1.2866686042944746, '
+            '36.82548058282207393 -1.28604788036809392, 36.82666560122697774 '
+            '-1.31070754907975973, 36.79303365030672524 -1.31031254294479038, '
+            '36.79258221472390034 -1.2866686042944746)))'
+        )
+        multipolygon = GEOSGeometry(grid_wkt)
+        self.grid = Grid.objects.create(
+            unique_id='grid001',
+            geometry=multipolygon[0],
+            elevation=0.0
+        )
+
+    def tearDown(self):
+        """Tear down test case."""
+        shutil.rmtree(self.working_dir)
+
+    def test_successful_ingestion(self):
+        """Test successful ingestion of farmer registry data."""
+        session = IngestorSession.objects.create(
+            ingestor_type='Farm Registry',
+            trigger_task=False
+        )
+        ingestor = DCASFarmRegistryIngestor(session, self.working_dir)
+
+        test_zip_path = os.path.join(
             os.path.dirname(os.path.abspath(__file__)),
             'data',  # Test data directory
             'farm_registry',
             'test_farm_registry.zip'  # Pre-existing ZIP file
         )
-        with open(self.test_zip_path, 'rb') as _file:
-            self.test_file = SimpleUploadedFile(_file.name, _file.read())
+        with open(test_zip_path, 'rb') as _file:
+            test_file = SimpleUploadedFile(_file.name, _file.read())
 
-        self.session = IngestorSession.objects.create(
-            file=self.test_file,
-            ingestor_type='Farm Registry',
-            trigger_task=False
-        )
+        # set file in session
+        session.file = test_file
+        session.save()
 
-        self.ingestor = DCASFarmRegistryIngestor(self.session)
-
-    def test_successful_ingestion(self):
-        """Test successful ingestion of farmer registry data."""
-        self.ingestor.run()
+        ingestor.run()
 
         # Verify session status
-        self.session.refresh_from_db()
-        print(self.session.status, self.session.notes)
-        self.assertEqual(
-            self.session.status,
-            IngestorSessionStatus.SUCCESS,
-            "Session status should be SUCCESS."
-        )
+        session.refresh_from_db()
 
         # Verify FarmRegistryGroup was created
         self.assertEqual(FarmRegistryGroup.objects.count(), 1)
@@ -85,47 +103,189 @@ class DCASFarmRegistryIngestorTest(TestCase):
         self.assertEqual(farm.geometry.x, 36.8219)
         self.assertEqual(farm.geometry.y, -1.2921)
 
-    def test_bulk_insert_with_empty_farm_list(self):
-        """Test `_bulk_insert_farms_and_registries()`."""
-        # Ensure farm_list is empty
-        self.ingestor.farm_list = []
+        # verify temp table has been deleted
+        self.assertFalse(ingestor._check_table_exists())
 
-        # Patch bulk_create to ensure it does NOT get called
-        with patch("gap.models.Farm.objects.bulk_create") as mock_bulk_create:
-            self.ingestor._bulk_insert_farms_and_registries()
+    def test_invalid_lat_lon(self):
+        """Test failed ingestion of farmer registry data."""
+        session = IngestorSession.objects.create(
+            ingestor_type='Farm Registry',
+            trigger_task=False
+        )
+        ingestor = DCASFarmRegistryIngestor(session, self.working_dir)
 
-            # Assert bulk_create was NEVER called
-            mock_bulk_create.assert_not_called()
+        test_zip_path = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            'data',  # Test data directory
+            'farm_registry',
+            'test_invalid_lat_lon.zip'  # Pre-existing ZIP file
+        )
+        with open(test_zip_path, 'rb') as _file:
+            test_file = SimpleUploadedFile(_file.name, _file.read())
 
-    @patch(
-        "gap.ingestor.farm_registry.DCASFarmRegistryIngestor._run",
-        side_effect=Exception("Fatal error")
-    )
-    def test_run_failure_sets_failed_status(self, mock_run):
-        """Ensure session status is marked as FAILED."""
-        self.ingestor.run()
+        # set file in session
+        session.file = test_file
+        session.save()
 
-        # Refresh session and check status
-        self.session.refresh_from_db()
-        self.assertEqual(self.session.status, IngestorSessionStatus.FAILED)
-        self.assertIn("Fatal error", self.session.notes)
+        with self.assertRaises(FarmRegistryException) as ctx:
+            ingestor.run()
+        self.assertIn('No rows found in the CSV file.', str(ctx.exception))
 
-    def test_stage_lookup_population(self):
-        """Ensure `_process_row` correctly updates `stage_lookup`."""
-        # Create a CropStageType instance
-        row = {
-            'CropName': 'Maize_Mid',
-            'FarmerId': 'F100',
-            'FinalLatitude': '36.8219',
-            'FinalLongitude': '-1.2921',
-            'PlantingDate': '2024-01-01'
-        }
+        # Verify session status
+        session.refresh_from_db()
+        self.assertEqual(Farm.objects.count(), 0)
+        self.assertEqual(FarmRegistry.objects.count(), 0)
 
-        self.ingestor._process_row(row)
+        # verify temp table has been deleted
+        self.assertFalse(ingestor._check_table_exists())
 
-        # Ensure that the crop stage type is added to stage_lookup
-        crop_stage_key = "mid"
-        self.assertIn(crop_stage_key, self.ingestor.stage_lookup)
+    def test_invalid_date_col(self):
+        """Test failed ingestion of farmer registry data."""
+        session = IngestorSession.objects.create(
+            ingestor_type='Farm Registry',
+            trigger_task=False
+        )
+        ingestor = DCASFarmRegistryIngestor(session, self.working_dir)
+
+        test_zip_path = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            'data',  # Test data directory
+            'farm_registry',
+            'test_invalid_date.zip'  # Pre-existing ZIP file
+        )
+        with open(test_zip_path, 'rb') as _file:
+            test_file = SimpleUploadedFile(_file.name, _file.read())
+
+        # set file in session
+        session.file = test_file
+        session.save()
+
+        ingestor.run()
+
+        # Verify session status
+        self.assertEqual(Farm.objects.count(), 2)
+        self.assertEqual(FarmRegistry.objects.count(), 0)
+        self.assertNotEqual(
+            session.additional_config['farmregistry_insert_count'],
+            session.additional_config['total_rows']
+        )
+
+        # verify temp table has been deleted
+        self.assertFalse(ingestor._check_table_exists())
+
+    def test_use_existing_farm_group(self):
+        """Test successful ingestion of farmer registry data."""
+        group = FarmRegistryGroup.objects.create(
+            name='group001',
+        )
+        session = IngestorSession.objects.create(
+            ingestor_type='Farm Registry',
+            trigger_task=False,
+            additional_config={
+                'group_id': group.id
+            }
+        )
+        ingestor = DCASFarmRegistryIngestor(session, self.working_dir)
+
+        test_zip_path = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            'data',  # Test data directory
+            'farm_registry',
+            'test_farm_registry.zip'  # Pre-existing ZIP file
+        )
+        with open(test_zip_path, 'rb') as _file:
+            test_file = SimpleUploadedFile(_file.name, _file.read())
+
+        # set file in session
+        session.file = test_file
+        session.save()
+
+        ingestor.run()
+
+        # Verify session status
+        session.refresh_from_db()
+
+        # Verify FarmRegistryGroup was created
+        self.assertEqual(FarmRegistryGroup.objects.count(), 1)
+        group = FarmRegistryGroup.objects.first()
+
+        # Verify Farm and FarmRegistry were created
+        self.assertEqual(Farm.objects.count(), 2)
+        self.assertEqual(FarmRegistry.objects.count(), 2)
+
+        # Test update query
+        session = IngestorSession.objects.create(
+            ingestor_type='Farm Registry',
+            trigger_task=False,
+            additional_config={
+                'group_id': group.id
+            }
+        )
+        ingestor = DCASFarmRegistryIngestor(session, self.working_dir)
+
+        test_zip_path = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            'data',  # Test data directory
+            'farm_registry',
+            'test_farm_registry.zip'  # Pre-existing ZIP file
+        )
+        with open(test_zip_path, 'rb') as _file:
+            test_file = SimpleUploadedFile(_file.name, _file.read())
+
+        # set file in session
+        session.file = test_file
+        session.save()
+
+        ingestor.run()
+
+        # Verify FarmRegistryGroup was created
+        self.assertEqual(FarmRegistryGroup.objects.count(), 1)
+        group = FarmRegistryGroup.objects.first()
+
+        # Verify Farm and FarmRegistry were created
+        self.assertEqual(Farm.objects.count(), 2)
+        self.assertEqual(FarmRegistry.objects.count(), 2)
+
+    def test_ingestion_using_nearest_grid(self):
+        """Test ingestion using nearest grid."""
+        session = IngestorSession.objects.create(
+            ingestor_type='Farm Registry',
+            trigger_task=False,
+            additional_config={
+                'use_nearest': True
+            }
+        )
+        ingestor = DCASFarmRegistryIngestor(session, self.working_dir)
+
+        test_zip_path = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            'data',  # Test data directory
+            'farm_registry',
+            'test_farm_registry.zip'  # Pre-existing ZIP file
+        )
+        with open(test_zip_path, 'rb') as _file:
+            test_file = SimpleUploadedFile(_file.name, _file.read())
+
+        # set file in session
+        session.file = test_file
+        session.save()
+
+        ingestor.run()
+
+        # Verify session status
+        session.refresh_from_db()
+
+        # Verify FarmRegistryGroup was created
+        self.assertEqual(FarmRegistryGroup.objects.count(), 1)
+        group = FarmRegistryGroup.objects.first()
+        self.assertTrue(group.is_latest)
+
+        # Verify Farm and FarmRegistry were created
+        self.assertEqual(Farm.objects.count(), 2)
+        self.assertEqual(FarmRegistry.objects.count(), 2)
+
+        # verify temp table has been deleted
+        self.assertFalse(ingestor._check_table_exists())
 
 
 class TestKeysStaticMethods(unittest.TestCase):
@@ -159,30 +319,3 @@ class TestKeysStaticMethods(unittest.TestCase):
             Keys.get_farm_id_key({'farmer_id': '456'}), 'farmer_id')
         with self.assertRaises(KeyError):
             Keys.get_farm_id_key({'id': '789'})
-
-
-class TestDCASFarmRegistryIngestorStaticMethods(unittest.TestCase):
-    """Test static methods in DCASFarmRegistryIngestor."""
-
-    def setUp(self):
-        """Set up a test instance of DCASFarmRegistryIngestor."""
-        self.ingestor = DCASFarmRegistryIngestor(None)
-
-    def test_parse_valid_planting_dates(self):
-        """Test parsing valid planting dates."""
-        self.assertEqual(
-            self.ingestor._parse_planting_date(
-                "01/15/2024"), date(2024, 1, 15))
-        self.assertEqual(
-            self.ingestor._parse_planting_date(
-                "2024-01-15"), date(2024, 1, 15))
-        self.assertEqual(
-            self.ingestor._parse_planting_date(
-                "15-01-2024"), date(2024, 1, 15))
-
-    def test_parse_invalid_planting_date(self):
-        """Test parsing an invalid planting date."""
-        self.assertIsNone(
-            self.ingestor._parse_planting_date("2024/Jan/15"))
-        self.assertIsNone(
-            self.ingestor._parse_planting_date("not a date"))

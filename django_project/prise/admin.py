@@ -46,8 +46,9 @@ class PriseDataAdmin(admin.ModelAdmin):
     """Admin page for PriseData."""
 
     list_display = ('farm', 'ingested_at', 'generated_at', 'data_type')
-    list_filter = ('farm', 'data_type')
+    list_filter = ('data_type',)
     inlines = (PriseDataByPestInline,)
+    readonly_fields = ('farm',)
 
 
 @admin.register(PriseMessageSchedule)

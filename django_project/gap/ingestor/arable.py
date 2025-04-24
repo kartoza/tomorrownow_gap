@@ -39,7 +39,7 @@ class ArableAPI:
             raise Exception('Base URL for arable is not set.')
 
         self.DEVICES = f'{base_url}/devices'
-        self.DATA = f'{base_url}/data/daily'
+        self.DATA = f'{base_url}/data/hourly'
 
 
 class ArableIngestor(BaseIngestor):
@@ -47,6 +47,7 @@ class ArableIngestor(BaseIngestor):
 
     DEFAULT_FORMAT = DatasetStore.PARQUET
     api_key = None
+    hourly_exclude = ['mean_rh', 'meant']
 
     def __init__(self, session: IngestorSession, working_dir: str = '/tmp'):
         """Initialize the ingestor."""
@@ -66,6 +67,8 @@ class ArableIngestor(BaseIngestor):
 
         self.attributes = {}
         for dataset_attr in self.dataset.datasetattribute_set.all():
+            if dataset_attr.source in self.hourly_exclude:
+                continue
             self.attributes[dataset_attr.source] = dataset_attr.id
 
     def _init_dataset(self) -> Dataset:
@@ -199,12 +202,14 @@ class ArableIngestor(BaseIngestor):
 
             # Get station data
             epoch_min, epoch_max = self.get_data(station)
-            min_time, max_time = find_max_min_epoch_dates(
-                min_time, max_time, epoch_min
-            )
-            min_time, max_time = find_max_min_epoch_dates(
-                min_time, max_time, epoch_max
-            )
+            if epoch_min:
+                min_time, max_time = find_max_min_epoch_dates(
+                    min_time, max_time, epoch_min
+                )
+            if epoch_max:
+                min_time, max_time = find_max_min_epoch_dates(
+                    min_time, max_time, epoch_max
+                )
 
         # update the ingested max and min dates
         if min_time:

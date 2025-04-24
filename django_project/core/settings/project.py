@@ -113,3 +113,9 @@ SFTP_PASSWORD = os.getenv("SFTP_PASSWORD", "password")
 SFTP_REMOTE_PATH = os.getenv(
     "SFTP_REMOTE_PATH", "upload"
 )
+
+# Swagger settings
+SWAGGER_SETTINGS = {
+    'LOGIN_URL': '/admin/login/',
+    'LOGOUT_URL': '/admin/logout/'
+}

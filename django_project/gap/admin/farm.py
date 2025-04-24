@@ -6,7 +6,7 @@ Tomorrow Now GAP.
 """
 
 import json
-from django.contrib import admin, messages
+from django.contrib import admin
 from django.utils.html import format_html
 from django.http import HttpResponse
 from django.core.serializers.json import DjangoJSONEncoder
@@ -15,8 +15,11 @@ from core.admin import AbstractDefinitionAdmin
 from gap.models import (
     FarmCategory, FarmRSVPStatus, Farm
 )
-from gap.models.farm_group import FarmGroup, FarmGroupCropInsightField
-from gap.tasks.crop_insight import generate_spw, generate_crop_plan
+from gap.models.farm_group import (
+    FarmGroup, FarmGroupCropInsightField,
+    FarmGroupMembership, FarmGroupRelationship
+)
+from gap.tasks.crop_insight import generate_crop_plan
 
 
 class FarmGroupCropInsightFieldInline(admin.TabularInline):
@@ -64,7 +67,7 @@ class FarmGroupAdmin(AbstractDefinitionAdmin):
     list_display = (
         'id', 'name', 'description', 'user_count', 'farm_count', 'phone_number'
     )
-
+    exclude = ('farms',)
     filter_horizontal = ('farms', 'users')
     inlines = (FarmGroupCropInsightFieldInline,)
     actions = (
@@ -95,17 +98,6 @@ class FarmGroupAdmin(AbstractDefinitionAdmin):
         )
 
     displayed_headers.allow_tags = True
-
-
-@admin.action(description='Generate farms spw')
-def generate_farm_spw(modeladmin, request, queryset):
-    """Generate Farms SPW."""
-    generate_spw.delay(list(queryset.values_list('id', flat=True)))
-    modeladmin.message_user(
-        request,
-        'Process will be started in background!',
-        messages.SUCCESS
-    )
 
 
 @admin.action(description='Assign farm grid')
@@ -140,7 +132,7 @@ class FarmAdmin(admin.ModelAdmin):
     search_fields = ('unique_id',)
     filter = ('unique_id',)
     list_filter = ('rsvp_status', 'category', 'crop')
-    actions = (generate_farm_spw, assign_farm_grid)
+    actions = (assign_farm_grid,)
 
     def latitude(self, obj: Farm):
         """Latitude of farm."""
@@ -149,3 +141,25 @@ class FarmAdmin(admin.ModelAdmin):
     def longitude(self, obj: Farm):
         """Longitude of farm."""
         return obj.geometry.x
+
+
+@admin.register(FarmGroupMembership)
+class FarmGroupMembershipAdmin(admin.ModelAdmin):
+    """Admin for FarmGroupMembership."""
+
+    # Note: when adding FarmGroupRelationship manually,
+    # it's better to use this class since it's not loading all the farms
+    list_display = ('id', 'farm_id', 'farmgroup_id',)
+    search_fields = ('farm_id',)
+    list_filter = ('farmgroup_id',)
+
+
+@admin.register(FarmGroupRelationship)
+class FarmGroupRelationshipAdmin(admin.ModelAdmin):
+    """Admin for FarmGroupRelationship."""
+
+    list_display = (
+        'id', 'farm', 'farmgroup'
+    )
+    search_fields = ('farm__unique_id',)
+    list_filter = ('farmgroup',)

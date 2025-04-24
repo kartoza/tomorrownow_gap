@@ -17,7 +17,8 @@ from dcas.models import (
     DCASOutput,
     DCASErrorLog,
     GDDConfig,
-    GDDMatrix
+    GDDMatrix,
+    DCASMessagePriority
 )
 from dcas.resources import DCASErrorLogResource
 from core.utils.file import format_size
@@ -177,3 +178,11 @@ class GDDMatrixAdmin(admin.ModelAdmin):
 
     list_display = ('crop', 'crop_stage_type', 'gdd_threshold', 'config')
     list_filter = ('crop', 'crop_stage_type', 'config')
+
+
+@admin.register(DCASMessagePriority)
+class DCASMessagePriorityAdmin(admin.ModelAdmin):
+    """Admin interface for DCASMessagePriority."""
+
+    list_display = ('code', 'priority', 'config')
+    list_filter = ('config',)

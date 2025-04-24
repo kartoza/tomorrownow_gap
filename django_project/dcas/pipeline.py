@@ -39,6 +39,7 @@ from dcas.partitions import (
 from dcas.queries import DataQuery
 from dcas.outputs import DCASPipelineOutput, OutputType
 from dcas.inputs import DCASPipelineInput
+from dcas.functions import filter_messages_by_weeks
 from dcas.service import GrowthStageService
 
 
@@ -561,6 +562,51 @@ class DCASDataPipeline:
 
         return file_path
 
+    def filter_message_output(self):
+        """Filter messages before extracting CSV."""
+        # Read Parquet file (processed farm crop data)
+        df = dd.read_parquet(self.data_output.grid_crop_data_path)
+
+        if "farm_id" not in df.columns:
+            df["farm_id"] = df["grid_id"]
+
+        df["farm_id"] = df["farm_id"].astype(int)
+        df["crop_id"] = df["crop_id"].astype(int)
+
+        meta = {
+            "farm_id": np.int64,
+            "crop_id": np.int64,
+            "growth_stage_id": np.int64,
+            "message": "object",
+            "message_2": "object",
+            "message_3": "object",
+            "message_4": "object",
+            "message_5": "object",
+            "message_date": "datetime64[ns]",
+        }
+        data_parquet_path = self.data_output._get_directory_path(
+            self.data_output.DCAS_OUTPUT_DIR
+        ) + '/iso_a3=*/year=*/month=*/day=*/*.parquet'
+
+        # Apply message filtering
+        df = df.map_partitions(
+            filter_messages_by_weeks,
+            data_parquet_path,
+            2,  # Weeks constraint (default: 2 weeks)
+            meta=meta
+        )
+
+        parquet_path = self.data_output._get_directory_path(
+            self.data_output.DCAS_OUTPUT_DIR
+        ) + '/iso_a3=*/year=*/month=*/day=*/*.parquet'
+
+        # Save the filtered Parquet file (overwrite previous Parquet)
+        df.to_parquet(
+            parquet_path,
+            write_index=False,
+            storage_options=self.data_output.s3_options
+        )
+
     def run(self):
         """Run data pipeline."""
         self.setup()
@@ -568,9 +614,8 @@ class DCASDataPipeline:
         self.data_collection()
         self.process_grid_crop_data()
         self.process_farm_registry_data()
-        csv_file = self.extract_csv_output()
 
-        self.send_csv_to_sftp(csv_file)
+        self.extract_csv_output()
 
         self.cleanup_gdd_matrix()
 

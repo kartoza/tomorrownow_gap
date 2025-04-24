@@ -101,6 +101,13 @@ class CropPlanAPITest(BaseAPIViewTest):
         response = self.view(request)
         self.assertEqual(response.status_code, 401)
 
+    def _find_farms(self, farms, farm_id):
+        """Find farm in list."""
+        for farm in farms:
+            if farm['farmID'] == farm_id:
+                return farm
+        return None
+
     def test_params_error(self):
         """Test format."""
         request = self.factory.get(
@@ -126,16 +133,18 @@ class CropPlanAPITest(BaseAPIViewTest):
         self.assertEqual(response.status_code, 200)
         _data = response.data
         self.assertEqual(len(_data), 2)
-        self.assertEqual(_data[0]['farmID'], 'farm-1')
-        self.assertEqual(_data[1]['farmID'], 'farm-2')
-        self.assertEqual(_data[0]['latitude'], 1)
-        self.assertEqual(_data[1]['latitude'], 3)
-        self.assertEqual(_data[0]['longitude'], 0)
-        self.assertEqual(_data[1]['longitude'], 2)
-        self.assertEqual(_data[0]['day1_SOURCE_1'], '')
-        self.assertEqual(_data[1]['day1_SOURCE_1'], '')
-        self.assertEqual(_data[0]['day1_SOURCE_2'], '')
-        self.assertEqual(_data[1]['day1_SOURCE_2'], '')
+        farm1 = self._find_farms(_data, 'farm-1')
+        farm2 = self._find_farms(_data, 'farm-2')
+        self.assertIsNotNone(farm1)
+        self.assertIsNotNone(farm2)
+        self.assertEqual(farm1['latitude'], 1)
+        self.assertEqual(farm2['latitude'], 3)
+        self.assertEqual(farm1['longitude'], 0)
+        self.assertEqual(farm2['longitude'], 2)
+        self.assertEqual(farm1['day1_SOURCE_1'], '')
+        self.assertEqual(farm2['day1_SOURCE_1'], '')
+        self.assertEqual(farm1['day1_SOURCE_2'], '')
+        self.assertEqual(farm2['day1_SOURCE_2'], '')
 
     def test_correct_with_param(self):
         """Test correct."""

@@ -17,6 +17,7 @@ from gap.models import (
     CropStageType, CropGrowthStage
 )
 from gap.tasks.crop_insight import generate_insight_report
+from spw.tasks import clean_duplicate_farm_short_term_forecast
 
 
 @admin.register(Crop)
@@ -34,6 +35,19 @@ class FarmShortTermForecastDataInline(TabularInlinePaginated):
     extra = 0
 
 
+@admin.action(description='Clean duplicate farm short term forecast')
+def clean_duplicate_farm_short_term_forecast_action(
+    modeladmin, request, queryset
+):
+    """Clean duplicate farm short term forecast."""
+    clean_duplicate_farm_short_term_forecast.delay()
+    modeladmin.message_user(
+        request,
+        'Process will be started in background!',
+        messages.SUCCESS
+    )
+
+
 @admin.register(FarmShortTermForecast)
 class FarmShortTermForecastAdmin(admin.ModelAdmin):
     """Admin for FarmShortTermForecast."""
@@ -41,8 +55,10 @@ class FarmShortTermForecastAdmin(admin.ModelAdmin):
     list_display = (
         'farm', 'forecast_date'
     )
-    filter = ('farm', 'forecast_date')
+    filter = ('forecast_date')
+    readonly_fields = ('farm',)
     inlines = (FarmShortTermForecastDataInline,)
+    actions = (clean_duplicate_farm_short_term_forecast_action,)
 
 
 @admin.register(FarmProbabilisticWeatherForcast)
@@ -52,7 +68,8 @@ class FarmProbabilisticWeatherForcastAdmin(admin.ModelAdmin):
     list_display = (
         'farm', 'forecast_date', 'forecast_period'
     )
-    filter = ('farm', 'forecast_date')
+    filter = ('forecast_date')
+    readonly_fields = ('farm',)
 
 
 @admin.register(FarmSuitablePlantingWindowSignal)
@@ -62,7 +79,8 @@ class FarmSuitablePlantingWindowSignalAdmin(admin.ModelAdmin):
     list_display = (
         'farm', 'generated_date', 'signal'
     )
-    filter = ('farm', 'generated_date')
+    filter = ('generated_date')
+    readonly_fields = ('farm',)
 
 
 @admin.register(FarmPlantingWindowTable)
@@ -72,7 +90,8 @@ class FarmPlantingWindowTableAdmin(admin.ModelAdmin):
     list_display = (
         'farm', 'recommendation_date', 'recommended_date'
     )
-    filter = ('farm', 'recommendation_date')
+    filter = ('recommendation_date')
+    readonly_fields = ('farm',)
 
 
 @admin.register(FarmPestManagement)
@@ -82,7 +101,8 @@ class FarmPestManagementAdmin(admin.ModelAdmin):
     list_display = (
         'farm', 'recommendation_date', 'spray_recommendation'
     )
-    filter = ('farm', 'recommendation_date')
+    filter = ('recommendation_date')
+    readonly_fields = ('farm',)
 
 
 @admin.register(FarmCropVariety)
@@ -92,7 +112,8 @@ class FarmCropVarietyAdmin(admin.ModelAdmin):
     list_display = (
         'farm', 'recommendation_date', 'recommended_crop'
     )
-    filter = ('farm', 'recommendation_date')
+    filter = ('recommendation_date')
+    readonly_fields = ('farm',)
 
 
 @admin.action(description='Generate insight report')

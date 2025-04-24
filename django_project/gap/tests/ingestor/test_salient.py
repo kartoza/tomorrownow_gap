@@ -5,22 +5,84 @@ Tomorrow Now GAP.
 .. note:: Unit tests for Salient Ingestor.
 """
 
+import os
+import uuid
 from unittest.mock import patch, MagicMock
 from datetime import datetime, date
 import numpy as np
 import pandas as pd
 from xarray.core.dataset import Dataset as xrDataset
 from django.test import TestCase
+from django.core.files.storage import storages
+from storages.backends.s3boto3 import S3Boto3Storage
+
 
 from gap.models import Dataset, DataSourceFile, DatasetStore
 from gap.models.ingestor import (
     IngestorSession,
     IngestorType,
-    CollectorSession
+    CollectorSession,
+    IngestorSessionStatus,
+    IngestorSessionProgress
 )
 from gap.ingestor.salient import SalientIngestor, SalientCollector
 from gap.factories import DataSourceFileFactory, DataSourceFileCacheFactory
 from gap.tasks.collector import run_salient_collector_session
+from tempfile import NamedTemporaryFile
+
+
+LAT_METADATA = {
+    'min': -27,
+    'max': 16,
+    'inc': 0.25,
+    'original_min': -0.625
+}
+LON_METADATA = {
+    'min': 21.8,
+    'max': 52,
+    'inc': 0.25,
+    'original_min': 33.38
+}
+
+
+def mock_open_zarr_dataset():
+    """Mock open zarr dataset."""
+    new_lat = np.arange(
+        LAT_METADATA['min'], LAT_METADATA['max'] + LAT_METADATA['inc'],
+        LAT_METADATA['inc']
+    )
+    new_lon = np.arange(
+        LON_METADATA['min'], LON_METADATA['max'] + LON_METADATA['inc'],
+        LON_METADATA['inc']
+    )
+
+    # Create the Dataset
+    forecast_date_array = pd.date_range(
+        '2024-10-02', periods=1)
+    forecast_day_indices = np.arange(0, 275, 1)
+    empty_shape = (
+        1,
+        50,
+        len(forecast_day_indices),
+        len(new_lat),
+        len(new_lon)
+    )
+    data_vars = {
+        'temp': (
+            ['forecast_date', 'ensemble', 'forecast_day_idx', 'lat', 'lon'],
+            np.full(empty_shape, np.nan)
+        )
+    }
+    return xrDataset(
+        data_vars=data_vars,
+        coords={
+            'forecast_date': ('forecast_date', forecast_date_array),
+            'forecast_day_idx': (
+                'forecast_day_idx', forecast_day_indices),
+            'lat': ('lat', new_lat),
+            'lon': ('lon', new_lon)
+        }
+    )
 
 
 class SalientIngestorBaseTest(TestCase):
@@ -100,17 +162,14 @@ class TestSalientCollector(SalientIngestorBaseTest):
         result = self.collector._convert_forecast_date('2024-08-28')
         self.assertEqual(result, date(2024, 8, 28))
 
-    @patch('xarray.open_dataset')
     @patch('os.stat')
     @patch('uuid.uuid4')
     @patch('gap.utils.netcdf.NetCDFMediaS3.get_netcdf_base_url')
     def test_store_as_netcdf_file(
         self, mock_get_netcdf_base_url, mock_uuid4,
-        mock_os_stat, mock_open_dataset
+        mock_os_stat
     ):
         """Test storing the downscaled Salient NetCDF as a file."""
-        mock_dataset = MagicMock()
-        mock_open_dataset.return_value = mock_dataset
         mock_uuid4.return_value = '1234-5678'
         mock_get_netcdf_base_url.return_value = 's3://fake-bucket/'
         mock_os_stat.return_value.st_size = 1048576
@@ -122,7 +181,7 @@ class TestSalientCollector(SalientIngestorBaseTest):
         self.assertEqual(self.collector.metadata['filesize'], 1048576)
         self.assertEqual(
             self.collector.metadata['forecast_date'], '2024-08-28')
-        self.assertEqual(self.collector.metadata['end_date'], '2024-11-26')
+        self.assertEqual(self.collector.metadata['end_date'], '2025-05-30')
 
     @patch('gap.ingestor.salient.sk')
     def test_run(self, mock_sk):
@@ -174,6 +233,26 @@ class TestSalientCollector(SalientIngestorBaseTest):
         mock_collector.assert_called_once()
         mock_ingestor.assert_called_once_with(session.id)
 
+    @patch("gap.tasks.collector.notify_collector_failure.delay")
+    @patch('gap.models.ingestor.CollectorSession.objects.create')
+    @patch('gap.tasks.ingestor.run_ingestor_session.delay')
+    def test_run_salient_collector_session_with_notify_failed(
+        self, mock_ingestor, mock_create, mock_notify
+    ):
+        """Test run salient collector session."""
+        mock_session = MagicMock()
+        mock_session.id = 100
+        mock_session.run.return_value = None  # No exception
+        mock_session.status = IngestorSessionStatus.FAILED
+        mock_session.notes = "Failure reason"
+        mock_session.dataset_files.count.return_value = 0
+        mock_create.return_value = mock_session
+
+        run_salient_collector_session()
+        mock_create.assert_called_once()
+        mock_ingestor.assert_not_called()
+        mock_notify.assert_called_once_with(100, "Failure reason")
+
 
 class TestSalientIngestor(SalientIngestorBaseTest):
     """Salient ingestor test case."""
@@ -211,9 +290,7 @@ class TestSalientIngestor(SalientIngestorBaseTest):
         self.assertEqual(ingestor.datasource_file.name, datasource.name)
         self.assertFalse(ingestor.created)
 
-    @patch('gap.utils.netcdf.NetCDFMediaS3')
-    @patch('gap.utils.zarr.BaseZarrReader')
-    def setUp(self, mock_zarr_reader, mock_netcdf_media_s3):
+    def setUp(self):
         """Initialize TestSalientIngestor."""
         super().setUp()
         self.collector = CollectorSession.objects.create(
@@ -221,7 +298,10 @@ class TestSalientIngestor(SalientIngestorBaseTest):
         )
         self.datasourcefile = DataSourceFileFactory.create(
             dataset=self.dataset,
-            name='2023-01-02.nc'
+            name=f'{str(uuid.uuid4())}.nc',
+            start_date_time=datetime.fromisoformat('2024-10-02'),
+            end_date_time=datetime.fromisoformat('2024-10-02'),
+            format=DatasetStore.NETCDF,
         )
         self.collector.dataset_files.set([self.datasourcefile])
         self.session = IngestorSession.objects.create(
@@ -229,12 +309,15 @@ class TestSalientIngestor(SalientIngestorBaseTest):
             trigger_task=False
         )
         self.session.collectors.set([self.collector])
-
-
-        self.mock_zarr_reader = mock_zarr_reader
-        self.mock_netcdf_media_s3 = mock_netcdf_media_s3
-
         self.ingestor = SalientIngestor(self.session, working_dir='/tmp')
+
+    def tearDown(self):
+        """Tear down test case."""
+        s3_storage: S3Boto3Storage = storages["gap_products"]
+        path = self.ingestor._get_s3_filepath(self.datasourcefile)
+        if s3_storage.exists(path):
+            s3_storage.delete(path)
+        super().tearDown()
 
     @patch('xarray.open_dataset')
     @patch('gap.utils.zarr.BaseZarrReader.get_s3_client_kwargs')
@@ -269,11 +352,9 @@ class TestSalientIngestor(SalientIngestorBaseTest):
             mock_forecast_date
         )
 
-    @patch('gap.utils.netcdf.NetCDFMediaS3')
-    @patch('s3fs.S3FileSystem')
-    @patch('django.core.files.storage.default_storage.delete')
+    @patch('storages.backends.s3boto3.S3Boto3Storage.delete')
     def test_remove_temporary_source_file(
-        self, mock_default_storage, mock_s3_filesystem, mock_netcdf_media_s3
+        self, mock_default_storage
     ):
         """Test removing temporary source file in s3."""
         # Set up mocks
@@ -307,100 +388,92 @@ class TestSalientIngestor(SalientIngestorBaseTest):
         mock_open_zarr.assert_called_once()
 
     @patch('gap.ingestor.salient.execute_dask_compute')
+    def test_append_new_forecast_date(self, mock_dask_compute):
+        """Test append new forecast date method."""
+        forecast_date = date(2024, 10, 1)
+        self.ingestor._append_new_forecast_date(forecast_date, True)
+        mock_dask_compute.assert_called_once()
+
+        mock_dask_compute.reset_mock()
+        forecast_date = date(2024, 10, 2)
+        self.ingestor._append_new_forecast_date(forecast_date, False)
+        mock_dask_compute.assert_called_once()
+
+    def test_is_date_in_zarr(self):
+        """Test check date in zarr function."""
+        with patch.object(self.ingestor, '_open_zarr_dataset') as mock_open:
+            mock_open.return_value = mock_open_zarr_dataset()
+            # created is True
+            self.ingestor.created = True
+            self.assertFalse(self.ingestor._is_date_in_zarr(date(2024, 10, 2)))
+            self.ingestor.created = False
+            self.assertTrue(self.ingestor._is_date_in_zarr(date(2024, 10, 2)))
+            mock_open.assert_called_once()
+            mock_open.reset_mock()
+            self.assertFalse(self.ingestor._is_date_in_zarr(date(2024, 10, 1)))
+            mock_open.assert_not_called()
+
+    def _get_file_remote_url(self, filename):
+        # use gap products dir prefix
+        output_url = os.environ.get(
+            'MINIO_GAP_AWS_DIR_PREFIX', '')
+        if not output_url.endswith('/'):
+            output_url += '/'
+        output_url += f'salient_collector/{filename}'
+
+        return output_url
+
     @patch('xarray.Dataset.to_zarr')
-    @patch('gap.utils.zarr.BaseZarrReader.get_zarr_base_url')
-    @patch('gap.utils.zarr.BaseZarrReader.get_s3_variables')
-    def test_store_as_zarr(
-        self, mock_get_s3_variables, mock_get_zarr_base_url,
-        mock_to_zarr, mock_compute
-    ):
-        """Test store the dataset to zarr."""
-        mock_get_s3_variables.return_value = {
-            'AWS_ACCESS_KEY_ID': 'mock_key',
-            'AWS_SECRET_ACCESS_KEY': 'mock_secret'
-        }
-        mock_get_zarr_base_url.return_value = 'mock_zarr_url/'
-
-        # Create a mock dataset
-        mock_dataset = xrDataset(
-            {
-                'temp': (
-                    ('forecast_day', 'ensemble', 'lat', 'lon'),
-                    np.random.rand(1, 50, 2, 2)
-                ),
-            },
-            coords={
-                'forecast_day': pd.date_range('2024-08-28', periods=1),
-                'lat': [0, 1],
-                'lon': [0, 1],
-            }
-        )
-        forecast_date = date(2024, 8, 28)
-
-        # Call the method
-        self.ingestor.created = True
-        self.ingestor.store_as_zarr(mock_dataset, forecast_date)
-
-        # Assertions
-        mock_to_zarr.assert_called_once()
-        self.assertEqual(mock_to_zarr.call_args[1]['mode'], 'w')
-        self.assertTrue(mock_to_zarr.call_args[1]['consolidated'])
-        self.assertEqual(
-            mock_to_zarr.call_args[1]['storage_options'],
-            self.ingestor.s3_options
-        )
-        mock_compute.assert_called_once()
-
-    @patch('gap.ingestor.salient.execute_dask_compute')
-    @patch('xarray.Dataset.to_zarr')
-    @patch('gap.utils.zarr.BaseZarrReader.get_s3_variables')
-    @patch('gap.utils.zarr.BaseZarrReader.get_zarr_base_url')
-    @patch('xarray.open_dataset')
-    @patch('s3fs.S3FileSystem')
-    @patch('django.core.files.storage.default_storage.exists')
-    @patch('django.core.files.storage.default_storage.delete')
-    def test_run(
-        self, mock_storage_delete, mock_storage_exists, mock_s3_filesystem,
-        mock_open_dataset, mock_get_zarr_base_url, mock_get_s3_variables,
-        mock_to_zarr, mock_compute
-    ):
+    def test_run(self, mock_dask_compute):
         """Test Run Salient Ingestor."""
-        # Set up mocks
-        mock_get_s3_variables.return_value = {
-            'AWS_ACCESS_KEY_ID': 'mock_key',
-            'AWS_SECRET_ACCESS_KEY': 'mock_secret'
-        }
-        mock_get_zarr_base_url.return_value = 'mock_zarr_url/'
-
-        # Mock the default storage to simulate file existence
-        mock_storage_exists.return_value = True
-
+        self.ingestor.created = False
+        self.ingestor.variables = ['temp']
         # Mock the open_dataset return value
         mock_dataset = xrDataset(
             {
                 'temp': (
-                    ('forecast_day', 'ensemble', 'lat', 'lon'),
-                    np.random.rand(1, 50, 2, 2)
+                    ('ensemble', 'forecast_day', 'lat', 'lon'),
+                    np.random.rand(50, 275, 2, 2)
                 ),
             },
             coords={
-                'forecast_day': pd.date_range('2024-08-28', periods=1),
-                'lat': [0, 1],
-                'lon': [0, 1],
+                'forecast_date': pd.date_range('2024-10-02', periods=1),
+                'forecast_day': pd.date_range('2024-10-02', periods=275),
+                'lat': [-27, -26.75],
+                'lon': [21.8, 22.05],
             }
         )
-        mock_open_dataset.return_value = mock_dataset
+        path = self._get_file_remote_url(
+            self.datasourcefile.name
+        )
+        s3_storage: S3Boto3Storage = storages["gap_products"]
+        with NamedTemporaryFile() as tmp_file:
+            # Create a temporary NetCDF file
+            mock_dataset.to_netcdf(tmp_file.name)
+            # store to s3 using default storage
+            s3_storage.save(path, tmp_file)
 
-        # Call the method
-        self.ingestor._run()
+        self.assertTrue(self.ingestor._check_netcdf_file_exists(
+            self.ingestor._get_s3_filepath(self.datasourcefile)
+        ))
+
+        with patch.object(self.ingestor, '_open_zarr_dataset') as mock_open:
+            mock_open.return_value = mock_open_zarr_dataset()
+            # Call the method
+            self.ingestor._run()
 
         # Assertions
+        mock_dask_compute.assert_called_once()
         self.assertEqual(self.ingestor.metadata['total_files'], 1)
-        self.assertEqual(len(self.ingestor.metadata['forecast_dates']), 1)
-        mock_storage_delete.assert_called_once_with(
-            self.ingestor._get_s3_filepath(self.datasourcefile))
-        mock_to_zarr.assert_called_once()
-        mock_compute.assert_called_once()
+        self.assertEqual(
+            IngestorSessionProgress.objects.filter(
+                session=self.session
+            ).count(),
+            1
+        )
+        self.assertFalse(self.ingestor._check_netcdf_file_exists(
+            self.ingestor._get_s3_filepath(self.datasourcefile)
+        ))
 
     def test_invalidate_cache(self):
         """Test invalidate cache function."""

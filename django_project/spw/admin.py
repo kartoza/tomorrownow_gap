@@ -6,7 +6,10 @@ Tomorrow Now GAP.
 """
 from django.contrib import admin, messages
 
-from spw.models import RModel, RModelOutput, RModelExecutionLog, SPWOutput
+from spw.models import (
+    RModel, RModelOutput, RModelExecutionLog,
+    SPWOutput, SPWErrorLog
+)
 from spw.tasks import start_plumber_process
 
 
@@ -41,7 +44,18 @@ class RModelAdmin(admin.ModelAdmin):
 class RModelExecutionLogAdmin(admin.ModelAdmin):
     """Admin page for RModelExecutionLog."""
 
-    list_display = ('model', 'start_date_time', 'status')
+    list_display = (
+        'model', 'start_date_time', 'status', 'total_time'
+    )
+
+    def total_time(self, obj):
+        """Calculate total time in seconds."""
+        if obj.start_date_time and obj.end_date_time:
+            delta = obj.end_date_time - obj.start_date_time
+            return delta.total_seconds()
+        return None
+
+    total_time.short_description = 'Total Time (s)'
 
 
 @admin.register(SPWOutput)
@@ -50,4 +64,16 @@ class SPWOutputAdmin(admin.ModelAdmin):
 
     list_display = (
         'identifier', 'tier', 'plant_now_string', 'description'
+    )
+
+
+@admin.register(SPWErrorLog)
+class SPWErrorLogAdmin(admin.ModelAdmin):
+    """Admin page for SPWErrorLog."""
+
+    list_display = (
+        'farm', 'generated_date', 'farm_group', 'grid_unique_id'
+    )
+    readonly_fields = (
+        'farm', 'farm_group', 'generated_date', 'grid_unique_id',
     )

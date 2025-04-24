@@ -17,3 +17,5 @@ from gap.models.pest import *
 from gap.models.preferences import *
 from gap.models.station import *
 from gap.models.farm_registry import *
+from gap.models.signup_request import *
+from gap.models.user_profile import *

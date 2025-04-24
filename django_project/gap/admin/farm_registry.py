@@ -30,3 +30,6 @@ class FarmRegistryAdmin(admin.ModelAdmin):
     list_filter = (
         'crop', 'crop_stage_type', 'group'
     )
+    readonly_fields = (
+        'farm',
+    )

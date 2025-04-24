@@ -37,7 +37,7 @@ class DCASPipelineOutput:
     DCAS_OUTPUT_DIR = 'dcas_output'
 
     def __init__(
-        self, request_date, extract_additional_columns=False,
+        self, request_date, extract_additional_columns=True,
         duck_db_num_threads=None
     ):
         """Initialize DCASPipelineOutput."""
@@ -82,12 +82,18 @@ class DCASPipelineOutput:
         return self.grid_crop_data_dir_path + '/*.parquet'
 
     @property
+    def farm_crop_data_path(self):
+        """Return full path to the farm crop data parquet file."""
+        return self._get_directory_path(
+            self.DCAS_OUTPUT_DIR) + '/*.parquet'
+
+    @property
     def output_csv_file_path(self):
         """Return full path to output csv file."""
         dt = self.request_date.strftime('%Y%m%d')
         return os.path.join(
             self.TMP_BASE_DIR,
-            f'output_{dt}.csv'
+            f'DCAS_output_{dt}.csv'
         )
 
     def _setup_s3fs(self):

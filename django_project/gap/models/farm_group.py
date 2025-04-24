@@ -163,3 +163,29 @@ class FarmGroupCropInsightField(models.Model):
         if self.label:
             return self.label
         return self.field
+
+
+class FarmGroupMembership(models.Model):
+    """Model to manage farm group membership (using ID)."""
+
+    farm_id = models.BigIntegerField()
+    farmgroup_id = models.BigIntegerField()
+
+    class Meta:
+        """Meta class for FarmGroupMembership."""
+
+        managed = False
+        db_table = 'gap_farmgroup_farms'
+
+
+class FarmGroupRelationship(models.Model):
+    """Model to manage farm group membership (using FK)."""
+
+    farm = models.ForeignKey(Farm, on_delete=models.CASCADE)
+    farmgroup = models.ForeignKey(FarmGroup, on_delete=models.CASCADE)
+
+    class Meta:
+        """Meta class for FarmGroupRelationship."""
+
+        managed = False
+        db_table = 'gap_farmgroup_farms'

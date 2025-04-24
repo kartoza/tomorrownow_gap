@@ -15,10 +15,10 @@ from datetime import datetime
 import pandas as pd
 import tempfile
 import xarray as xr
-from django.db.models import Exists, OuterRef, F, FloatField, QuerySet
+from django.db.models import Exists, OuterRef, F, QuerySet
 from django.db.models.functions.datetime import TruncDate, TruncTime
 from django.contrib.gis.geos import Polygon, Point
-from django.contrib.gis.db.models.functions import Distance, GeoFunc
+from django.contrib.gis.db.models.functions import Distance
 from typing import List, Tuple, Union
 from django.core.files.storage import storages
 from storages.backends.s3boto3 import S3Boto3Storage
@@ -41,20 +41,7 @@ from gap.utils.reader import (
     DatasetReaderValue
 )
 from gap.utils.dask import execute_dask_compute
-
-
-class ST_X(GeoFunc):
-    """Custom GeoFunc to extract lon."""
-
-    output_field = FloatField()
-    function = 'ST_X'
-
-
-class ST_Y(GeoFunc):
-    """Custom GeoFunc to extract lat."""
-
-    output_field = FloatField()
-    function = 'ST_Y'
+from gap.utils.geometry import ST_X, ST_Y
 
 
 class CSVBuffer:
@@ -584,11 +571,21 @@ class ObservationParquetReaderValue(DatasetReaderValue):
         }
         # Convert query results to a DataFrame
         df = self.conn.sql(self.query).df()
-        # Combine date and time columns
-        df['datetime'] = pd.to_datetime(
-            df['date'].dt.strftime('%Y-%m-%d') + ' ' + df['time']
-        )
-        df = df.drop(columns=['date', 'time', 'lat', 'lon'])
+
+        if self.has_time_column and 'time' in df.columns:
+            # Combine date and time columns if time column exists
+            df['datetime'] = pd.to_datetime(
+                df['date'].dt.strftime('%Y-%m-%d') + ' ' + df['time'],
+                utc=True
+            )
+            drop_columns = ['date', 'time']
+        else:
+            # If dataset lacks time, only use the date
+            df['datetime'] = df['date']
+            drop_columns = ['date']
+        drop_columns.extend(['lat', 'lon'])
+        # Drop unnecessary columns safely
+        df = df.drop(columns=drop_columns, errors='ignore')
         # Replace NaN with None
         df = df.replace({np.nan: None})
         output['data'] = df.to_dict(orient="records")
@@ -701,10 +698,6 @@ class ObservationParquetReaderValue(DatasetReaderValue):
         try:
             # Execute the DuckDB query and fetch data
             df = self.conn.sql(self.query).df()
-            # Drop the station_id column
-            df = df.drop(columns=["station_id"])
-            # Set correct index
-            df = df.set_index(["date", "lat", "lon"])
 
             # Convert DataFrame to Xarray Dataset
             ds = xr.Dataset.from_dataframe(df)
