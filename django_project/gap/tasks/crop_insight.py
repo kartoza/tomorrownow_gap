@@ -22,14 +22,17 @@ User = get_user_model()
 @app.task(name="notify_spw_error")
 def notify_spw_error(date, farm_group_id, error_message):
     """Notify spw error to the user."""
-    farm_group = FarmGroup.objects.get(id=farm_group_id)
+    farm_group_name = 'Farm Group'
+    if farm_group_id:
+        farm_group = FarmGroup.objects.get(id=farm_group_id)
+        farm_group_name = farm_group.name
     # Send an email notification to admins
     admin_emails = get_admin_emails()
     if admin_emails:
         send_mail(
             subject="SPW Failure Alert",
             message=(
-                f"SPW for {farm_group.name} - {date} "
+                f"SPW for {farm_group_name} - {date} "
                 "has failed.\n\n"
                 f"Error: {error_message}\n\n"
                 "Please check the logs for more details."
@@ -55,11 +58,12 @@ def generate_insight_report(_id: list):
         logger.error(f"Error generating insight report: {e}", exc_info=True)
         raise e
     finally:
-        notify_spw_error.delay(
-            request.requested_at.date(),
-            request.farm_group.id,
-            error_message
-        )
+        if error_message:
+            notify_spw_error.delay(
+                request.requested_at.date(),
+                request.farm_group.id if request.farm_group else None,
+                error_message
+            )
 
 
 @app.task(name="generate_crop_plan")
