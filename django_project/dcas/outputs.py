@@ -45,6 +45,8 @@ class DCASPipelineOutput:
         'planting_date': 'planting_date',
         'growth_stage': 'growth_stage',
         'county': 'county',
+        'subcounty': 'subcounty',
+        'ward': 'ward',
         'relative_humidity': 'humidity',
         'seasonal_precipitation': 'seasonal_precipitation',
         'temperature': 'temperature',
@@ -54,15 +56,15 @@ class DCASPipelineOutput:
             "strftime(to_timestamp(growth_stage_start_date)" +
             ", '%Y-%m-%d')"
         ),
-        'final_longitude': 'ST_X(geometry)',
-        'final_latitude': 'ST_Y(geometry)',
-        'grid_id': 'grid_id',
+        'final_longitude': 'ROUND(ST_X(geometry), 4)',
+        'final_latitude': 'ROUND(ST_Y(geometry), 4)',
+        'grid_id': 'grid_unique_id',
         'total_gdd': 'total_gdd',
         'message': 'message',
         'message_2': 'message_2',
         'message_3': 'message_3',
         'message_4': 'message_4',
-        'message_5': 'message_5',
+        'message_5': 'message_5'
     }
 
     def __init__(
@@ -331,7 +333,7 @@ class DCASPipelineOutput:
         # Copy data from parquet to duckdb table
         conn.execute(f"""
             CREATE TABLE dcas AS
-            SELECT *, "" as message_final, "" as message_english
+            SELECT *, '' as message_final, '' as message_english
             FROM read_parquet({parquet_path}, hive_partitioning=true)
             WHERE year={self.request_date.year} AND
             month={self.request_date.month} AND
@@ -358,8 +360,8 @@ class DCASPipelineOutput:
             """
             WITH matched AS (
                 SELECT
-                d.farmregistry_id,
-                d.farm m.template_en AS message_english,
+                d.registry_id,
+                m.template_en AS message_english,
                 CASE d.preferred_language
                     WHEN 'en' THEN m.template_en
                     WHEN 'sw' THEN m.template_sw
@@ -374,7 +376,7 @@ class DCASPipelineOutput:
             SET message_final = matched.message_final,
             message_english = matched.message_english
             FROM matched
-            WHERE d.farmregistry_id = matched.farmregistry_id
+            WHERE d.registry_id = matched.registry_id
             """
         )
         conn.execute(sql)
