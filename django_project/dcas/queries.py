@@ -68,6 +68,8 @@ class DataQuery:
         self.grid = self.base_schema.classes['gap_grid'].__table__
         self.country = self.base_schema.classes['gap_country'].__table__
         self.county = self.base_schema.classes['gap_county'].__table__
+        self.subcounty = self.base_schema.classes['gap_subcounty'].__table__
+        self.ward = self.base_schema.classes['gap_ward'].__table__
         self.language = self.base_schema.classes['gap_language'].__table__
 
     def grid_data_query(self, farm_registry_group_ids):
@@ -211,6 +213,8 @@ class DataQuery:
                 cast(self.grid.c.id, SqlString)
             ).label('grid_crop_key'),
             self.county.c.name.label('county'),
+            self.subcounty.c.name.label('subcounty'),
+            self.ward.c.name.label('ward'),
             self.language.c.code.label('preferred_language')
         ).select_from(self.farmregistry).join(
             self.farm, self.farmregistry.c.farm_id == self.farm.c.id
@@ -225,6 +229,12 @@ class DataQuery:
             self.country, self.grid.c.country_id == self.country.c.id
         ).join(
             self.county, self.farmregistry.c.county_id == self.county.c.id,
+            isouter=True
+        ).join(
+            self.subcounty, self.farmregistry.c.subcounty_id == self.subcounty.c.id,
+            isouter=True
+        ).join(
+            self.ward, self.farmregistry.c.ward_id == self.ward.c.id,
             isouter=True
         ).join(
             self.language,
