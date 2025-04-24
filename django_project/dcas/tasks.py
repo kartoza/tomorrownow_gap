@@ -41,6 +41,8 @@ class DCASPreferences:
         'planting_date',
         'growth_stage',
         'county',
+        'subcounty',
+        'ward',
         'relative_humidity',
         'seasonal_precipitation',
         'temperature',
