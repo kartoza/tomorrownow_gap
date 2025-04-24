@@ -64,8 +64,8 @@ class TioHourlyShortTermIngestor(TioShortTermDuckDBIngestor):
         'forecast_date': 10,
         'forecast_day_idx': 21,
         'time': 24,
-        'lat': 75,
-        'lon': 55
+        'lat': 20,
+        'lon': 20
     }
 
     def __init__(self, session: CollectorSession, working_dir: str = '/tmp'):
