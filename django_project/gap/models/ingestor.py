@@ -41,6 +41,7 @@ class IngestorType:
     DCAS_RULE = 'DCAS Rules'
     FARM_REGISTRY = 'Farm Registry'
     DCAS_MESSAGE = 'DCAS Message'
+    HOURLY_TOMORROWIO = 'Hourly Tomorrow.io'
 
 
 class IngestorSessionStatus:
@@ -87,6 +88,7 @@ class BaseSession(models.Model):
             (IngestorType.DCAS_RULE, IngestorType.DCAS_RULE),
             (IngestorType.FARM_REGISTRY, IngestorType.FARM_REGISTRY),
             (IngestorType.DCAS_MESSAGE, IngestorType.DCAS_MESSAGE),
+            (IngestorType.HOURLY_TOMORROWIO, IngestorType.HOURLY_TOMORROWIO),
         ),
         max_length=512
     )
