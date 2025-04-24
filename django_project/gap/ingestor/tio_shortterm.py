@@ -224,6 +224,83 @@ class TioShortTermIngestor(BaseZarrIngestor):
             store_type=DatasetStore.ZARR
         )
 
+    def get_empty_shape(self, lat_len, lon_len):
+        """Get empty shape for the data.
+
+        :param lat_len: length of latitude
+        :type lat_len: int
+        :param lon_len: length of longitude
+        :type lon_len: int
+        :return: empty shape
+        :rtype: tuple
+        """
+        return (
+            1,
+            self.default_chunks['forecast_day_idx'],
+            lat_len,
+            lon_len
+        )
+
+    def get_chunks_for_forecast_date(self, is_single_date=True):
+        """Get chunks for forecast date."""
+        if not is_single_date:
+            return (
+                self.default_chunks['forecast_date'],
+                self.default_chunks['forecast_day_idx'],
+                self.default_chunks['lat'],
+                self.default_chunks['lon']
+            )
+        return (
+            1,
+            self.default_chunks['forecast_day_idx'],
+            self.default_chunks['lat'],
+            self.default_chunks['lon']
+        )
+
+    def get_data_var_coordinates(self):
+        """Get coordinates for data variables."""
+        return ['forecast_date', 'forecast_day_idx', 'lat', 'lon']
+
+    def get_coordinates(self, forecast_date: date, new_lat, new_lon):
+        """Get coordinates for the dataset."""
+        forecast_date_array = pd.date_range(
+            forecast_date.isoformat(), periods=1)
+        forecast_day_indices = np.arange(-6, 15, 1)
+        return {
+            'forecast_date': ('forecast_date', forecast_date_array),
+            'forecast_day_idx': (
+                'forecast_day_idx', forecast_day_indices),
+            'lat': ('lat', new_lat),
+            'lon': ('lon', new_lon)
+        }
+
+    def get_region_slices(
+        self, forecast_date: date, nearest_lat_indices, nearest_lon_indices
+    ):
+        """Get region slices for update_by_region method."""
+        # open existing zarr
+        ds = self._open_zarr_dataset()
+
+        # find index of forecast_date
+        forecast_date_array = pd.date_range(
+            forecast_date.isoformat(), periods=1)
+        new_forecast_date = forecast_date_array[0]
+        forecast_date_idx = (
+            np.where(ds['forecast_date'].values == new_forecast_date)[0][0]
+        )
+
+        ds.close()
+
+        return {
+            'forecast_date': slice(
+                forecast_date_idx, forecast_date_idx + 1),
+            'forecast_day_idx': slice(None),
+            'lat': slice(
+                nearest_lat_indices[0], nearest_lat_indices[-1] + 1),
+            'lon': slice(
+                nearest_lon_indices[0], nearest_lon_indices[-1] + 1)
+        }
+
     def _append_new_forecast_date(
             self, forecast_date: date, is_new_dataset=False):
         """Append a new forecast date to the zarr structure.
@@ -245,23 +322,10 @@ class TioShortTermIngestor(BaseZarrIngestor):
         )
 
         # create empty data variables
-        empty_shape = (
-            1,
-            self.default_chunks['forecast_day_idx'],
-            len(new_lat),
-            len(new_lon)
-        )
-        chunks = (
-            1,
-            self.default_chunks['forecast_day_idx'],
-            self.default_chunks['lat'],
-            self.default_chunks['lon']
-        )
+        empty_shape = self.get_empty_shape(len(new_lat), len(new_lon))
+        chunks = self.get_chunks_for_forecast_date()
 
         # Create the Dataset
-        forecast_date_array = pd.date_range(
-            forecast_date.isoformat(), periods=1)
-        forecast_day_indices = np.arange(-6, 15, 1)
         data_vars = {}
         encoding = {
             'forecast_date': {
@@ -273,26 +337,15 @@ class TioShortTermIngestor(BaseZarrIngestor):
                 empty_shape, np.nan, dtype='f8', chunks=chunks
             )
             data_vars[var] = (
-                ['forecast_date', 'forecast_day_idx', 'lat', 'lon'],
+                self.get_data_var_coordinates(),
                 empty_data
             )
             encoding[var] = {
-                'chunks': (
-                    self.default_chunks['forecast_date'],
-                    self.default_chunks['forecast_day_idx'],
-                    self.default_chunks['lat'],
-                    self.default_chunks['lon']
-                )
+                'chunks': self.get_chunks_for_forecast_date(False)
             }
         ds = xr.Dataset(
             data_vars=data_vars,
-            coords={
-                'forecast_date': ('forecast_date', forecast_date_array),
-                'forecast_day_idx': (
-                    'forecast_day_idx', forecast_day_indices),
-                'lat': ('lat', new_lat),
-                'lon': ('lon', new_lon)
-            }
+            coords=self.get_coordinates(forecast_date, new_lat, new_lon)
         )
 
         # write/append to zarr
@@ -341,17 +394,6 @@ class TioShortTermIngestor(BaseZarrIngestor):
         :param new_data: dictionary of new data
         :type new_data: dict
         """
-        # open existing zarr
-        ds = self._open_zarr_dataset()
-
-        # find index of forecast_date
-        forecast_date_array = pd.date_range(
-            forecast_date.isoformat(), periods=1)
-        new_forecast_date = forecast_date_array[0]
-        forecast_date_idx = (
-            np.where(ds['forecast_date'].values == new_forecast_date)[0][0]
-        )
-
         # find nearest lat and lon and its indices
         nearest_lat_arr = [lat.nearest_val for lat in lat_arr]
         nearest_lat_indices = [lat.nearest_idx for lat in lat_arr]
@@ -366,18 +408,17 @@ class TioShortTermIngestor(BaseZarrIngestor):
         # Create the dataset with updated data for the region
         data_vars = {
             var: (
-                ['forecast_date', 'forecast_day_idx', 'lat', 'lon'],
+                self.get_data_var_coordinates(),
                 new_data[var]
             ) for var in new_data
         }
         new_ds = xr.Dataset(
             data_vars=data_vars,
-            coords={
-                'forecast_date': [new_forecast_date],
-                'forecast_day_idx': ds['forecast_day_idx'],
-                'lat': nearest_lat_arr,
-                'lon': nearest_lon_arr
-            }
+            coords=self.get_coordinates(
+                forecast_date,
+                nearest_lat_arr,
+                nearest_lon_arr
+            )
         )
 
         # write the updated data to zarr
@@ -388,15 +429,11 @@ class TioShortTermIngestor(BaseZarrIngestor):
         x = new_ds.to_zarr(
             zarr_url,
             mode='a',
-            region={
-                'forecast_date': slice(
-                    forecast_date_idx, forecast_date_idx + 1),
-                'forecast_day_idx': slice(None),
-                'lat': slice(
-                    nearest_lat_indices[0], nearest_lat_indices[-1] + 1),
-                'lon': slice(
-                    nearest_lon_indices[0], nearest_lon_indices[-1] + 1)
-            },
+            region=self.get_region_slices(
+                forecast_date,
+                nearest_lat_indices,
+                nearest_lon_indices
+            ),
             storage_options=self.s3_options,
             consolidated=True,
             compute=False
@@ -905,6 +942,8 @@ class TioShortTermDuckDBCollector(BaseIngestor):
 class TioShortTermDuckDBIngestor(TioShortTermIngestor):
     """Collector for Tio Short Term data using DuckDB."""
 
+    TIME_STEP = DatasetTimeStep.DAILY
+
     def _get_connection(self, collector: CollectorSession):
         """Download connection files and merge into 1 file."""
         duckdb_filepath = os.path.join(
@@ -913,7 +952,7 @@ class TioShortTermDuckDBIngestor(TioShortTermIngestor):
         conn = duckdb.connect(duckdb_filepath)
         self._init_table(conn)
 
-        column_names = ['grid_id', 'lat', 'lon', 'date']
+        column_names = ['grid_id', 'lat', 'lon', 'date', 'time']
         for variable in self.variables:
             column_names.append(variable)
 
@@ -957,6 +996,7 @@ class TioShortTermDuckDBIngestor(TioShortTermIngestor):
                 lat DOUBLE,
                 lon DOUBLE,
                 date DATE,
+                time TIME,
                 {', '.join(attrib_cols)}
             )
             """
@@ -967,7 +1007,7 @@ class TioShortTermDuckDBIngestor(TioShortTermIngestor):
             f"""
             SELECT * FROM weather
             WHERE grid_id IN {grid_ids}
-            ORDER BY grid_id asc, date asc
+            ORDER BY grid_id asc, date, time asc
             """
         ).to_df()
         if df.shape[0] > 0:
@@ -992,12 +1032,10 @@ class TioShortTermDuckDBIngestor(TioShortTermIngestor):
         :rtype: dict
         """
         count = 0
-        data_shape = (
-            1,
-            self.default_chunks['forecast_day_idx'],
-            len(lat_arr),
-            len(lon_arr)
+        data_shape = self.get_empty_shape(
+            len(lat_arr), len(lon_arr)
         )
+        times = pd.date_range("00:00", "23:00", freq="1H").time
         warnings = {
             'missing_hash': 0,
             'missing_json': 0,
@@ -1051,14 +1089,28 @@ class TioShortTermDuckDBIngestor(TioShortTermIngestor):
                 )
                 forecast_day_idx = 0
                 for index, item in df.iterrows():
+                    time_idx = None
+                    if (
+                        self.TIME_STEP == DatasetTimeStep.HOURLY and
+                        item['time'] is not None
+                    ):
+                        time_idx = times.index(item['time'])
+
                     for var in self.variables:
                         if var not in df.columns:
                             continue
                         # assign the variable value into new data
-                        new_data[var][
-                            0, forecast_day_idx, idx_lat, idx_lon] = (
-                                item[var]
-                        )
+                        if self.TIME_STEP == DatasetTimeStep.HOURLY:
+                            if time_idx is not None:
+                                new_data[var][
+                                    0, forecast_day_idx, time_idx,
+                                    idx_lat, idx_lon
+                                ] = item[var]
+                        else:
+                            new_data[var][
+                                0, forecast_day_idx, idx_lat, idx_lon] = (
+                                    item[var]
+                            )
                     forecast_day_idx += 1
                 count += 1
 

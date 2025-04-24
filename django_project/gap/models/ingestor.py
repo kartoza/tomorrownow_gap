@@ -229,6 +229,7 @@ class IngestorSession(BaseSession):
             WindborneParquetIngestorAppender
         )
         from gap.ingestor.dcas_message import DCASMessageIngestor
+        from gap.ingestor.tio_hourly import TioHourlyShortTermIngestor
 
         ingestor = None
         if self.ingestor_type == IngestorType.TAHMO:
@@ -259,6 +260,8 @@ class IngestorSession(BaseSession):
             ingestor = DCASFarmRegistryIngestor
         elif self.ingestor_type == IngestorType.DCAS_MESSAGE:
             ingestor = DCASMessageIngestor
+        elif self.ingestor_type == IngestorType.HOURLY_TOMORROWIO:
+            ingestor = TioHourlyShortTermIngestor
 
         if ingestor:
             ingestor_obj = ingestor(self, working_dir)
