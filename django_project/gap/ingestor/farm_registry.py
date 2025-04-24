@@ -436,19 +436,44 @@ class DCASFarmRegistryIngestor(BaseIngestor):
         """, 'update_farm_id')
 
         # update grid_id using spatial join
-        self._execute_query(f"""
-            WITH matched AS (
-                SELECT tfrs.ogc_fid, g.id as grid_id
-                FROM {self.table_name_sql} tfrs
-                JOIN gap_grid g
-                ON ST_Intersects(g.geometry, tfrs.wkb_geometry)
-                WHERE tfrs.grid_id IS NULL
-            )
-            UPDATE {self.table_name_sql} tfrs
-            SET grid_id = m.grid_id
-            FROM matched m
-            WHERE tfrs.ogc_fid = m.ogc_fid;
-        """, 'update_grid_id')
+        use_nearest = self.get_config('use_nearest', False)
+        if use_nearest:
+            # max distance 8km
+            max_distance = 8000
+            self._execute_query(f"""
+                WITH matched AS (
+                    select tfrs.ogc_fid, g.id as grid_id
+                    from {self.table_name_sql} tfrs
+                    JOIN LATERAL (
+                    SELECT g.id
+                    FROM gap_grid g
+                    WHERE
+                        ST_DWithin(g.geometry::geography,
+                        tfrs.wkb_geometry::geography, {max_distance})
+                    ORDER BY g.geometry <-> tfrs.wkb_geometry
+                    LIMIT 1
+                    ) g ON true
+                    where g.id is not null
+                )
+                update {self.table_name_sql} tfrs
+                set grid_id=m.grid_id
+                from matched m
+                where tfrs.ogc_fid=m.ogc_fid;
+            """, 'update_grid_id_nearest')
+        else:
+            self._execute_query(f"""
+                WITH matched AS (
+                    SELECT tfrs.ogc_fid, g.id as grid_id
+                    FROM {self.table_name_sql} tfrs
+                    JOIN gap_grid g
+                    ON ST_Intersects(g.geometry, tfrs.wkb_geometry)
+                    WHERE tfrs.grid_id IS NULL
+                )
+                UPDATE {self.table_name_sql} tfrs
+                SET grid_id = m.grid_id
+                FROM matched m
+                WHERE tfrs.ogc_fid = m.ogc_fid;
+            """, 'update_grid_id')
 
         # split crop into crop_txt and crop_stage_txt
         self._execute_query(f"""
@@ -571,7 +596,7 @@ class DCASFarmRegistryIngestor(BaseIngestor):
             self.execution_times['farmregistry_insert_count'] !=
             self.execution_times['total_rows']
         ):
-            self._add_progress(
+            progress = self._add_progress(
                 'mismatch_row_count',
                 "Mismatch in row counts: "
                 "farmregistry_insert_count "
@@ -579,6 +604,11 @@ class DCASFarmRegistryIngestor(BaseIngestor):
                 "does not match total_rows "
                 f"({self.execution_times['total_rows']})."
             )
+            progress.status = IngestorSessionStatus.SUCCESS
+            progress.row_count = (
+                self.execution_times['farmregistry_insert_count']
+            )
+            progress.save()
 
         # Check existing farmregistry_id
         with connection.cursor() as cursor:
@@ -591,11 +621,32 @@ class DCASFarmRegistryIngestor(BaseIngestor):
                 cursor.fetchone()[0]
             )
         if self.execution_times['existing_farmregistry_count'] > 0:
-            self._add_progress(
+            progress = self._add_progress(
                 'existing_farmregistry_count',
                 f"Existing farm_registry_id count: "
                 f"{self.execution_times['existing_farmregistry_count']}"
             )
+            progress.status = IngestorSessionStatus.SUCCESS
+            progress.row_count = (
+                self.execution_times['existing_farmregistry_count']
+            )
+            progress.save()
+            # update county_id, subcounty_id, ward_id, language_id
+            self._execute_query(f"""
+                WITH matched AS (
+                    SELECT tfrs.farm_registry_id,
+                        tfrs.county_id, tfrs.subcounty_id,
+                        tfrs.ward_id, tfrs.language_id
+                    FROM {self.table_name_sql} tfrs
+                    WHERE tfrs.farm_registry_id IS NOT NULL
+                )
+                UPDATE gap_farmregistry gfr
+                SET county_id = m.county_id,
+                    subcounty_id = m.subcounty_id,
+                    ward_id = m.ward_id, language_id = m.language_id
+                FROM matched m
+                WHERE gfr.id = m.farm_registry_id;
+            """, 'update_existing_farm_registry')
 
         # insert into gap_farmregistry
         self._execute_query(f"""
