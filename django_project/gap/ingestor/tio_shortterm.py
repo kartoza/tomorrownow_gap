@@ -1035,7 +1035,6 @@ class TioShortTermDuckDBIngestor(TioShortTermIngestor):
         data_shape = self.get_empty_shape(
             len(lat_arr), len(lon_arr)
         )
-        times = pd.date_range("00:00", "23:00", freq="1H").time
         warnings = {
             'missing_hash': 0,
             'missing_json': 0,
@@ -1082,19 +1081,30 @@ class TioShortTermDuckDBIngestor(TioShortTermIngestor):
                     warnings['missing_json'] += 1
                     continue
 
-                # iterate for each item in data
+                # validate total days
+                row_count = df.shape[0]
+                if self.TIME_STEP == DatasetTimeStep.HOURLY:
+                    row_count = len(df['date'].unique())
                 assert (
-                    df.shape[0] ==
+                    row_count ==
                     self.default_chunks['forecast_day_idx']
                 )
+
+                # iterate for each item in data
                 forecast_day_idx = 0
+                current_dt = None
                 for index, item in df.iterrows():
+                    if current_dt is None:
+                        # initialize first date
+                        current_dt = item['date']
+
                     time_idx = None
                     if (
                         self.TIME_STEP == DatasetTimeStep.HOURLY and
                         item['time'] is not None
                     ):
-                        time_idx = times.index(item['time'])
+                        # Convert to index 0–23
+                        time_idx = item['time'].hour
 
                     for var in self.variables:
                         if var not in df.columns:
@@ -1111,7 +1121,9 @@ class TioShortTermDuckDBIngestor(TioShortTermIngestor):
                                 0, forecast_day_idx, idx_lat, idx_lon] = (
                                     item[var]
                             )
-                    forecast_day_idx += 1
+                    if current_dt != item['date']:
+                        forecast_day_idx += 1
+                        current_dt = item['date']
                 count += 1
 
         # update new data to zarr using region

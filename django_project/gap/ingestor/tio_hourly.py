@@ -128,7 +128,7 @@ class TioHourlyShortTermIngestor(TioShortTermDuckDBIngestor):
         forecast_date_array = pd.date_range(
             forecast_date.isoformat(), periods=1)
         forecast_day_indices = np.arange(-6, 15, 1)
-        times = pd.date_range("00:00", "23:00", freq="1H").time
+        times = np.array([np.timedelta64(h, 'h') for h in range(24)])
         return {
             'forecast_date': ('forecast_date', forecast_date_array),
             'forecast_day_idx': (
