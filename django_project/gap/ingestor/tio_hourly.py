@@ -6,7 +6,7 @@ Tomorrow Now GAP.
 """
 
 import logging
-
+from datetime import date
 
 from gap.models import Provider, DatasetType, DatasetTimeStep
 from gap.models import (
@@ -48,3 +48,7 @@ class TioHourlyShortTermCollector(TioShortTermDuckDBCollector):
             time_step=DatasetTimeStep.HOURLY,
             is_internal_use=True
         )
+
+    def _should_skip_date(self, date: date):
+        """Skip insert to table for given date."""
+        return date == self.end_dt.date()

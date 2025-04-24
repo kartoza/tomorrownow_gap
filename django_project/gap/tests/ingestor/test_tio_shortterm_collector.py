@@ -496,13 +496,14 @@ class TioShortTermDuckDBCollectorTest(
             self.assertEqual(rows[0], 15)
             # Check the columns in the table
             columns = duckdb_conn.execute("DESCRIBE weather").fetchall()
-            self.assertEqual(len(columns), 16)
+            self.assertEqual(len(columns), 17)
             columns_str = [col[0] for col in columns]
             self.assertIn('id', columns_str)
             self.assertIn('grid_id', columns_str)
             self.assertIn('lat', columns_str)
             self.assertIn('lon', columns_str)
             self.assertIn('date', columns_str)
+            self.assertIn('time', columns_str)
             self.assertIn('total_rainfall', columns_str)
             self.assertIn('total_evapotranspiration_flux', columns_str)
             self.assertIn('max_temperature', columns_str)
@@ -519,7 +520,9 @@ class TioShortTermDuckDBCollectorTest(
                 "SELECT * FROM weather where date='2024-10-15'"
             ).to_df()
             self.assertEqual(data.shape[0], 1)
-            data = data.drop(columns=['id', 'grid_id', 'lat', 'lon', 'date'])
+            data = data.drop(
+                columns=['id', 'grid_id', 'lat', 'lon', 'date', 'time']
+            )
             print(data.iloc[0].to_dict())
             # compare dataframe
             pd.testing.assert_frame_equal(

@@ -784,6 +784,10 @@ class TioShortTermDuckDBCollector(BaseIngestor):
             )
         """)
 
+    def _should_skip_date(self, date: date):
+        """Skip insert to table for given date."""
+        return False
+
     def _process_chunk(self, chunk, data_source_id):
         """Process chunk of grid."""
         # retrieve data source object
@@ -826,41 +830,48 @@ class TioShortTermDuckDBCollector(BaseIngestor):
                 error_grids.append(grid_id)
                 continue
 
+            param_names = []
+            param_placeholders = []
+            for attr in self.attribute_names:
+                param_names.append(attr)
+                param_placeholders.append('?')
+
             data = api_result['data']
+            batch_values = []
             for item in data:
                 # insert into table
                 values = item['values']
+                dt = datetime.fromisoformat(item['datetime'])
+                if self._should_skip_date(dt.date()):
+                    continue
+
                 param = [
-                    grid_id, lat, lon,
-                    datetime.fromisoformat(item['datetime']).date()
+                    grid_id, lat, lon, dt.date()
                 ]
 
                 # add time value
                 if self.TIME_STEP == DatasetTimeStep.HOURLY:
-                    param.append(
-                        datetime.fromisoformat(item['datetime']).time()
-                    )
+                    param.append(dt.time())
                 else:
                     param.append(
                         time_s(0, 0, 0, tzinfo=pytz.utc)
                     )
 
-                param_names = []
-                param_placeholders = []
                 for attr in self.attribute_names:
-                    param_names.append(attr)
-                    param_placeholders.append('?')
                     if attr in values:
                         param.append(values[attr])
                     else:
                         param.append(None)
 
-                conn.execute(f"""
-                    INSERT INTO weather (grid_id, lat, lon, date, time,
-                        {', '.join(param_names)}
-                    ) VALUES (?, ?, ?, ?, ?, {', '.join(param_placeholders)})
-                    """, param
-                )
+                batch_values.append(param)
+
+            # execute many
+            conn.executemany(f"""
+                INSERT INTO weather (grid_id, lat, lon, date, time,
+                    {', '.join(param_names)}
+                ) VALUES (?, ?, ?, ?, ?, {', '.join(param_placeholders)})
+                """, batch_values
+            )
             count_processed += 1
 
         conn.close()
