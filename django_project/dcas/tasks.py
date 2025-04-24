@@ -32,6 +32,26 @@ DCAS_OBJECT_STORAGE_DIR = 'dcas_csv'
 class DCASPreferences:
     """Class that manages the configuration of DCAS process."""
 
+    default_csv_columns = [
+        'farmer_id',
+        'message_final',
+        'message_english',
+        'message_code',
+        'crop',
+        'planting_date',
+        'growth_stage',
+        'county',
+        'relative_humidity',
+        'seasonal_precipitation',
+        'temperature',
+        'ppet',
+        'growth_stage_precipitation',
+        'growth_stage_date',
+        'final_longitude',
+        'final_latitude',
+        'grid_id'
+    ]
+
     def __init__(self, current_date: datetime.date):
         """Initialize DCASPreferences class."""
         self.dcas_config = Preferences.load().dcas_config
@@ -97,6 +117,14 @@ class DCASPreferences:
         """Check if process should trigger error handling."""
         return self.dcas_config.get('trigger_error_handling', False)
 
+    @property
+    def csv_columns(self):
+        """Get the columns to be used in the csv output."""
+        columns = self.dcas_config.get('csv_columns', None)
+        if columns is None:
+            return self.default_csv_columns
+        return columns
+
     def to_dict(self):
         """Export the config to dict."""
         return {
@@ -109,7 +137,8 @@ class DCASPreferences:
             'duck_db_num_threads': self.duck_db_num_threads,
             'store_csv_to_minio': self.store_csv_to_minio,
             'store_csv_to_sftp': self.store_csv_to_sftp,
-            'trigger_error_handling': self.trigger_error_handling
+            'trigger_error_handling': self.trigger_error_handling,
+            'csv_columns': self.csv_columns
         }
 
     @staticmethod
@@ -142,6 +171,7 @@ def export_dcas_output(request_id, delivery_method):
     dcas_request = DCASRequest.objects.get(
         id=request_id
     )
+    dcas_config = DCASPreferences(dcas_request.requested_at.date())
     dcas_output = DCASPipelineOutput(
         dcas_request.requested_at.date(),
         duck_db_num_threads=Preferences.load().duckdb_threads_num
@@ -161,7 +191,7 @@ def export_dcas_output(request_id, delivery_method):
         file_path = None
         filename = os.path.basename(dcas_output.output_csv_file_path)
         try:
-            file_path = dcas_output.convert_to_csv()
+            file_path = dcas_output.convert_to_csv(dcas_config.csv_columns)
             filename = os.path.basename(file_path)
 
             # save to object storage

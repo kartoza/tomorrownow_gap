@@ -469,12 +469,6 @@ class DCASDataPipeline:
         meta = meta.assign(growth_stage=None)
         return pd.concat([farm_df_meta, meta], axis=1)
 
-    def extract_csv_output(self):
-        """Extract csv output file."""
-        file_path = self.data_output.convert_to_csv()
-
-        return file_path
-
     def filter_message_output(self):
         """Filter messages before extracting CSV."""
         # Read Parquet file (processed farm crop data)
@@ -527,8 +521,6 @@ class DCASDataPipeline:
         self.data_collection()
         self.process_grid_crop_data()
         self.process_farm_registry_data()
-
-        self.extract_csv_output()
 
         self.cleanup_gdd_matrix()
 

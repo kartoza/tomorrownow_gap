@@ -36,15 +36,41 @@ class DCASPipelineOutput:
 
     TMP_BASE_DIR = '/tmp/dcas'
     DCAS_OUTPUT_DIR = 'dcas_output'
+    columns_mapping = {
+        'farmer_id': 'farm_unique_id',
+        'message_final': 'message_final',
+        'message_english': 'message_english',
+        'message_code': 'final_message',
+        'crop': 'crop',
+        'planting_date': 'planting_date',
+        'growth_stage': 'growth_stage',
+        'county': 'county',
+        'relative_humidity': 'humidity',
+        'seasonal_precipitation': 'seasonal_precipitation',
+        'temperature': 'temperature',
+        'ppet': 'p_pet',
+        'growth_stage_precipitation': 'growth_stage_precipitation',
+        'growth_stage_date': (
+            "strftime(to_timestamp(growth_stage_start_date)" +
+            ", '%Y-%m-%d')"
+        ),
+        'final_longitude': 'ST_X(geometry)',
+        'final_latitude': 'ST_Y(geometry)',
+        'grid_id': 'grid_id',
+        'total_gdd': 'total_gdd',
+        'message': 'message',
+        'message_2': 'message_2',
+        'message_3': 'message_3',
+        'message_4': 'message_4',
+        'message_5': 'message_5',
+    }
 
     def __init__(
-        self, request_date, extract_additional_columns=True,
-        duck_db_num_threads=None
+        self, request_date, duck_db_num_threads=None
     ):
         """Initialize DCASPipelineOutput."""
         self.fs = None
         self.request_date = request_date
-        self.extract_additional_columns = extract_additional_columns
         self.duck_db_num_threads = duck_db_num_threads
 
     def setup(self):
@@ -278,29 +304,22 @@ class DCASPipelineOutput:
         conn.load_extension("postgres_scanner")
         return conn
 
-    def convert_to_csv(self):
+    def _map_column(self, column_name):
+        """Map column name to duckdb column name."""
+        if column_name not in self.columns_mapping:
+            raise ValueError(
+                f"Column name '{column_name}' not found in mapping."
+            )
+        name = self.columns_mapping[column_name]
+        if column_name != name:
+            column_name = f"{name} as {column_name}"
+
+        return column_name
+
+    def convert_to_csv(self, csv_columns):
         """Convert output to csv file."""
         file_path = self.output_csv_file_path
-        column_list = [
-            'farm_unique_id as farmer_id',
-            'message_final', 'message_english',
-            "final_message as message_code",
-            'crop', 'planting_date', 'growth_stage',
-            'county',
-            'humidity as relative_humidity',
-            'seasonal_precipitation',
-            'temperature', 'p_pet as ppet',
-            'growth_stage_precipitation',
-            "strftime(to_timestamp(growth_stage_start_date)" +
-            ", '%Y-%m-%d') as growth_stage_date",
-            'ST_X(geometry) as final_longitude',
-            'ST_Y(geometry) as final_latitude',
-            'grid_id'
-        ]
-        if self.extract_additional_columns:
-            column_list.extend([
-                "total_gdd"                
-            ])
+        column_list = [self._map_column(col) for col in csv_columns]
 
         parquet_path = (
             f"'{self._get_directory_path(self.DCAS_OUTPUT_DIR)}/"
@@ -336,7 +355,7 @@ class DCASPipelineOutput:
 
         # Merge en/sw translations into dcas table
         sql = (
-            f"""
+            """
             WITH matched AS (
                 SELECT
                 d.farmregistry_id,

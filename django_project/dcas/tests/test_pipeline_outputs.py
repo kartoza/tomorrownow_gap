@@ -23,7 +23,9 @@ class DCASOutputsTest(DCASPipelineBaseTest):
         # Mock the connection object
         mock_conn = MagicMock()
         mock_duckdb_connect.return_value = mock_conn
-        data_output = DCASPipelineOutput(datetime.date(2025, 1, 1))
+        data_output = DCASPipelineOutput(
+            datetime.date(2025, 1, 1)
+        )
         data_output._setup_s3fs()
         os.makedirs(data_output.TMP_BASE_DIR, exist_ok=True)
         with open(
@@ -38,7 +40,9 @@ class DCASOutputsTest(DCASPipelineBaseTest):
             field = ["farmerId", "crop", "plantingDate"]
             writer.writerow(field)
 
-        csv_file = data_output.convert_to_csv()
+        csv_file = data_output.convert_to_csv(
+            ['farmer_id', 'crop', 'planting_date']
+        )
 
         mock_duckdb_connect.assert_called_once()
         mock_conn.install_extension.assert_any_call("httpfs")
@@ -76,7 +80,9 @@ class DCASOutputsTest(DCASPipelineBaseTest):
         mock_sftp_instance.put.return_value = None
 
         # Initialize the pipeline output
-        pipeline_output = DCASPipelineOutput(request_date="2025-01-15")
+        pipeline_output = DCASPipelineOutput(
+            request_date="2025-01-15"
+        )
 
         # Create a temporary file for testing
         test_file = "/tmp/test_message_data.csv"
