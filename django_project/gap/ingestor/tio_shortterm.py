@@ -2,7 +2,7 @@
 """
 Tomorrow Now GAP.
 
-.. note:: Tio Short Tem ingestor.
+.. note:: Tio Short Term ingestor.
 """
 
 import json
@@ -43,7 +43,7 @@ from gap.ingestor.exceptions import (
 )
 from gap.models import (
     CastType, CollectorSession, DataSourceFile, DatasetStore, Grid,
-    IngestorSession, Dataset
+    IngestorSession, Dataset, DatasetTimeStep
 )
 from gap.providers import TomorrowIODatasetReader
 from gap.providers.tio import tomorrowio_shortterm_forecast_dataset
@@ -589,10 +589,12 @@ class TioShortTermIngestor(BaseZarrIngestor):
 class TioShortTermDuckDBCollector(BaseIngestor):
     """Collector for Tio Short Term data."""
 
+    TIME_STEP = DatasetTimeStep.DAILY
+
     def __init__(self, session: CollectorSession, working_dir: str = '/tmp'):
         """Initialize TioShortTermCollector."""
         super().__init__(session, working_dir)
-        self.dataset = tomorrowio_shortterm_forecast_dataset()
+        self.dataset = self._init_dataset()
         today = timezone.now().replace(
             hour=0, minute=0, second=0, microsecond=0
         )
@@ -608,6 +610,14 @@ class TioShortTermDuckDBCollector(BaseIngestor):
         self.attribute_names = [
             f.attribute.variable_name for f in self.forecast_attrs
         ]
+
+    def _init_dataset(self) -> Dataset:
+        """Fetch dataset for this ingestor.
+
+        :return: Dataset for this ingestor
+        :rtype: Dataset
+        """
+        return tomorrowio_shortterm_forecast_dataset()
 
     def _init_dataset_files(self, chunks):
         data_source_ids = []
@@ -769,6 +779,7 @@ class TioShortTermDuckDBCollector(BaseIngestor):
                 lat DOUBLE,
                 lon DOUBLE,
                 date DATE,
+                time TIME,
                 {', '.join(attrib_cols)}
             )
         """)
@@ -823,6 +834,17 @@ class TioShortTermDuckDBCollector(BaseIngestor):
                     grid_id, lat, lon,
                     datetime.fromisoformat(item['datetime']).date()
                 ]
+
+                # add time value
+                if self.TIME_STEP == DatasetTimeStep.HOURLY:
+                    param.append(
+                        datetime.fromisoformat(item['datetime']).time()
+                    )
+                else:
+                    param.append(
+                        time_s(0, 0, 0, tzinfo=pytz.utc)
+                    )
+
                 param_names = []
                 param_placeholders = []
                 for attr in self.attribute_names:
@@ -834,9 +856,9 @@ class TioShortTermDuckDBCollector(BaseIngestor):
                         param.append(None)
 
                 conn.execute(f"""
-                    INSERT INTO weather (grid_id, lat, lon, date,
+                    INSERT INTO weather (grid_id, lat, lon, date, time,
                         {', '.join(param_names)}
-                    ) VALUES (?, ?, ?, ?, {', '.join(param_placeholders)})
+                    ) VALUES (?, ?, ?, ?, ?, {', '.join(param_placeholders)})
                     """, param
                 )
             count_processed += 1
