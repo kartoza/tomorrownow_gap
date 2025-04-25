@@ -450,7 +450,6 @@ class DCASDataPipeline:
             self.duck_db_num_threads,
             meta=farm_df_meta
         )
-        self.update_farm_registry_growth_stage()
 
         self.data_output.save(OutputType.FARM_CROP_DATA, farm_df)
 

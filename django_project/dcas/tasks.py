@@ -502,9 +502,10 @@ def update_farm_registry_growth_stage_output(request_id):
         return
 
     # Step 2: Update DCASRequest Status to RUNNING
-    dcas_request.status = TaskStatus.RUNNING
-    dcas_request.progress_text = "Growth stage update is in progress..."
-    dcas_request.save()
+    # TODO: might be better to log the progress into different table
+    # dcas_request.status = TaskStatus.RUNNING
+    # dcas_request.progress_text = "Growth stage update is in progress..."
+    # dcas_request.save()
 
     # Step 3: Run Growth Stage Update
     try:
