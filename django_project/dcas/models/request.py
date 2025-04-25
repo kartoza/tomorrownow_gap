@@ -53,3 +53,7 @@ class DCASRequest(models.Model):
         db_table = 'dcas_request'
         verbose_name = _('Request')
         ordering = ['-requested_at']
+
+    def __str__(self):
+        """String representation of the DCASRequest."""
+        return f"DCASRequest {self.id} - {self.requested_at}"

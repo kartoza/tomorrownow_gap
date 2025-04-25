@@ -11,17 +11,16 @@ import traceback
 import datetime
 import logging
 import tempfile
+from django.db import connection
 from django.core.files.storage import storages
 from django.utils import timezone
 
 from core.models.background_task import TaskStatus
-from gap.models import FarmRegistryGroup, FarmRegistry, Preferences, Farm
+from gap.models import FarmRegistryGroup, FarmRegistry, Preferences
 from dcas.models import (
-    DCASErrorLog, DCASRequest, DCASErrorType,
-    DCASOutput, DCASDeliveryMethod
+    DCASErrorLog, DCASRequest, DCASOutput, DCASDeliveryMethod
 )
 from dcas.pipeline import DCASDataPipeline
-from dcas.queries import DataQuery
 from dcas.outputs import DCASPipelineOutput
 
 
@@ -334,14 +333,14 @@ def run_dcas(request_id=None):
 
             # Trigger error handling task
             if dcas_config.trigger_error_handling:
-                log_farms_without_messages.delay(dcas_request.id)
+                log_dcas_error.delay(dcas_request.id)
 
         # cleanup
         pipeline.cleanup()
 
 
-@shared_task(name='log_farms_without_messages')
-def log_farms_without_messages(request_id, chunk_size=1000):
+@shared_task(name='log_dcas_error')
+def log_dcas_error(request_id, chunk_size=1000):
     """
     Celery task to log farms without messages using chunked queries.
 
@@ -350,6 +349,7 @@ def log_farms_without_messages(request_id, chunk_size=1000):
     :param chunk_size: Number of rows to process per iteration
     :type chunk_size: int
     """
+    conn = None
     try:
         preferences = Preferences.load()
         # Get the most recent DCAS request
@@ -358,8 +358,9 @@ def log_farms_without_messages(request_id, chunk_size=1000):
         )
 
         # Initialize pipeline output to get the directory path
+        request_date = dcas_request.requested_at.date()
         dcas_output = DCASPipelineOutput(
-            dcas_request.requested_at.date(),
+            request_date,
             duck_db_num_threads=preferences.duckdb_threads_num
         )
         dcas_output._setup_s3fs()
@@ -369,51 +370,121 @@ def log_farms_without_messages(request_id, chunk_size=1000):
 
         # Clear existing DCASErrorLog
         DCASErrorLog.objects.filter(
-            request=dcas_request,
-            error_type=DCASErrorType.MISSING_MESSAGES
+            request=dcas_request
         ).delete()
 
-        # Query farms without messages in chunks
-        for df_chunk in DataQuery.get_farms_without_messages(
-            dcas_request.requested_at.date(),
-            parquet_path,
-            dcas_output._get_connection(dcas_output.s3),
-            chunk_size=chunk_size
-        ):
-            if df_chunk.empty:
-                logger.info(
-                    "No farms found with missing messages in this chunk."
-                )
-                continue
+        conn = dcas_output._get_connection(dcas_output.s3)
 
-            # Log missing messages in the database
-            error_logs = []
-            for _, row in df_chunk.iterrows():
-                if not Farm.objects.filter(id=row['farm_id']).exists():
-                    logger.warning(
-                        f"Farm ID {row['farm_id']} not found, skipping."
-                    )
-                    continue
+        # Copy data from parquet to duckdb table
+        sql = (f"""
+            CREATE TABLE dcas_empty_message AS
+            SELECT {dcas_request.id} as request_id,
+                registry_id as farm_registry_id,
+                'MISSING_MESSAGES' as error_type,
+                'Farm registry has no advisory message' as error_message,
+                json_array(message, message_2, message_3, message_4,
+                message_5, final_message) as messages,
+                json_object(
+                    'relative_humidity', CAST(humidity AS VARCHAR),
+                    'seasonal_precipitation',
+                    CAST(seasonal_precipitation AS VARCHAR),
+                    'temperature', CAST(temperature AS VARCHAR),
+                    'ppet', CAST(p_pet AS VARCHAR),
+                    'growth_stage_precipitation',
+                    CAST(growth_stage_precipitation AS VARCHAR),
+                    'growth_stage_date', growth_stage_start_date,
+                    'growth_stage', growth_stage,
+                    'prev_week_message', prev_week_message
+                ) as data,
+                current_localtimestamp() as logged_at
+            FROM read_parquet('{parquet_path}', hive_partitioning=true)
+            WHERE year={request_date.year} AND
+            month={request_date.month} AND
+            day={request_date.day} AND
+            is_empty_message = true
+        """)
+        conn.execute(sql)
 
-                error_logs.append(DCASErrorLog(
-                    request=dcas_request,
-                    farm_id=row['farm_id'],
-                    error_type=DCASErrorType.MISSING_MESSAGES,
-                    error_message=(
-                        f"Farm {row['farm_unique_id']} "
-                        f"({row['crop']} - {row['growth_stage']}) "
-                        f"has no advisory messages."
-                    )
-                ))
+        sql = (f"""
+            CREATE TABLE dcas_repetitive_message AS
+            SELECT {dcas_request.id} as request_id,
+                registry_id as farm_registry_id,
+                'FOUND_REPETITIVE' as error_type,
+                'First message is repetitive message' as error_message,
+                json_array(message, message_2, message_3, message_4,
+                message_5, final_message) as messages,
+                json_object(
+                    'relative_humidity', CAST(humidity AS VARCHAR),
+                    'seasonal_precipitation',
+                    CAST(seasonal_precipitation AS VARCHAR),
+                    'temperature', CAST(temperature AS VARCHAR),
+                    'ppet', CAST(p_pet AS VARCHAR),
+                    'growth_stage_precipitation',
+                    CAST(growth_stage_precipitation AS VARCHAR),
+                    'growth_stage_date', growth_stage_start_date,
+                    'growth_stage', growth_stage,
+                    'prev_week_message', prev_week_message
+                ) as data,
+                current_localtimestamp() as logged_at
+            FROM read_parquet('{parquet_path}', hive_partitioning=true)
+            WHERE year={request_date.year} AND
+            month={request_date.month} AND
+            day={request_date.day} AND
+            has_repetitive_message = true
+        """)
+        conn.execute(sql)
 
-            # Bulk insert logs per chunk to optimize database writes
-            if error_logs:
-                DCASErrorLog.objects.bulk_create(error_logs)
-                logger.info(
-                    f"Logged {len(error_logs)} farms with missing messages."
-                )
+        # get count from dcas_empty_message
+        count_sql = """
+            SELECT COUNT(*) FROM dcas_empty_message;
+        """
+        count = conn.execute(count_sql).fetchone()[0]
+        logger.info(f"Count of empty messages: {count}")
+        if not dcas_request.config:
+            dcas_request.config = {}
+        dcas_request.config['empty_message_count'] = count
 
+        # get count from dcas_repetitive_message
+        count_sql = """
+            SELECT COUNT(*) FROM dcas_repetitive_message;
+        """
+        count = conn.execute(count_sql).fetchone()[0]
+        logger.info(f"Count of repetitive messages: {count}")
+        dcas_request.config['repetitive_message_count'] = count
+        dcas_request.save()
+
+        # enable extension
+        conn.install_extension("postgres")
+        conn.load_extension("postgres")
+
+        # insert to dcas_error_log table
+        pg_conn_str = (
+            "host={HOST} port={PORT} user={USER} "
+            "password={PASSWORD} dbname={NAME}".format(
+                **connection.settings_dict
+            )
+        )
+        conn.execute(f"""
+            ATTACH '{pg_conn_str}' AS pg_conn
+            (TYPE postgres, SCHEMA 'public');
+        """)
+
+        insert_sql = """
+            INSERT INTO pg_conn.dcas_error_log
+            (request_id, farm_registry_id, error_type, error_message,
+            messages, data, logged_at)
+            SELECT request_id, farm_registry_id, error_type, error_message,
+            messages, data, logged_at
+            FROM {};
+        """
+
+        conn.execute(insert_sql.format("dcas_empty_message"))
+        conn.execute(insert_sql.format("dcas_repetitive_message"))
     except DCASRequest.DoesNotExist:
         logger.error(f"No DCASRequest found for request_id {request_id}.")
     except Exception as e:
-        logger.error(f"Error processing missing messages: {str(e)}")
+        logger.error(f"Error processing dcas error: {str(e)}")
+        raise e
+    finally:
+        if conn:
+            conn.close()

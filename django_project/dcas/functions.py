@@ -140,8 +140,8 @@ def calculate_message_output(
         # set the final message to be the highest priority message
         row['final_message'] = messages[0]
         if row['final_message'] == row['prev_week_message']:
-            # set flag is_found_repetitive
-            row['is_found_repetitive'] = True
+            # set flag has_repetitive_message
+            row['has_repetitive_message'] = True
             if len(messages) > 1:
                 # set the final_message as the second message
                 row['final_message'] = messages[1]

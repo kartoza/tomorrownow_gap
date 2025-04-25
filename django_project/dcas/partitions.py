@@ -277,7 +277,7 @@ def process_partition_message_output(df: pd.DataFrame) -> pd.DataFrame:
         message_4=None,
         message_5=None,
         is_empty_message=False,
-        is_found_repetitive=False,
+        has_repetitive_message=False,
         final_message=None,
         prev_week_message=None
     )

@@ -27,7 +27,7 @@ from dcas.tasks import (
     export_dcas_minio,
     export_dcas_sftp,
     run_dcas,
-    log_farms_without_messages
+    log_dcas_error
 )
 from gap.factories import FarmRegistryGroupFactory
 
@@ -229,7 +229,7 @@ class DCASPipelineTaskTest(DCASPipelineBaseTest):
 
     @patch("duckdb.connect")
     def test_log_farms_without_messages(self, mocked_duck_db):
-        """Test log_farms_without_messages."""
+        """Test log_dcas_error."""
         # create request
         request = DCASRequest.objects.create(
             requested_at=datetime.datetime(
@@ -259,7 +259,7 @@ class DCASPipelineTaskTest(DCASPipelineBaseTest):
         mocked_duck_db.return_value = conn
 
         # run error handling
-        log_farms_without_messages(request.id, 2)
+        log_dcas_error(request.id, 2)
 
         error_logs = DCASErrorLog.objects.filter(
             request=request,

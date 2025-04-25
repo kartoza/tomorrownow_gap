@@ -64,7 +64,18 @@ class DCASPipelineOutput:
         'message_2': 'message_2',
         'message_3': 'message_3',
         'message_4': 'message_4',
-        'message_5': 'message_5'
+        'message_5': 'message_5',
+        'registry_id': 'farm_registry_id',
+        'grid_crop_key': 'grid_crop_key',
+        'preferred_language': 'preferred_language',
+        'date': 'date',
+        'prev_growth_stage_id': 'prev_growth_stage_id',
+        'prev_growth_stage_start_date': 'prev_growth_stage_start_date',
+        'config_id': 'config_id',
+        'is_empty_message': 'is_empty_message',
+        'has_repetitive_message': 'has_repetitive_message',
+        'prev_week_message': 'prev_week_message',
+        'iso_a3': 'iso_a3'
     }
 
     def __init__(

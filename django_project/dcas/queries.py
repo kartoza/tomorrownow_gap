@@ -231,7 +231,8 @@ class DataQuery:
             self.county, self.farmregistry.c.county_id == self.county.c.id,
             isouter=True
         ).join(
-            self.subcounty, self.farmregistry.c.subcounty_id == self.subcounty.c.id,
+            self.subcounty,
+            self.farmregistry.c.subcounty_id == self.subcounty.c.id,
             isouter=True
         ).join(
             self.ward, self.farmregistry.c.ward_id == self.ward.c.id,
