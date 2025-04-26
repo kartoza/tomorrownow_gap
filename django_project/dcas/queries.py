@@ -5,13 +5,19 @@ Tomorrow Now GAP.
 .. note:: DCAS Functions to process row data.
 """
 
+import os
 import datetime
+import logging
 import pandas as pd
+from django.core.files.storage import storages
 from sqlalchemy import select, distinct, column, extract, func, cast
 from sqlalchemy.ext.automap import automap_base
 from sqlalchemy.types import String as SqlString
 from geoalchemy2.functions import ST_X, ST_Y, ST_Centroid
 import duckdb
+
+
+logger = logging.getLogger(__name__)
 
 
 class DataQuery:
@@ -352,3 +358,82 @@ class DataQuery:
             print(f"Error querying Parquet: {str(e)}")
         finally:
             conn.close()
+
+    def fetch_previous_week_message(
+        self, output_dir: str, date: datetime.date, working_dir: str,
+        duckdb_config: dict
+    ) -> str:
+        """
+        Get the previous week's message for a given date.
+
+        :param output_dir: Directory path to the Parquet file.
+        :type output_dir: str
+        :param date: Date to be filtered.
+        :type date: datetime.date
+        :param output_dir: Working directory path.
+        :type output_dir: str
+        :param duckdb_config: DuckDB configuration.
+        :type duckdb_config: dict
+        :return: File path to the DuckDB file, if exists.
+        :rtype: str
+        """
+        # check exists
+        s3_storage = storages['gap_products']
+        directories, _ = s3_storage.listdir(
+            output_dir.replace(f's3://{s3_storage.bucket_name}/', '')
+        )
+        if len(directories) == 0:
+            logger.error(f"Output directory {output_dir} does not exist.")
+            return None
+
+        parquet_path = (
+            f"'{output_dir}/"
+            "iso_a3=*/year=*/month=*/day=*/*.parquet'"
+        )
+
+        duckdb_file = os.path.join(
+            working_dir, 'dcas_prev_week.duckdb'
+        )
+
+        # Clear existing DuckDB file
+        if os.path.exists(duckdb_file):
+            os.remove(duckdb_file)
+
+        conn = None
+        try:
+            conn = duckdb.connect(duckdb_file, config=duckdb_config)
+            conn.install_extension("httpfs")
+            conn.load_extension("httpfs")
+            conn.install_extension("spatial")
+            conn.load_extension("spatial")
+            # Copy data from parquet to duckdb table
+            conn.execute(f"""
+                CREATE TABLE dcas AS
+                SELECT grid_id, crop_id, crop_stage_type_id,
+                planting_date_epoch, grid_crop_key,
+                final_message as prev_week_message
+                FROM read_parquet({parquet_path}, hive_partitioning=true)
+                WHERE year={date.year} AND
+                month={date.month} AND
+                day={date.day}
+                GROUP BY grid_id, crop_id, crop_stage_type_id,
+                planting_date_epoch, grid_crop_key, final_message
+            """)
+
+            # get count of dcas table
+            count = conn.execute("SELECT COUNT(*) FROM dcas").fetchone()[0]
+            logger.info(
+                f"Count of dcas previous week ({date}) table: {count}"
+            )
+
+            if count == 0:
+                return None
+
+            return duckdb_file
+        except Exception as e:
+            logger.error(f"Error querying Parquet: {str(e)}", exc_info=True)
+            return None
+        finally:
+            if conn:
+                # Close the connection
+                conn.close()

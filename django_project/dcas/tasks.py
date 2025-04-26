@@ -394,7 +394,8 @@ def log_dcas_error(request_id, chunk_size=1000):
                     CAST(growth_stage_precipitation AS VARCHAR),
                     'growth_stage_date', growth_stage_start_date,
                     'growth_stage', growth_stage,
-                    'prev_week_message', prev_week_message
+                    'prev_week_message', prev_week_message,
+                    'total_gdd', total_gdd
                 ) as data,
                 current_localtimestamp() as logged_at
             FROM read_parquet('{parquet_path}', hive_partitioning=true)
@@ -423,7 +424,8 @@ def log_dcas_error(request_id, chunk_size=1000):
                     CAST(growth_stage_precipitation AS VARCHAR),
                     'growth_stage_date', growth_stage_start_date,
                     'growth_stage', growth_stage,
-                    'prev_week_message', prev_week_message
+                    'prev_week_message', prev_week_message,
+                    'total_gdd', total_gdd
                 ) as data,
                 current_localtimestamp() as logged_at
             FROM read_parquet('{parquet_path}', hive_partitioning=true)

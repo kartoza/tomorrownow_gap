@@ -155,8 +155,11 @@ class GrowthStageService:
             )
         ]
 
-        if all_cache_keys:
-            cache.delete_many(all_cache_keys)
+        try:
+            if all_cache_keys:
+                cache.delete_many(all_cache_keys)
+        except Exception:
+            pass
 
 
 class MessagePriorityService:
@@ -237,9 +240,11 @@ class MessagePriorityService:
                 "code", "config__id"
             )
         ]
-
-        if all_cache_keys:
-            cache.delete_many(all_cache_keys)
+        try:
+            if all_cache_keys:
+                cache.delete_many(all_cache_keys)
+        except Exception:
+            pass
 
     @staticmethod
     def sort_messages(messages, config_id, bypass_db=False):

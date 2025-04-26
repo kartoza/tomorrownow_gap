@@ -288,7 +288,7 @@ class DCASPipelineOutput:
 
         return is_success
 
-    def _get_connection(self, s3):
+    def _get_duckdb_config(self, s3):
         endpoint = s3['AWS_ENDPOINT_URL']
         if settings.DEBUG:
             endpoint = endpoint.replace('http://', '')
@@ -308,6 +308,10 @@ class DCASPipelineOutput:
         if self.duck_db_num_threads:
             config['threads'] = self.duck_db_num_threads
 
+        return config
+
+    def _get_connection(self, s3):
+        config = self._get_duckdb_config(s3)
         conn = duckdb.connect(config=config)
         conn.install_extension("httpfs")
         conn.load_extension("httpfs")

@@ -11,7 +11,11 @@ import numpy as np
 from gap.models import Attribute
 from dcas.models import GDDConfig
 from dcas.rules.rule_engine import DCASRuleEngine
-from dcas.utils import read_grid_data, read_grid_crop_data
+from dcas.utils import (
+    read_grid_data,
+    read_grid_crop_data,
+    get_previous_week_message
+)
 from dcas.functions import (
     calculate_growth_stage,
     calculate_message_output
@@ -262,11 +266,15 @@ def process_partition_growth_stage_precipitation(
     return df
 
 
-def process_partition_message_output(df: pd.DataFrame) -> pd.DataFrame:
+def process_partition_message_output(
+    df: pd.DataFrame, previous_message_db: str
+) -> pd.DataFrame:
     """Calculate message codes for DataFrame partition.
 
     :param df: Grid crop DataFrame partition to be processed
     :type df: pd.DataFrame
+    :param previous_message_db: Path to the previous message database
+    :type previous_message_db: str
     :return: DataFrame with message columns
     :rtype: pd.DataFrame
     """
@@ -278,11 +286,37 @@ def process_partition_message_output(df: pd.DataFrame) -> pd.DataFrame:
         message_5=None,
         is_empty_message=False,
         has_repetitive_message=False,
-        final_message=None,
-        prev_week_message=None
+        final_message=None
     )
 
-    # TODO: load previous final message by grid_id and crop_id
+    # load previous final message by grid_id and crop_id
+    if previous_message_db:
+        prev_message_df = get_previous_week_message(
+            previous_message_db,
+            df['grid_crop_key'].to_list()
+        )
+        # merge with previous message
+        df = df.merge(
+            prev_message_df[[
+                'grid_id', 'crop_id', 'crop_stage_type_id',
+                'planting_date_epoch', 'prev_week_message'
+            ]],
+            on=[
+                'grid_id', 'crop_id', 'crop_stage_type_id',
+                'planting_date_epoch'
+            ],
+            how='left'
+        )
+        # Replace NaN with None
+        df['prev_week_message'] = (
+            df['prev_week_message'].where(
+                pd.notnull(df['prev_week_message']),
+                None
+            )
+        )
+    else:
+        # If no previous message, set prev_week_message to None
+        df = df.assign(prev_week_message=None)
 
     attrib_dict = {
         'temperature': Attribute.objects.get(variable_name='temperature').id,
