@@ -290,10 +290,9 @@ class DCASPipelineOutput:
 
     def _get_duckdb_config(self, s3):
         endpoint = s3['AWS_ENDPOINT_URL']
-        if settings.DEBUG:
-            endpoint = endpoint.replace('http://', '')
-        else:
-            endpoint = endpoint.replace('https://', '')
+        # Remove protocol from endpoint
+        endpoint = endpoint.replace('http://', '')
+        endpoint = endpoint.replace('https://', '')
         if endpoint.endswith('/'):
             endpoint = endpoint[:-1]
 
