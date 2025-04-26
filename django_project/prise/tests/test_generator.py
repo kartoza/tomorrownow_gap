@@ -134,3 +134,25 @@ class PriseGeneratorTest(TestCase):
             context[PriseMessageContextVariable.PEST_WINDOW_DAY_2],
             11
         )
+
+    def test_context_nan_data(self):
+        """Test context with NaN data."""
+        self.farm_group.farms.add(self.farm_1)
+        PriseData.insert_data(
+            PriseDataRawInput(
+                farm_unique_id=self.farm_1.unique_id,
+                generated_at=self.datetime,
+                values=[
+                    PriseDataByPestRawInput(
+                        'ophiomyia_stat_v02_w1_nrt_midpoint',
+                        float('nan')
+                    )
+                ],
+                data_type=PriseDataType.CLIMATOLOGY
+            )
+        )
+        ctx = PriseMessageContext(
+            self.farm_1, self.pest, PriseMessageGroup.TIME_TO_ACTION_1,
+            self.date)
+        context = ctx.context
+        self.assertEqual(len(context), 0)
