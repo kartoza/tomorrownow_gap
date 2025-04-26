@@ -11,7 +11,7 @@ import tempfile
 from mock import patch, MagicMock
 import datetime
 import pytz
-import pandas as pd
+# import pandas as pd
 
 from gap.models import TaskStatus, Preferences
 from dcas.models import (
