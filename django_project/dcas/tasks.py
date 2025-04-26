@@ -14,14 +14,18 @@ import tempfile
 from django.db import connection
 from django.core.files.storage import storages
 from django.utils import timezone
+from django.core.mail import send_mail
+from django.conf import settings
 
 from core.models.background_task import TaskStatus
+from core.utils.emails import get_admin_emails
 from gap.models import FarmRegistryGroup, FarmRegistry, Preferences
 from dcas.models import (
     DCASErrorLog, DCASRequest, DCASOutput, DCASDeliveryMethod
 )
 from dcas.pipeline import DCASDataPipeline
 from dcas.outputs import DCASPipelineOutput
+from dcas.utils import remove_dcas_output_file
 
 
 logger = logging.getLogger(__name__)
@@ -154,6 +158,29 @@ class DCASPreferences:
         )
 
 
+@shared_task(name="notify_dcas_error")
+def notify_dcas_error(date, request_id, error_message):
+    """Notify dcas error to the user."""
+    # Send an email notification to admins
+    admin_emails = get_admin_emails()
+    if admin_emails:
+        send_mail(
+            subject="DCAS Failure Alert",
+            message=(
+                f"DCAS for request #{request_id} - {date} "
+                "has failed.\n\n"
+                f"Error: {error_message}\n\n"
+                "Please check the logs for more details."
+            ),
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=admin_emails,
+            fail_silently=False,
+        )
+        logger.info(f"Sent DCAS failure email to {admin_emails}")
+    else:
+        logger.warning("No admin email found.")
+
+
 def save_dcas_ouput_to_object_storage(file_path):
     """Store dcas csv file to object_storage."""
     s3_storage = storages['gap_products']
@@ -271,6 +298,11 @@ def run_dcas(request_id=None):
         dcas_request.progress_text = 'DCAS: No farm registry group!'
         dcas_request.save()
         logger.warning(dcas_request)
+        notify_dcas_error.delay(
+            dcas_request.requested_at.date(),
+            dcas_request.id,
+            'No farm registry group!'
+        )
         return
 
     # check total count
@@ -284,6 +316,11 @@ def run_dcas(request_id=None):
         )
         dcas_request.save()
         logger.warning(dcas_request)
+        notify_dcas_error.delay(
+            dcas_request.requested_at.date(),
+            dcas_request.id,
+            'No farm registry in the registry groups'
+        )
         return
 
     dcas_request.start_time = current_dt
@@ -334,6 +371,13 @@ def run_dcas(request_id=None):
             # Trigger error handling task
             if dcas_config.trigger_error_handling:
                 log_dcas_error.delay(dcas_request.id)
+        elif dcas_request.status == TaskStatus.STOPPED:
+            # Notify the user about the error
+            notify_dcas_error.delay(
+                dcas_request.requested_at.date(),
+                dcas_request.id,
+                errors
+            )
 
         # cleanup
         pipeline.cleanup()
@@ -490,6 +534,34 @@ def log_dcas_error(request_id, chunk_size=1000):
     finally:
         if conn:
             conn.close()
+
+
+@shared_task(name='cleanup_dcas_old_output_files')
+def cleanup_dcas_old_output_files():
+    """
+    Celery task to clean up old DCAS output files.
+
+    This task deletes DCAS output files older than 14 days.
+    """
+    try:
+        # Get the current date
+        current_date = timezone.now().date()
+
+        # Calculate the cutoff date (14 days ago)
+        cutoff_date = current_date - datetime.timedelta(days=14)
+
+        # Query for old DCAS output files
+        old_files = DCASOutput.objects.filter(
+            delivered_at__lt=cutoff_date
+        )
+
+        # Delete old files
+        for file in old_files:
+            if file.file_exists:
+                remove_dcas_output_file(file.path, file.delivery_by)
+
+    except Exception as e:
+        logger.error(f"Error cleaning up old DCAS output files: {str(e)}")
 
 
 def update_farm_registry_growth_stage_output(request_id):

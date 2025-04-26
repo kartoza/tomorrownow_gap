@@ -3,6 +3,7 @@
 from django.core.mail import send_mail
 from django.conf import settings
 from django.contrib.sites.models import Site
+from django.contrib.auth import get_user_model
 
 
 def send_verification_email(user, uid, token):
@@ -23,3 +24,18 @@ def send_verification_email(user, uid, token):
         f"\n\nClick to verify your account:\n{activation_url}"
     )
     send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [user.email])
+
+
+def get_admin_emails():
+    """Get a list of admin emails."""
+    User = get_user_model()
+    admin_emails = list(
+        User.objects.filter(
+            is_superuser=True
+        ).exclude(
+            email__isnull=True
+        ).exclude(
+            email__exact=''
+        ).values_list('email', flat=True)
+    )
+    return admin_emails

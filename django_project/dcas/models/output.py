@@ -8,6 +8,8 @@ Tomorrow Now GAP DCAS.
 from django.utils import timezone
 from django.contrib.gis.db import models
 from django.utils.translation import gettext_lazy as _
+from django.dispatch import receiver
+from django.db.models.signals import post_delete
 
 from core.models.background_task import TaskStatus
 from dcas.models.request import DCASRequest
@@ -62,9 +64,25 @@ class DCASOutput(models.Model):
     )
     size = models.PositiveBigIntegerField(default=0)
 
+    @property
+    def file_exists(self):
+        """Check if the file exists in the storage."""
+        from dcas.utils import dcas_output_file_exists
+        if not self.path:
+            return False
+        return dcas_output_file_exists(self.path, self.delivery_by)
+
     class Meta:
         """Meta class for DCASOutput."""
 
         db_table = 'dcas_output'
         verbose_name = _('Output')
         ordering = ['-delivered_at']
+
+
+@receiver(post_delete, sender=DCASOutput)
+def post_delete_dcas_output(sender, instance, **kwargs):
+    """Delete csv file in s3 object storage."""
+    from dcas.utils import remove_dcas_output_file
+    if instance.path:
+        remove_dcas_output_file(instance.path, instance.delivery_by)

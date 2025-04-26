@@ -5,8 +5,13 @@ Tomorrow Now GAP.
 .. note:: DCAS Utilities
 """
 
+import logging
 import pandas as pd
 import duckdb
+from django.core.files.storage import storages
+
+
+logger = logging.getLogger(__name__)
 
 
 def read_grid_data(
@@ -105,3 +110,41 @@ def get_previous_week_message(duckdb_file: str, grid_crop_keys: list):
     df = conn.sql(query).df()
     conn.close()
     return df
+
+
+def remove_dcas_output_file(file_path: str, delivery_by: str):
+    """Remove dcas output file.
+
+    :param file_path: file name to be removed
+    :type file_path: str
+    """
+    if delivery_by != 'OBJECT_STORAGE':
+        raise NotImplementedError(
+            f"This function is not implemented for {delivery_by} delivery."
+        )
+
+    s3_storage = storages['gap_products']
+    try:
+        s3_storage.delete(file_path)
+    except Exception as e:
+        logger.error(
+            f"Error deleting file {file_path} from S3: {str(e)}",
+            exc_info=True
+        )
+        return False
+    return True
+
+
+def dcas_output_file_exists(file_path: str, delivery_by: str):
+    """Check if dcas output file exists.
+
+    :param file_path: file name to be checked
+    :type file_path: str
+    """
+    if delivery_by != 'OBJECT_STORAGE':
+        raise NotImplementedError(
+            f"This function is not implemented for {delivery_by} delivery."
+        )
+
+    s3_storage = storages['gap_products']
+    return s3_storage.exists(file_path)

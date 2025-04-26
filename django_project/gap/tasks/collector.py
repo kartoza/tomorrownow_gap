@@ -9,9 +9,9 @@ from celery.utils.log import get_task_logger
 
 from django.core.mail import send_mail
 from django.conf import settings
-from django.contrib.auth import get_user_model
 
 from core.celery import app
+from core.utils.emails import get_admin_emails
 from gap.models import (
     Dataset,
     DatasetStore,
@@ -164,16 +164,7 @@ def notify_collector_failure(session_id: int, exception: str):
     logger.error(f"CollectorSession {session_id} failed: {exception}")
 
     # Send an email notification to admins
-    User = get_user_model()
-    admin_emails = list(
-        User.objects.filter(
-            is_superuser=True
-        ).exclude(
-            email__isnull=True
-        ).exclude(
-            email__exact=''
-        ).values_list('email', flat=True)
-    )
+    admin_emails = get_admin_emails()
 
     if admin_emails:
         send_mail(
