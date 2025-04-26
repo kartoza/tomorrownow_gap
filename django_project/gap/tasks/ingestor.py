@@ -10,11 +10,11 @@ from celery.utils.log import get_task_logger
 import uuid
 from django.core.mail import send_mail
 from django.conf import settings
-from django.contrib.auth import get_user_model
 from django.utils import timezone
 from django.db import connection
 
 from core.celery import app
+from core.utils.emails import get_admin_emails
 from gap.models import (
     Dataset, DataSourceFile, Preferences,
     DatasetStore
@@ -90,17 +90,7 @@ def notify_ingestor_failure(session_id: int, exception: str):
         return
 
     # Send an email notification to admins
-    # Get admin emails from the database
-    User = get_user_model()
-    admin_emails = list(
-        User.objects.filter(
-            is_superuser=True
-        ).exclude(
-            email__isnull=True
-        ).exclude(
-            email__exact=''
-        ).values_list('email', flat=True)
-    )
+    admin_emails = get_admin_emails()
     if admin_emails:
         send_mail(
             subject="Ingestor Failure Alert",
