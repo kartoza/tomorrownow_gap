@@ -27,7 +27,8 @@ from dcas.tasks import (
     export_dcas_minio,
     export_dcas_sftp,
     run_dcas,
-    log_farms_without_messages
+    log_farms_without_messages,
+    cleanup_dcas_old_output_files
 )
 from gap.factories import FarmRegistryGroupFactory
 
@@ -272,3 +273,63 @@ class DCASPipelineTaskTest(DCASPipelineBaseTest):
         error_log2 = error_logs.filter(farm=self.farm_registry_2.farm).first()
         self.assertTrue(error_log2)
         self.assertIn('Farm 2', error_log2.error_message)
+
+    @patch('django.utils.timezone.now')
+    @patch('dcas.tasks.remove_dcas_output_file')
+    @patch('dcas.utils.dcas_output_file_exists')
+    def test_cleanup_dcas_old_output_files(
+        self, mocked_file_exists, mocked_remove_file, mocked_timezone
+    ):
+        """Test cleanup_dcas_old_output_files."""
+        # Mock current date
+        current_date = datetime.datetime(
+            2025, 2, 1, 0, 0, 0,
+            tzinfo=pytz.UTC
+        )
+        mocked_timezone.return_value = current_date
+
+        # Create old and recent DCASOutput objects
+        old_date = current_date - datetime.timedelta(days=15)
+        recent_date = current_date - datetime.timedelta(days=5)
+
+        request = DCASRequest.objects.create(
+            requested_at=current_date,
+            status=TaskStatus.COMPLETED
+        )
+
+        old_output = DCASOutput.objects.create(
+            request=request,
+            delivered_at=old_date,
+            file_name="old_file.csv",
+            path="path/to/old_file.csv",
+            delivery_by=DCASDeliveryMethod.OBJECT_STORAGE
+        )
+        recent_output = DCASOutput.objects.create(
+            request=request,
+            delivered_at=recent_date,
+            file_name="recent_file.csv",
+            path="path/to/recent_file.csv",
+            delivery_by=DCASDeliveryMethod.OBJECT_STORAGE
+        )
+
+        # Mock file existence check
+        mocked_file_exists.return_value = True
+
+        # Run the cleanup task
+        cleanup_dcas_old_output_files()
+
+        # Assert old file was removed
+        mocked_remove_file.assert_called_once_with(
+            old_output.path, old_output.delivery_by
+        )
+
+        # Assert recent file was not removed
+        self.assertEqual(mocked_remove_file.call_count, 1)
+
+        # Assert old output was deleted from the database
+        self.assertTrue(DCASOutput.objects.filter(id=old_output.id).exists())
+
+        # Assert recent output still exists in the database
+        self.assertTrue(
+            DCASOutput.objects.filter(id=recent_output.id).exists()
+        )

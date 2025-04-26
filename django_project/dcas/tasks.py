@@ -393,14 +393,14 @@ def cleanup_dcas_old_output_files():
     """
     Celery task to clean up old DCAS output files.
 
-    This task deletes DCAS output files older than 30 days.
+    This task deletes DCAS output files older than 14 days.
     """
     try:
         # Get the current date
         current_date = timezone.now().date()
 
-        # Calculate the cutoff date (30 days ago)
-        cutoff_date = current_date - datetime.timedelta(days=30)
+        # Calculate the cutoff date (14 days ago)
+        cutoff_date = current_date - datetime.timedelta(days=14)
 
         # Query for old DCAS output files
         old_files = DCASOutput.objects.filter(
