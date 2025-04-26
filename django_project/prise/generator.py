@@ -77,6 +77,10 @@ class PriseMessageContext:
         if pest_data is None:
             return {}
 
+        # check if pest_data.value is NaN or null
+        if pest_data.value is None or str(pest_data.value).lower() == 'nan':
+            return {}
+
         ctx[PriseMessageContextVariable.PLANTING_CURRENT_MONTH] = (
             self.generated_date.strftime('%B')
         )

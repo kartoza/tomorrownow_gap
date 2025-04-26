@@ -69,6 +69,9 @@ class CabiPriseIngestor(BaseIngestor):
                         Keys.ALERT_DATA_TYPE,
                     ]:
                         try:
+                            if pd.isna(val):
+                                continue
+
                             raw_data.values.append(
                                 PriseDataByPestRawInput(
                                     pest_variable_name=key, value=float(val)
