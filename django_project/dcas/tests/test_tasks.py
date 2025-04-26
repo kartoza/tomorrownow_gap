@@ -28,7 +28,8 @@ from dcas.tasks import (
     export_dcas_sftp,
     run_dcas,
     log_farms_without_messages,
-    cleanup_dcas_old_output_files
+    cleanup_dcas_old_output_files,
+    update_growth_stage_task
 )
 from gap.factories import FarmRegistryGroupFactory
 
@@ -333,3 +334,30 @@ class DCASPipelineTaskTest(DCASPipelineBaseTest):
         self.assertTrue(
             DCASOutput.objects.filter(id=recent_output.id).exists()
         )
+
+    @patch('dcas.pipeline.DCASDataPipeline.update_farm_registry_growth_stage')
+    @patch('dcas.models.DCASRequest.objects.get')
+    def test_update_growth_stage_task(
+        self,
+        mock_get_request,
+        mock_update_stage
+    ):
+        """Test update_growth_stage_task Celery task."""
+        # Create a mock request
+        mock_request = MagicMock()
+        mock_request.id = 123
+        mock_request.farm_registry_group = self.farm_registry_group
+        mock_request.requested_at.date.return_value = datetime.date(
+            2025, 1, 27
+        )
+
+        # Mock DB calls
+        mock_get_request.return_value = mock_request
+        mock_update_stage.return_value = None  # No return value needed
+
+        # Call the Celery task
+        update_growth_stage_task(mock_request.id)
+
+        # Assertions
+        mock_get_request.assert_called_once_with(id=123)
+        mock_update_stage.assert_called_once()
