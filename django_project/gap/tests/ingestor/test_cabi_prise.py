@@ -37,6 +37,7 @@ class CabiPriseIngestorTest(TestCase):
         """Set test class."""
         self.farm_1 = FarmFactory(unique_id='FARM1')
         self.farm_2 = FarmFactory(unique_id='FARM2')
+        self.farm_100 = FarmFactory(unique_id='FARM100')
 
     def test_error_no_column_farm_id(self):
         """Test when ingestor error no column for farm id."""
@@ -171,4 +172,11 @@ class CabiPriseIngestorTest(TestCase):
                 ).pest
             ).value,
             30.0
+        )
+        # farm 100 should not be ingested
+        self.assertEqual(
+            PriseData.objects.filter(
+                farm_id=self.farm_100.id
+            ).count(),
+            0
         )

@@ -11,7 +11,7 @@ import tempfile
 from mock import patch, MagicMock
 import datetime
 import pytz
-import pandas as pd
+# import pandas as pd
 
 from gap.models import TaskStatus, Preferences
 from dcas.models import (
@@ -27,7 +27,9 @@ from dcas.tasks import (
     export_dcas_minio,
     export_dcas_sftp,
     run_dcas,
-    log_farms_without_messages
+    log_dcas_error,
+    cleanup_dcas_old_output_files,
+    update_growth_stage_task
 )
 from gap.factories import FarmRegistryGroupFactory
 
@@ -229,7 +231,7 @@ class DCASPipelineTaskTest(DCASPipelineBaseTest):
 
     @patch("duckdb.connect")
     def test_log_farms_without_messages(self, mocked_duck_db):
-        """Test log_farms_without_messages."""
+        """Test log_dcas_error."""
         # create request
         request = DCASRequest.objects.create(
             requested_at=datetime.datetime(
@@ -238,37 +240,104 @@ class DCASPipelineTaskTest(DCASPipelineBaseTest):
             )
         )
 
-        # Mock DuckDB return DataFrames (Simulating chunked retrieval)
-        chunk_1 = pd.DataFrame(
-            {
-                'farm_id': [
-                    self.farm_registry_1.farm.id,
-                    self.farm_registry_2.farm.id
-                ],
-                'crop': ['Maize Early', 'Cassava Mid'],
-                'farm_unique_id': [1, 2],
-                'growth_stage': ['testA', 'testB']
-            }
-        )
-
-        expected_chunks = [chunk_1]
-
         # Configure mock connection to return chunks in order
         conn = MagicMock()
-        conn.sql.return_value.df.side_effect = expected_chunks
+        conn.execute.return_value.fetchone.return_value = [0]
         mocked_duck_db.return_value = conn
 
         # run error handling
-        log_farms_without_messages(request.id, 2)
+        log_dcas_error(request.id, 2)
 
         error_logs = DCASErrorLog.objects.filter(
             request=request,
             error_type=DCASErrorType.MISSING_MESSAGES
         )
-        self.assertEqual(error_logs.count(), 2)
-        error_log1 = error_logs.filter(farm=self.farm_registry_1.farm).first()
-        self.assertTrue(error_log1)
-        self.assertIn('Farm 1', error_log1.error_message)
-        error_log2 = error_logs.filter(farm=self.farm_registry_2.farm).first()
-        self.assertTrue(error_log2)
-        self.assertIn('Farm 2', error_log2.error_message)
+        self.assertEqual(error_logs.count(), 0)
+        self.assertEqual(conn.execute.call_count, 7)
+
+    @patch('django.utils.timezone.now')
+    @patch('dcas.tasks.remove_dcas_output_file')
+    @patch('dcas.utils.dcas_output_file_exists')
+    def test_cleanup_dcas_old_output_files(
+        self, mocked_file_exists, mocked_remove_file, mocked_timezone
+    ):
+        """Test cleanup_dcas_old_output_files."""
+        # Mock current date
+        current_date = datetime.datetime(
+            2025, 2, 1, 0, 0, 0,
+            tzinfo=pytz.UTC
+        )
+        mocked_timezone.return_value = current_date
+
+        # Create old and recent DCASOutput objects
+        old_date = current_date - datetime.timedelta(days=15)
+        recent_date = current_date - datetime.timedelta(days=5)
+
+        request = DCASRequest.objects.create(
+            requested_at=current_date,
+            status=TaskStatus.COMPLETED
+        )
+
+        old_output = DCASOutput.objects.create(
+            request=request,
+            delivered_at=old_date,
+            file_name="old_file.csv",
+            path="path/to/old_file.csv",
+            delivery_by=DCASDeliveryMethod.OBJECT_STORAGE
+        )
+        recent_output = DCASOutput.objects.create(
+            request=request,
+            delivered_at=recent_date,
+            file_name="recent_file.csv",
+            path="path/to/recent_file.csv",
+            delivery_by=DCASDeliveryMethod.OBJECT_STORAGE
+        )
+
+        # Mock file existence check
+        mocked_file_exists.return_value = True
+
+        # Run the cleanup task
+        cleanup_dcas_old_output_files()
+
+        # Assert old file was removed
+        mocked_remove_file.assert_called_once_with(
+            old_output.path, old_output.delivery_by
+        )
+
+        # Assert recent file was not removed
+        self.assertEqual(mocked_remove_file.call_count, 1)
+
+        # Assert old output was deleted from the database
+        self.assertTrue(DCASOutput.objects.filter(id=old_output.id).exists())
+
+        # Assert recent output still exists in the database
+        self.assertTrue(
+            DCASOutput.objects.filter(id=recent_output.id).exists()
+        )
+
+    @patch('dcas.pipeline.DCASDataPipeline.update_farm_registry_growth_stage')
+    @patch('dcas.models.DCASRequest.objects.get')
+    def test_update_growth_stage_task(
+        self,
+        mock_get_request,
+        mock_update_stage
+    ):
+        """Test update_growth_stage_task Celery task."""
+        # Create a mock request
+        mock_request = MagicMock()
+        mock_request.id = 123
+        mock_request.farm_registry_group = self.farm_registry_group
+        mock_request.requested_at.date.return_value = datetime.date(
+            2025, 1, 27
+        )
+
+        # Mock DB calls
+        mock_get_request.return_value = mock_request
+        mock_update_stage.return_value = None  # No return value needed
+
+        # Call the Celery task
+        update_growth_stage_task(mock_request.id)
+
+        # Assertions
+        mock_get_request.assert_called_once_with(id=123)
+        mock_update_stage.assert_called_once()

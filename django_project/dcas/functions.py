@@ -9,7 +9,7 @@ import pandas as pd
 
 from dcas.rules.rule_engine import DCASRuleEngine
 from dcas.rules.variables import DCASData
-from dcas.service import GrowthStageService
+from dcas.service import GrowthStageService, MessagePriorityService
 from dcas.utils import read_grid_crop_data
 
 
@@ -123,9 +123,29 @@ def calculate_message_output(
     )
     rule_engine.execute_rule(data)
 
-    for idx, code in enumerate(data.message_codes):
+    messages = MessagePriorityService.sort_messages(
+        data.message_codes, row['config_id'], True
+    )
+
+    for idx, code in enumerate(messages):
         var_name = f'message_{idx + 1}' if idx > 0 else 'message'
         row[var_name] = code
+
+    # Check if the message codes are empty
+    if data.is_empty():
+        # If empty, set is_empty_message flag to True
+        row['is_empty_message'] = True
+    else:
+        row['is_empty_message'] = False
+        # set the final message to be the highest priority message
+        row['final_message'] = messages[0]
+        if row['final_message'] == row['prev_week_message']:
+            # set flag has_repetitive_message
+            row['has_repetitive_message'] = True
+            if len(messages) > 1:
+                # set the final_message as the second message
+                row['final_message'] = messages[1]
+
     return row
 
 

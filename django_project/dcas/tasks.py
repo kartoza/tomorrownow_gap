@@ -11,18 +11,21 @@ import traceback
 import datetime
 import logging
 import tempfile
+from django.db import connection
 from django.core.files.storage import storages
 from django.utils import timezone
+from django.core.mail import send_mail
+from django.conf import settings
 
 from core.models.background_task import TaskStatus
-from gap.models import FarmRegistryGroup, FarmRegistry, Preferences, Farm
+from core.utils.emails import get_admin_emails
+from gap.models import FarmRegistryGroup, FarmRegistry, Preferences
 from dcas.models import (
-    DCASErrorLog, DCASRequest, DCASErrorType,
-    DCASOutput, DCASDeliveryMethod
+    DCASErrorLog, DCASRequest, DCASOutput, DCASDeliveryMethod
 )
 from dcas.pipeline import DCASDataPipeline
-from dcas.queries import DataQuery
 from dcas.outputs import DCASPipelineOutput
+from dcas.utils import remove_dcas_output_file
 
 
 logger = logging.getLogger(__name__)
@@ -31,6 +34,28 @@ DCAS_OBJECT_STORAGE_DIR = 'dcas_csv'
 
 class DCASPreferences:
     """Class that manages the configuration of DCAS process."""
+
+    default_csv_columns = [
+        'farmer_id',
+        'message_final',
+        'message_english',
+        'message_code',
+        'crop',
+        'planting_date',
+        'growth_stage',
+        'county',
+        'subcounty',
+        'ward',
+        'relative_humidity',
+        'seasonal_precipitation',
+        'temperature',
+        'ppet',
+        'growth_stage_precipitation',
+        'growth_stage_date',
+        'final_longitude',
+        'final_latitude',
+        'grid_id'
+    ]
 
     def __init__(self, current_date: datetime.date):
         """Initialize DCASPreferences class."""
@@ -97,6 +122,14 @@ class DCASPreferences:
         """Check if process should trigger error handling."""
         return self.dcas_config.get('trigger_error_handling', False)
 
+    @property
+    def csv_columns(self):
+        """Get the columns to be used in the csv output."""
+        columns = self.dcas_config.get('csv_columns', None)
+        if columns is None:
+            return self.default_csv_columns
+        return columns
+
     def to_dict(self):
         """Export the config to dict."""
         return {
@@ -109,7 +142,8 @@ class DCASPreferences:
             'duck_db_num_threads': self.duck_db_num_threads,
             'store_csv_to_minio': self.store_csv_to_minio,
             'store_csv_to_sftp': self.store_csv_to_sftp,
-            'trigger_error_handling': self.trigger_error_handling
+            'trigger_error_handling': self.trigger_error_handling,
+            'csv_columns': self.csv_columns
         }
 
     @staticmethod
@@ -122,6 +156,29 @@ class DCASPreferences:
             f'{dir_prefix}{DCAS_OBJECT_STORAGE_DIR}/'
             f'{filename}'
         )
+
+
+@shared_task(name="notify_dcas_error")
+def notify_dcas_error(date, request_id, error_message):
+    """Notify dcas error to the user."""
+    # Send an email notification to admins
+    admin_emails = get_admin_emails()
+    if admin_emails:
+        send_mail(
+            subject="DCAS Failure Alert",
+            message=(
+                f"DCAS for request #{request_id} - {date} "
+                "has failed.\n\n"
+                f"Error: {error_message}\n\n"
+                "Please check the logs for more details."
+            ),
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=admin_emails,
+            fail_silently=False,
+        )
+        logger.info(f"Sent DCAS failure email to {admin_emails}")
+    else:
+        logger.warning("No admin email found.")
 
 
 def save_dcas_ouput_to_object_storage(file_path):
@@ -142,6 +199,7 @@ def export_dcas_output(request_id, delivery_method):
     dcas_request = DCASRequest.objects.get(
         id=request_id
     )
+    dcas_config = DCASPreferences(dcas_request.requested_at.date())
     dcas_output = DCASPipelineOutput(
         dcas_request.requested_at.date(),
         duck_db_num_threads=Preferences.load().duckdb_threads_num
@@ -161,7 +219,7 @@ def export_dcas_output(request_id, delivery_method):
         file_path = None
         filename = os.path.basename(dcas_output.output_csv_file_path)
         try:
-            file_path = dcas_output.convert_to_csv()
+            file_path = dcas_output.convert_to_csv(dcas_config.csv_columns)
             filename = os.path.basename(file_path)
 
             # save to object storage
@@ -240,6 +298,11 @@ def run_dcas(request_id=None):
         dcas_request.progress_text = 'DCAS: No farm registry group!'
         dcas_request.save()
         logger.warning(dcas_request)
+        notify_dcas_error.delay(
+            dcas_request.requested_at.date(),
+            dcas_request.id,
+            'No farm registry group!'
+        )
         return
 
     # check total count
@@ -253,6 +316,11 @@ def run_dcas(request_id=None):
         )
         dcas_request.save()
         logger.warning(dcas_request)
+        notify_dcas_error.delay(
+            dcas_request.requested_at.date(),
+            dcas_request.id,
+            'No farm registry in the registry groups'
+        )
         return
 
     dcas_request.start_time = current_dt
@@ -302,14 +370,21 @@ def run_dcas(request_id=None):
 
             # Trigger error handling task
             if dcas_config.trigger_error_handling:
-                log_farms_without_messages.delay(dcas_request.id)
+                log_dcas_error.delay(dcas_request.id)
+        elif dcas_request.status == TaskStatus.STOPPED:
+            # Notify the user about the error
+            notify_dcas_error.delay(
+                dcas_request.requested_at.date(),
+                dcas_request.id,
+                errors
+            )
 
         # cleanup
         pipeline.cleanup()
 
 
-@shared_task(name='log_farms_without_messages')
-def log_farms_without_messages(request_id, chunk_size=1000):
+@shared_task(name='log_dcas_error')
+def log_dcas_error(request_id, chunk_size=1000):
     """
     Celery task to log farms without messages using chunked queries.
 
@@ -318,6 +393,7 @@ def log_farms_without_messages(request_id, chunk_size=1000):
     :param chunk_size: Number of rows to process per iteration
     :type chunk_size: int
     """
+    conn = None
     try:
         preferences = Preferences.load()
         # Get the most recent DCAS request
@@ -326,8 +402,9 @@ def log_farms_without_messages(request_id, chunk_size=1000):
         )
 
         # Initialize pipeline output to get the directory path
+        request_date = dcas_request.requested_at.date()
         dcas_output = DCASPipelineOutput(
-            dcas_request.requested_at.date(),
+            request_date,
             duck_db_num_threads=preferences.duckdb_threads_num
         )
         dcas_output._setup_s3fs()
@@ -337,51 +414,204 @@ def log_farms_without_messages(request_id, chunk_size=1000):
 
         # Clear existing DCASErrorLog
         DCASErrorLog.objects.filter(
-            request=dcas_request,
-            error_type=DCASErrorType.MISSING_MESSAGES
+            request=dcas_request
         ).delete()
 
-        # Query farms without messages in chunks
-        for df_chunk in DataQuery.get_farms_without_messages(
-            dcas_request.requested_at.date(),
-            parquet_path,
-            dcas_output._get_connection(dcas_output.s3),
-            chunk_size=chunk_size
-        ):
-            if df_chunk.empty:
-                logger.info(
-                    "No farms found with missing messages in this chunk."
-                )
-                continue
+        conn = dcas_output._get_connection(dcas_output.s3)
 
-            # Log missing messages in the database
-            error_logs = []
-            for _, row in df_chunk.iterrows():
-                if not Farm.objects.filter(id=row['farm_id']).exists():
-                    logger.warning(
-                        f"Farm ID {row['farm_id']} not found, skipping."
-                    )
-                    continue
+        # Copy data from parquet to duckdb table
+        sql = (f"""
+            CREATE TABLE dcas_empty_message AS
+            SELECT {dcas_request.id} as request_id,
+                registry_id as farm_registry_id,
+                'MISSING_MESSAGES' as error_type,
+                'Farm registry has no advisory message' as error_message,
+                json_array(message, message_2, message_3, message_4,
+                message_5, final_message) as messages,
+                json_object(
+                    'relative_humidity', CAST(humidity AS VARCHAR),
+                    'seasonal_precipitation',
+                    CAST(seasonal_precipitation AS VARCHAR),
+                    'temperature', CAST(temperature AS VARCHAR),
+                    'ppet', CAST(p_pet AS VARCHAR),
+                    'growth_stage_precipitation',
+                    CAST(growth_stage_precipitation AS VARCHAR),
+                    'growth_stage_date', growth_stage_start_date,
+                    'growth_stage', growth_stage,
+                    'prev_week_message', prev_week_message,
+                    'total_gdd', total_gdd
+                ) as data,
+                current_localtimestamp() as logged_at
+            FROM read_parquet('{parquet_path}', hive_partitioning=true)
+            WHERE year={request_date.year} AND
+            month={request_date.month} AND
+            day={request_date.day} AND
+            is_empty_message = true
+        """)
+        conn.execute(sql)
 
-                error_logs.append(DCASErrorLog(
-                    request=dcas_request,
-                    farm_id=row['farm_id'],
-                    error_type=DCASErrorType.MISSING_MESSAGES,
-                    error_message=(
-                        f"Farm {row['farm_unique_id']} "
-                        f"({row['crop']} - {row['growth_stage']}) "
-                        f"has no advisory messages."
-                    )
-                ))
+        sql = (f"""
+            CREATE TABLE dcas_repetitive_message AS
+            SELECT {dcas_request.id} as request_id,
+                registry_id as farm_registry_id,
+                'FOUND_REPETITIVE' as error_type,
+                'First message is repetitive message' as error_message,
+                json_array(message, message_2, message_3, message_4,
+                message_5, final_message) as messages,
+                json_object(
+                    'relative_humidity', CAST(humidity AS VARCHAR),
+                    'seasonal_precipitation',
+                    CAST(seasonal_precipitation AS VARCHAR),
+                    'temperature', CAST(temperature AS VARCHAR),
+                    'ppet', CAST(p_pet AS VARCHAR),
+                    'growth_stage_precipitation',
+                    CAST(growth_stage_precipitation AS VARCHAR),
+                    'growth_stage_date', growth_stage_start_date,
+                    'growth_stage', growth_stage,
+                    'prev_week_message', prev_week_message,
+                    'total_gdd', total_gdd
+                ) as data,
+                current_localtimestamp() as logged_at
+            FROM read_parquet('{parquet_path}', hive_partitioning=true)
+            WHERE year={request_date.year} AND
+            month={request_date.month} AND
+            day={request_date.day} AND
+            has_repetitive_message = true
+        """)
+        conn.execute(sql)
 
-            # Bulk insert logs per chunk to optimize database writes
-            if error_logs:
-                DCASErrorLog.objects.bulk_create(error_logs)
-                logger.info(
-                    f"Logged {len(error_logs)} farms with missing messages."
-                )
+        # get count from dcas_empty_message
+        count_sql = """
+            SELECT COUNT(*) FROM dcas_empty_message;
+        """
+        count = conn.execute(count_sql).fetchone()[0]
+        logger.info(f"Count of empty messages: {count}")
+        if not dcas_request.config:
+            dcas_request.config = {}
+        dcas_request.config['empty_message_count'] = count
 
+        # get count from dcas_repetitive_message
+        count_sql = """
+            SELECT COUNT(*) FROM dcas_repetitive_message;
+        """
+        count = conn.execute(count_sql).fetchone()[0]
+        logger.info(f"Count of repetitive messages: {count}")
+        dcas_request.config['repetitive_message_count'] = count
+        dcas_request.save()
+
+        # enable extension
+        conn.install_extension("postgres")
+        conn.load_extension("postgres")
+
+        # insert to dcas_error_log table
+        pg_conn_str = (
+            "host={HOST} port={PORT} user={USER} "
+            "password={PASSWORD} dbname={NAME}".format(
+                **connection.settings_dict
+            )
+        )
+        conn.execute(f"""
+            ATTACH '{pg_conn_str}' AS pg_conn
+            (TYPE postgres, SCHEMA 'public');
+        """)
+
+        insert_sql = """
+            INSERT INTO pg_conn.dcas_error_log
+            (request_id, farm_registry_id, error_type, error_message,
+            messages, data, logged_at)
+            SELECT request_id, farm_registry_id, error_type, error_message,
+            messages, data, logged_at
+            FROM {};
+        """
+
+        conn.execute(insert_sql.format("dcas_empty_message"))
+        conn.execute(insert_sql.format("dcas_repetitive_message"))
     except DCASRequest.DoesNotExist:
         logger.error(f"No DCASRequest found for request_id {request_id}.")
     except Exception as e:
-        logger.error(f"Error processing missing messages: {str(e)}")
+        logger.error(f"Error processing dcas error: {str(e)}")
+        raise e
+    finally:
+        if conn:
+            conn.close()
+
+
+@shared_task(name='cleanup_dcas_old_output_files')
+def cleanup_dcas_old_output_files():
+    """
+    Celery task to clean up old DCAS output files.
+
+    This task deletes DCAS output files older than 14 days.
+    """
+    try:
+        # Get the current date
+        current_date = timezone.now().date()
+
+        # Calculate the cutoff date (14 days ago)
+        cutoff_date = current_date - datetime.timedelta(days=14)
+
+        # Query for old DCAS output files
+        old_files = DCASOutput.objects.filter(
+            delivered_at__lt=cutoff_date
+        )
+
+        # Delete old files
+        for file in old_files:
+            if file.file_exists:
+                remove_dcas_output_file(file.path, file.delivery_by)
+
+    except Exception as e:
+        logger.error(f"Error cleaning up old DCAS output files: {str(e)}")
+
+
+def update_farm_registry_growth_stage_output(request_id):
+    """Update farm registry growth stage."""
+    logger.info(f"Starting growth stage update for request_id: {request_id}")
+
+    # Step 1: Get DCAS Request
+    try:
+        dcas_request = DCASRequest.objects.get(id=request_id)
+    except DCASRequest.DoesNotExist:
+        logger.error(f"DCASRequest with ID {request_id} not found.")
+        return
+
+    # Step 2: Update DCASRequest Status to RUNNING
+    # TODO: might be better to log the progress into different table
+    # dcas_request.status = TaskStatus.RUNNING
+    # dcas_request.progress_text = "Growth stage update is in progress..."
+    # dcas_request.save()
+
+    # Step 3: Run Growth Stage Update
+    try:
+        pipeline = DCASDataPipeline(
+            dcas_request.farm_registry_group,
+            dcas_request.requested_at.date()
+        )
+        pipeline.update_farm_registry_growth_stage()
+        is_success = True
+    except Exception as ex:
+        logger.error(
+            f"Growth stage update failed for request_id {request_id}: {ex}"
+        )
+        is_success = False
+
+    # Step 4: Update Status in DCASRequest
+    dcas_request.end_time = timezone.now()
+    dcas_request.status = (
+        TaskStatus.COMPLETED if is_success else TaskStatus.STOPPED
+    )
+    dcas_request.progress_text = (
+        "Growth stage update completed successfully!"
+        if is_success else "Growth stage update failed."
+    )
+    dcas_request.save()
+
+    logger.info(
+        f"Growth stage update request_id:{request_id}, Success: {is_success}"
+    )
+
+
+@shared_task(name="update_growth_stage_task")
+def update_growth_stage_task(request_id):
+    """Celery task to update farm registry growth stage."""
+    update_farm_registry_growth_stage_output(request_id)

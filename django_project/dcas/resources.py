@@ -17,6 +17,10 @@ class DCASErrorLogResource(ModelResource):
         attribute="request__id",
         column_name="Request ID"
     )
+    date = Field(
+        attribute="request__requested_at__date",
+        column_name="Date"
+    )
     error_type = Field(
         attribute="error_type",
         column_name="Error Type"
@@ -31,15 +35,16 @@ class DCASErrorLogResource(ModelResource):
     )
     farm_unique_id = Field(
         column_name="Farm ID",
-        attribute="farm__unique_id"
+        attribute="farm_registry__farm__unique_id"
     )
+    # TODO: add fields related to farm registry and data
 
     class Meta:
         """Meta class for DCASErrorLogResource."""
 
         model = DCASErrorLog
         fields = [
-            "id", "request_id", "farm_unique_id",
+            "id", "request_id", 'date', "farm_unique_id",
             "error_type", "error_message", "logged_at"
         ]
         export_order = fields

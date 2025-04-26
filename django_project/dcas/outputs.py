@@ -10,6 +10,7 @@ import os
 import shutil
 import fsspec
 import pandas as pd
+from django.db import connection
 from dask.dataframe.core import DataFrame as dask_df
 import dask_geopandas as dg
 from dask_geopandas.io.parquet import to_parquet
@@ -35,15 +36,54 @@ class DCASPipelineOutput:
 
     TMP_BASE_DIR = '/tmp/dcas'
     DCAS_OUTPUT_DIR = 'dcas_output'
+    columns_mapping = {
+        'farmer_id': 'farm_unique_id',
+        'message_final': 'message_final',
+        'message_english': 'message_english',
+        'message_code': 'final_message',
+        'crop': 'crop',
+        'planting_date': 'planting_date',
+        'growth_stage': 'growth_stage',
+        'county': 'county',
+        'subcounty': 'subcounty',
+        'ward': 'ward',
+        'relative_humidity': 'humidity',
+        'seasonal_precipitation': 'seasonal_precipitation',
+        'temperature': 'temperature',
+        'ppet': 'p_pet',
+        'growth_stage_precipitation': 'growth_stage_precipitation',
+        'growth_stage_date': (
+            "strftime(to_timestamp(growth_stage_start_date)" +
+            ", '%Y-%m-%d')"
+        ),
+        'final_longitude': 'ROUND(ST_X(geometry), 4)',
+        'final_latitude': 'ROUND(ST_Y(geometry), 4)',
+        'grid_id': 'grid_unique_id',
+        'total_gdd': 'total_gdd',
+        'message': 'message',
+        'message_2': 'message_2',
+        'message_3': 'message_3',
+        'message_4': 'message_4',
+        'message_5': 'message_5',
+        'registry_id': 'farm_registry_id',
+        'grid_crop_key': 'grid_crop_key',
+        'preferred_language': 'preferred_language',
+        'date': 'date',
+        'prev_growth_stage_id': 'prev_growth_stage_id',
+        'prev_growth_stage_start_date': 'prev_growth_stage_start_date',
+        'config_id': 'config_id',
+        'is_empty_message': 'is_empty_message',
+        'has_repetitive_message': 'has_repetitive_message',
+        'prev_week_message': 'prev_week_message',
+        'iso_a3': 'iso_a3'
+    }
 
     def __init__(
-        self, request_date, extract_additional_columns=True,
-        duck_db_num_threads=None
+        self, request_date, duck_db_num_threads=None
     ):
         """Initialize DCASPipelineOutput."""
         self.fs = None
         self.request_date = request_date
-        self.extract_additional_columns = extract_additional_columns
         self.duck_db_num_threads = duck_db_num_threads
 
     def setup(self):
@@ -248,12 +288,11 @@ class DCASPipelineOutput:
 
         return is_success
 
-    def _get_connection(self, s3):
+    def _get_duckdb_config(self, s3):
         endpoint = s3['AWS_ENDPOINT_URL']
-        if settings.DEBUG:
-            endpoint = endpoint.replace('http://', '')
-        else:
-            endpoint = endpoint.replace('https://', '')
+        # Remove protocol from endpoint
+        endpoint = endpoint.replace('http://', '')
+        endpoint = endpoint.replace('https://', '')
         if endpoint.endswith('/'):
             endpoint = endpoint[:-1]
 
@@ -268,31 +307,35 @@ class DCASPipelineOutput:
         if self.duck_db_num_threads:
             config['threads'] = self.duck_db_num_threads
 
+        return config
+
+    def _get_connection(self, s3):
+        config = self._get_duckdb_config(s3)
         conn = duckdb.connect(config=config)
         conn.install_extension("httpfs")
         conn.load_extension("httpfs")
         conn.install_extension("spatial")
         conn.load_extension("spatial")
+        conn.install_extension("postgres_scanner")
+        conn.load_extension("postgres_scanner")
         return conn
 
-    def convert_to_csv(self):
+    def _map_column(self, column_name):
+        """Map column name to duckdb column name."""
+        if column_name not in self.columns_mapping:
+            raise ValueError(
+                f"Column name '{column_name}' not found in mapping."
+            )
+        name = self.columns_mapping[column_name]
+        if column_name != name:
+            column_name = f"{name} as {column_name}"
+
+        return column_name
+
+    def convert_to_csv(self, csv_columns):
         """Convert output to csv file."""
         file_path = self.output_csv_file_path
-        column_list = [
-            'farm_unique_id as farmer_id', 'crop',
-            'planting_date as plantingDate', 'growth_stage as growthStage',
-            'message', 'message_2', 'message_3', 'message_4', 'message_5',
-            'humidity as relativeHumidity',
-            'seasonal_precipitation as seasonalPrecipitation',
-            'temperature', 'p_pet as PPET',
-            'growth_stage_precipitation as growthStagePrecipitation'
-        ]
-        if self.extract_additional_columns:
-            column_list.extend([
-                "total_gdd", "grid_id",
-                "strftime(to_timestamp(growth_stage_start_date)" +
-                ", '%Y-%m-%d') as growth_stage_date"
-            ])
+        column_list = [self._map_column(col) for col in csv_columns]
 
         parquet_path = (
             f"'{self._get_directory_path(self.DCAS_OUTPUT_DIR)}/"
@@ -300,13 +343,63 @@ class DCASPipelineOutput:
         )
         s3 = self._get_s3_variables()
         conn = self._get_connection(s3)
-        sql = (
-            f"""
-            SELECT {','.join(column_list)}
+
+        # Copy data from parquet to duckdb table
+        conn.execute(f"""
+            CREATE TABLE dcas AS
+            SELECT *, '' as message_final, '' as message_english
             FROM read_parquet({parquet_path}, hive_partitioning=true)
             WHERE year={self.request_date.year} AND
             month={self.request_date.month} AND
             day={self.request_date.day}
+        """)
+
+        # Read message code and en/sw translations from template
+        pg_conn_str = (
+            "host={HOST} port={PORT} user={USER} "
+            "password={PASSWORD} dbname={NAME}".format(
+                **connection.settings_dict
+            )
+        )
+        conn.execute(f"""
+            CREATE TABLE message_template AS
+            SELECT * FROM postgres_scan(
+                '{pg_conn_str}', 'public', 'message_template'
+            )
+            WHERE application = 'DCAS';
+        """)
+
+        # Merge en/sw translations into dcas table
+        sql = (
+            """
+            WITH matched AS (
+                SELECT
+                d.registry_id,
+                m.template_en AS message_english,
+                CASE d.preferred_language
+                    WHEN 'en' THEN m.template_en
+                    WHEN 'sw' THEN m.template_sw
+                    ELSE m.template_en
+                END AS message_final
+                FROM message_template m
+                JOIN dcas d
+                ON d.final_message = m.code
+                WHERE d.final_message IS NOT NULL
+            )
+            UPDATE dcas d
+            SET message_final = matched.message_final,
+            message_english = matched.message_english
+            FROM matched
+            WHERE d.registry_id = matched.registry_id
+            """
+        )
+        conn.execute(sql)
+
+        # export to csv
+        sql = (
+            f"""
+            SELECT {','.join(column_list)}
+            FROM dcas
             """
         )
         final_query = (

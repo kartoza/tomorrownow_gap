@@ -7,13 +7,13 @@ Tomorrow Now GAP.
 
 import numpy as np
 import pandas as pd
-from mock import patch
+from mock import patch, MagicMock
 from datetime import datetime, timedelta
 
 from dcas.tests.base import DCASPipelineBaseTest
 from dcas.functions import (
     calculate_growth_stage, get_last_message_date,
-    filter_messages_by_weeks
+    filter_messages_by_weeks, calculate_message_output
 )
 
 
@@ -394,3 +394,139 @@ class DCASPipelineFunctionTest(DCASPipelineBaseTest):
 
         # Ensure `read_grid_crop_data` was called once
         mock_read_grid_crop_data.assert_called_once_with("/fake/path", [], [])
+
+    @patch('dcas.service.MessagePriorityService.sort_messages')
+    def test_calculate_message_output(self, mock_sort_messages):
+        """Test calculate_message_output with mocked rule engine."""
+        # Input data for the function
+        input_data = {
+            'farm_id': 1,
+            'crop_id': 100,
+            'growth_stage_id': 2,
+            'crop_stage_type_id': 2,
+            'config_id': 1,
+            'gdd_sum': 450,
+            'temperature': 25,
+            'prev_week_message': None,
+        }
+        attrib_dict = {
+            'temperature': 1
+        }
+
+        # Mock the rule engine's behavior
+        def mock_execute_rule(input_data):
+            input_data.message_codes.add('MSG1')
+            input_data.message_codes.add('MSG2')
+        mock_rule_engine = MagicMock()
+        mock_rule_engine.execute_rule.side_effect = mock_execute_rule
+        mock_sort_messages.return_value = ['MSG1', 'MSG2']
+
+        # Call the function
+        result = calculate_message_output(
+            input_data,
+            mock_rule_engine,
+            attrib_dict
+        )
+
+        # Assertions
+        self.assertIn('message', result)
+        self.assertIn('message_2', result)
+        self.assertIn('is_empty_message', result)
+        self.assertIn('final_message', result)
+        self.assertEqual(result['message'], 'MSG1')
+        self.assertEqual(result['message_2'], 'MSG2')
+        self.assertEqual(result['is_empty_message'], False)
+        self.assertEqual(result['final_message'], 'MSG1')
+
+        # Ensure the rule engine was called with the correct parameters
+        mock_rule_engine.execute_rule.assert_called_once()
+        mock_sort_messages.assert_called_once()
+
+    def test_calculate_message_output_empty(self):
+        """Calculate message output with empty message codes."""
+        # Input data for the function
+        input_data = {
+            'farm_id': 1,
+            'crop_id': 100,
+            'growth_stage_id': 2,
+            'crop_stage_type_id': 2,
+            'config_id': 1,
+            'gdd_sum': 450,
+            'temperature': 25,
+            'prev_week_message': None,
+        }
+        attrib_dict = {
+            'temperature': 1
+        }
+
+        # Mock the rule engine's behavior
+        def mock_execute_rule(input_data):
+            pass
+        mock_rule_engine = MagicMock()
+        mock_rule_engine.execute_rule.side_effect = mock_execute_rule
+
+        # Call the function
+        result = calculate_message_output(
+            input_data,
+            mock_rule_engine,
+            attrib_dict
+        )
+
+        # Assertions
+        self.assertNotIn('message', result)
+        self.assertNotIn('message_2', result)
+        self.assertIn('is_empty_message', result)
+        self.assertNotIn('final_message', result)
+        self.assertEqual(result['is_empty_message'], True)
+
+        # Ensure the rule engine was called with the correct parameters
+        mock_rule_engine.execute_rule.assert_called_once()
+
+    @patch('dcas.service.MessagePriorityService.sort_messages')
+    def test_calculate_message_output_repetitive(self, mock_sort_messages):
+        """Test calculate_message_output with repetitive messages."""
+        # Input data for the function
+        input_data = {
+            'farm_id': 1,
+            'crop_id': 100,
+            'growth_stage_id': 2,
+            'crop_stage_type_id': 2,
+            'config_id': 1,
+            'gdd_sum': 450,
+            'temperature': 25,
+            'prev_week_message': 'MSG1',
+        }
+        attrib_dict = {
+            'temperature': 1
+        }
+
+        # Mock the rule engine's behavior
+        def mock_execute_rule(input_data):
+            input_data.message_codes.add('MSG1')
+            input_data.message_codes.add('MSG2')
+        mock_rule_engine = MagicMock()
+        mock_rule_engine.execute_rule.side_effect = mock_execute_rule
+        mock_sort_messages.return_value = ['MSG1', 'MSG2']
+
+        # Call the function
+        result = calculate_message_output(
+            input_data,
+            mock_rule_engine,
+            attrib_dict
+        )
+
+        # Assertions
+        self.assertIn('message', result)
+        self.assertIn('message_2', result)
+        self.assertIn('is_empty_message', result)
+        self.assertIn('has_repetitive_message', result)
+        self.assertIn('final_message', result)
+        self.assertEqual(result['message'], 'MSG1')
+        self.assertEqual(result['message_2'], 'MSG2')
+        self.assertEqual(result['is_empty_message'], False)
+        self.assertEqual(result['has_repetitive_message'], True)
+        self.assertEqual(result['final_message'], 'MSG2')
+
+        # Ensure the rule engine was called with the correct parameters
+        mock_rule_engine.execute_rule.assert_called_once()
+        mock_sort_messages.assert_called_once()

@@ -120,7 +120,10 @@ class DCASMessageIngestor(BaseIngestor):
 
                 # Save in batches
                 if idx % batch_size == 0:
-                    MessageTemplate.objects.bulk_create(batch_messages)
+                    MessageTemplate.objects.bulk_create(
+                        batch_messages,
+                        ignore_conflicts=True
+                    )
                     DCASMessagePriority.objects.bulk_create(
                         batch_priorities
                     )
@@ -129,7 +132,10 @@ class DCASMessageIngestor(BaseIngestor):
 
             # Save remaining messages
             if batch_messages:
-                MessageTemplate.objects.bulk_create(batch_messages)
+                MessageTemplate.objects.bulk_create(
+                    batch_messages,
+                    ignore_conflicts=True
+                )
                 DCASMessagePriority.objects.bulk_create(
                     batch_priorities
                 )

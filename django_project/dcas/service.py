@@ -6,7 +6,7 @@ Tomorrow Now GAP.
 """
 
 from django.core.cache import cache
-from dcas.models import GDDMatrix
+from dcas.models import GDDMatrix, DCASMessagePriority
 
 
 class GrowthStageService:
@@ -155,5 +155,118 @@ class GrowthStageService:
             )
         ]
 
-        if all_cache_keys:
-            cache.delete_many(all_cache_keys)
+        try:
+            if all_cache_keys:
+                cache.delete_many(all_cache_keys)
+        except Exception:
+            pass
+
+
+class MessagePriorityService:
+    """A service to manage message priorities."""
+
+    CACHE_KEY = "message_priority:{code}:{config_id}"
+    LOWEST_PRIORITY = 0
+
+    @staticmethod
+    def get_priority(code, config_id, bypass_db=False):
+        """
+        Get the message priority for a given code and config ID.
+
+        :param code: Message code
+        :type code: str
+        :param config_id: Configuration ID
+        :type config_id: int
+        :param bypass_db: Flag to bypass database lookup
+        :type bypass_db: bool
+        :return: Priority value or None if not found
+        :rtype: int or None
+        """
+        cache_key = MessagePriorityService.CACHE_KEY.format(
+            code=code,
+            config_id=config_id
+        )
+        result = cache.get(cache_key)
+        if result is None:
+            if bypass_db:
+                # If bypass_db is True, return lowest priority
+                return MessagePriorityService.LOWEST_PRIORITY
+
+            # Load from the database if not in cache
+            try:
+                result = DCASMessagePriority.objects.get(
+                    code=code,
+                    config_id=config_id
+                ).priority
+                cache.set(cache_key, result, timeout=None)
+            except DCASMessagePriority.DoesNotExist:
+                # If not found in the database, return lowest priority
+                return MessagePriorityService.LOWEST_PRIORITY
+        return result
+
+    @staticmethod
+    def load_priority():
+        """Preload all message priorities into the cache."""
+        all_priorities = list(
+            DCASMessagePriority.objects.all()
+            .values("code", "config__id", "priority")
+        )
+
+        cache_map = {}
+        for priority in all_priorities:
+            cache_key = MessagePriorityService.CACHE_KEY.format(
+                code=priority["code"],
+                config_id=priority["config__id"]
+            )
+            cache_map[cache_key] = priority["priority"]
+
+        # Efficient bulk cache set
+        cache.set_many(cache_map, timeout=None)
+
+    @staticmethod
+    def cleanup_priority():
+        """
+        Remove all message priorities from the cache.
+
+        Clears the cached message priorities,
+        once the pipeline has completed.
+        """
+        all_cache_keys = [
+            MessagePriorityService.CACHE_KEY.format(
+                code=priority["code"],
+                config_id=priority["config__id"]
+            )
+            for priority in DCASMessagePriority.objects.values(
+                "code", "config__id"
+            )
+        ]
+        try:
+            if all_cache_keys:
+                cache.delete_many(all_cache_keys)
+        except Exception:
+            pass
+
+    @staticmethod
+    def sort_messages(messages, config_id, bypass_db=False):
+        """
+        Sort messages by priority in descending order.
+
+        :param messages: List of message codes
+        :type messages: list
+        :param config_id: Configuration ID
+        :type config_id: int
+        :param bypass_db: Flag to bypass database lookup
+        :type bypass_db: bool
+        :return: Sorted list of messages by priority
+        :rtype: list
+        """
+        sorted_messages = sorted(
+            messages,
+            key=(
+                lambda x: MessagePriorityService.get_priority(
+                    x, config_id, bypass_db
+                )
+            ),
+            reverse=True
+        )
+        return sorted_messages
