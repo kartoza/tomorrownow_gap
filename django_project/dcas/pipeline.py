@@ -40,7 +40,7 @@ from dcas.queries import DataQuery
 from dcas.outputs import DCASPipelineOutput, OutputType
 from dcas.inputs import DCASPipelineInput
 from dcas.functions import filter_messages_by_weeks
-from dcas.service import GrowthStageService
+from dcas.service import GrowthStageService, MessagePriorityService
 
 
 logger = logging.getLogger(__name__)
@@ -58,7 +58,8 @@ class DCASDataPipeline:
     def __init__(
         self, farm_registry_group_ids: list,
         request_date: datetime.date, farm_num_partitions = None,
-        grid_crop_num_partitions = None, duck_db_num_threads=None
+        grid_crop_num_partitions = None, duck_db_num_threads=None,
+        previous_days_to_check=7
     ):
         """Initialize DCAS Data Pipeline.
 
@@ -66,8 +67,15 @@ class DCASDataPipeline:
         :type farm_registry_group_ids: list
         :param request_date: date to process
         :type request_date: date
+        :param farm_num_partitions: number of partitions for farm registry
+        :type farm_num_partitions: int
+        :param grid_crop_num_partitions: number of partitions for grid crop
+        :type grid_crop_num_partitions: int
         :param duck_db_num_threads: number of threads for duck db
         :type duck_db_num_threads: int
+        :param previous_days_to_check: number of days to
+            check message that has been sent (Default: 7)
+        :type previous_days_to_check: int
         """
         self.farm_registry_group_ids = farm_registry_group_ids
         self.fs = None
@@ -89,6 +97,10 @@ class DCASDataPipeline:
             self.DEFAULT_GRID_CROP_NUM_PARTITIONS if
             grid_crop_num_partitions is None else grid_crop_num_partitions
         )
+        self.previous_date_to_check = request_date - datetime.timedelta(
+            days=previous_days_to_check
+        )
+        self.previous_message_db = None
 
     def setup(self):
         """Set the data pipeline."""
@@ -119,10 +131,6 @@ class DCASDataPipeline:
         return 'postgresql://{USER}:{PASSWORD}@{HOST}:{PORT}/{NAME}'.format(
             **connection.settings_dict
         )
-
-    def cleanup_gdd_matrix(self):
-        """Cleanup GDD Matrix."""
-        GrowthStageService.cleanup_matrix()
 
     def load_grid_data(self) -> pd.DataFrame:
         """Load grid data from FarmRegistry table.
@@ -318,10 +326,33 @@ class DCASDataPipeline:
         self.data_output.save(OutputType.GRID_DATA, grid_df)
         del grid_df
 
+    def load_previous_message(self):
+        """Load previous message data."""
+        start_time = time.time()
+        duckdb_config = self.data_output._get_duckdb_config(
+            self.data_output.s3
+        )
+        output_dir = self.data_output._get_directory_path(
+            self.data_output.DCAS_OUTPUT_DIR
+        )
+        self.previous_message_db = (
+            self.data_query.fetch_previous_week_message(
+                output_dir,
+                self.previous_date_to_check,
+                self.data_output.TMP_BASE_DIR,
+                duckdb_config
+            )
+        )
+        print(
+            f"Load previous message took {time.time() - start_time} seconds."
+        )
+
     def process_grid_crop_data(self):
         """Process Grid and Crop Data."""
         # Load GDD Matrix before processing grid crop data
         GrowthStageService.load_matrix()
+        # Load Message priority
+        MessagePriorityService.load_priority()
 
         grid_data_file_path = self.data_output.grid_data_file_path
 
@@ -412,10 +443,15 @@ class DCASDataPipeline:
             message_2=None,
             message_3=None,
             message_4=None,
-            message_5=None
+            message_5=None,
+            is_empty_message=False,
+            has_repetitive_message=False,
+            final_message=None,
+            prev_week_message=None
         )
         grid_crop_df = grid_crop_df.map_partitions(
             process_partition_message_output,
+            self.previous_message_db,
             meta=grid_crop_df_meta
         )
 
@@ -443,7 +479,6 @@ class DCASDataPipeline:
             self.duck_db_num_threads,
             meta=farm_df_meta
         )
-        self.update_farm_registry_growth_stage()
 
         self.data_output.save(OutputType.FARM_CROP_DATA, farm_df)
 
@@ -527,17 +562,8 @@ class DCASDataPipeline:
 
     def _append_grid_crop_meta(self, farm_df_meta: pd.DataFrame):
         # load from grid_crop data
-        grid_crop_df_meta_chunks = (
-            self.data_query.read_grid_data_crop_meta_parquet(
-                self.data_output.grid_crop_data_dir_path
-            )
-        )
-        # Convert iterator to a single DataFrame
-        grid_crop_df_meta = pd.concat(
-            list(
-                grid_crop_df_meta_chunks
-            ),
-            ignore_index=True
+        grid_crop_df_meta = self.data_query.read_grid_data_crop_meta_parquet(
+            self.data_output.grid_crop_data_dir_path
         )
 
         # adding new columns:
@@ -555,12 +581,6 @@ class DCASDataPipeline:
         # add growth_stage
         meta = meta.assign(growth_stage=None)
         return pd.concat([farm_df_meta, meta], axis=1)
-
-    def extract_csv_output(self):
-        """Extract csv output file."""
-        file_path = self.data_output.convert_to_csv()
-
-        return file_path
 
     def filter_message_output(self):
         """Filter messages before extracting CSV."""
@@ -612,18 +632,16 @@ class DCASDataPipeline:
         self.setup()
         start_time = time.time()
         self.data_collection()
+        self.load_previous_message()
         self.process_grid_crop_data()
         self.process_farm_registry_data()
-
-        self.extract_csv_output()
-
-        self.cleanup_gdd_matrix()
 
         print(f'Finished {time.time() - start_time} seconds.')
 
     def cleanup(self):
         """Cleanup resources."""
-        self.cleanup_gdd_matrix()
+        GrowthStageService.cleanup_matrix()
+        MessagePriorityService.cleanup_priority()
         if self.conn_engine:
             self.conn_engine.dispose()
 

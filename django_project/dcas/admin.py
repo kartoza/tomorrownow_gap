@@ -26,7 +26,7 @@ from dcas.tasks import (
     run_dcas,
     export_dcas_minio,
     export_dcas_sftp,
-    log_farms_without_messages
+    log_dcas_error
 )
 
 
@@ -95,7 +95,7 @@ def trigger_dcas_output_to_sftp(modeladmin, request, queryset):
 @admin.action(description='Trigger DCAS error handling')
 def trigger_dcas_error_handling(modeladmin, request, queryset):
     """Trigger DCAS error handling."""
-    log_farms_without_messages.delay(queryset.first().id)
+    log_dcas_error.delay(queryset.first().id)
     modeladmin.message_user(
         request,
         'Process will be started in background!',
@@ -144,22 +144,26 @@ class DCASErrorLogAdmin(ExportMixin, admin.ModelAdmin):
 
     list_display = (
         "id",
-        "request_id",
+        "request",
         "get_farm_unique_id",
         "error_type",
         "error_message",
         "logged_at",
     )
 
-    search_fields = ("error_message", "farm__unique_id", "request__id")
+    search_fields = (
+        "error_message", "farm_registry__farm__unique_id",
+        "request__id"
+    )
     list_filter = ("error_type", "logged_at", "request_id")
+    readonly_fields = ("request", "farm_registry",)
 
     def get_farm_unique_id(self, obj: DCASErrorLog):
         """Get the farm unique ID."""
-        return obj.farm.unique_id
+        return obj.farm_registry.farm.unique_id
 
     get_farm_unique_id.short_description = 'Farm ID'
-    get_farm_unique_id.admin_order_field = 'farm__unique_id'
+    get_farm_unique_id.admin_order_field = 'farm_registry__farm__unique_id'
 
 # GDD Config and Matrix
 

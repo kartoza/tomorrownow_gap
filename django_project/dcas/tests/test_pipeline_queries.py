@@ -5,14 +5,19 @@ Tomorrow Now GAP.
 .. note:: Unit tests for DCAS Queries functions.
 """
 
+import os
 import re
 import datetime
+import uuid
 from mock import patch, MagicMock
 import pandas as pd
 from sqlalchemy import create_engine
+from django.core.files.storage import storages
 
+from core.settings.utils import absolute_path
 from dcas.tests.base import DCASPipelineBaseTest
 from dcas.pipeline import DCASDataPipeline
+from dcas.outputs import DCASPipelineOutput
 from dcas.queries import DataQuery
 
 
@@ -99,3 +104,87 @@ class DCASQueriesTest(DCASPipelineBaseTest):
         self.assertIn('grid_id', df.columns)
         self.assertIn('grid_crop_key', df.columns)
         conn_engine.dispose()
+
+    def test_fetch_previous_week_no_file(self):
+        """Test fetch_previous_week_message function."""
+        output_dir = f'tmp/dcas_output_{uuid.uuid4().hex}'
+        working_dir = f'tmp/{uuid.uuid4().hex}'
+        os.makedirs(working_dir, exist_ok=True)
+        # init output
+        s3_storage = storages['gap_products']
+        dcas_output = DCASPipelineOutput(
+            datetime.date(2025, 4, 22),
+            duck_db_num_threads=2
+        )
+        dcas_output._setup_s3fs()
+        s3 = dcas_output._get_s3_variables()
+
+        # Call the function
+        db_config = dcas_output._get_duckdb_config(s3)
+        db_config['s3_use_ssl'] = False
+        data_query = DataQuery()
+        result_path = data_query.fetch_previous_week_message(
+            f's3://{s3_storage.bucket_name}/{output_dir}',
+            datetime.date(2025, 4, 22),
+            working_dir,
+            db_config
+        )
+        self.assertIsNone(result_path)
+        self.assertFalse(
+            os.path.exists(
+                os.path.join(working_dir, 'dcas_prev_week.duckdb')
+            )
+        )
+        # Clean up
+        os.removedirs(working_dir)
+
+    def test_fetch_previous_week_message(self):
+        """Test fetch_previous_week_message function."""
+        parquet_path = absolute_path(
+            'dcas', 'tests', 'data', 'dcas_test.parquet'
+        )
+        output_dir = f'tmp/dcas_output_{uuid.uuid4().hex}'
+        working_dir = f'tmp/{uuid.uuid4().hex}'
+        os.makedirs(working_dir, exist_ok=True)
+        s3_path = (
+            f'{output_dir}/iso_a3=KEN/year=2025/month=4/day=22/part.0.parquet'
+        )
+
+        # upload test parquet file to s3
+        s3_storage = storages['gap_products']
+        s3_storage.save(s3_path, open(parquet_path, 'rb'))
+
+        # init output
+        dcas_output = DCASPipelineOutput(
+            datetime.date(2025, 4, 22),
+            duck_db_num_threads=2
+        )
+        dcas_output._setup_s3fs()
+        s3 = dcas_output._get_s3_variables()
+
+        # Call the function
+        db_config = dcas_output._get_duckdb_config(s3)
+        db_config['s3_use_ssl'] = False
+        data_query = DataQuery()
+        result_path = data_query.fetch_previous_week_message(
+            f's3://{s3_storage.bucket_name}/{output_dir}',
+            datetime.date(2025, 4, 22),
+            working_dir,
+            db_config
+        )
+
+        self.assertEqual(
+            result_path,
+            os.path.join(working_dir, 'dcas_prev_week.duckdb')
+        )
+
+        self.assertTrue(
+            os.path.exists(
+                os.path.join(working_dir, 'dcas_prev_week.duckdb')
+            )
+        )
+
+        # Clean up
+        os.remove(os.path.join(working_dir, 'dcas_prev_week.duckdb'))
+        os.removedirs(working_dir)
+        s3_storage.delete(s3_path)

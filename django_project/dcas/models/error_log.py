@@ -9,7 +9,7 @@ from django.utils import timezone
 from django.contrib.gis.db import models
 from django.utils.translation import gettext_lazy as _
 
-from gap.models.farm import Farm
+from gap.models.farm_registry import FarmRegistry
 from dcas.models.request import DCASRequest
 
 
@@ -18,6 +18,7 @@ class DCASErrorType(models.TextChoices):
 
     MISSING_MESSAGES = "MISSING_MESSAGES", _("Missing Messages")
     PROCESSING_FAILURE = "PROCESSING_FAILURE", _("Processing Failure")
+    FOUND_REPETITIVE = "FOUND_REPETITIVE", _("Found Repetitive")
     OTHER = "OTHER", _("Other")
 
 
@@ -29,9 +30,11 @@ class DCASErrorLog(models.Model):
         related_name='error_logs',
         help_text="The DCAS request associated with this error."
     )
-    farm = models.ForeignKey(
-        Farm, on_delete=models.CASCADE,
-        help_text="The unique identifier of the farm that failed to process."
+    farm_registry = models.ForeignKey(
+        FarmRegistry, on_delete=models.CASCADE,
+        help_text="The unique identifier of the farm that failed to process.",
+        null=True,
+        blank=True
     )
     error_type = models.CharField(
         max_length=50,
@@ -40,11 +43,25 @@ class DCASErrorLog(models.Model):
         help_text="The type of error encountered."
     )
     error_message = models.TextField(
-        help_text="Details about why the farm could not be processed."
+        help_text="Details about why the farm could not be processed.",
+        null=True,
+        blank=True
     )
     logged_at = models.DateTimeField(
         default=timezone.now,
         help_text="The time when the error was logged."
+    )
+    messages = models.JSONField(
+        default=list,
+        blank=True,
+        null=True,
+        help_text="List of output message codes."
+    )
+    data = models.JSONField(
+        default=dict,
+        blank=True,
+        null=True,
+        help_text="Additional data related to the error."
     )
 
     class Meta:

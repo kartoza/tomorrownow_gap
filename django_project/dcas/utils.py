@@ -90,6 +90,28 @@ def print_df_memory_usage(df: pd.DataFrame):
     print(f"Total memory usage: {total_memory / 1024:.2f} KB")
 
 
+def get_previous_week_message(duckdb_file: str, grid_crop_keys: list):
+    """
+    Get the previous week's message for a given grid crop key.
+
+    :param duckdb_file: Path to the DuckDB file.
+    :type duckdb_file: str
+    :param grid_crop_keys: List of grid crop keys.
+    :type grid_crop_keys: list
+    :return: DataFrame containing the previous week's message.
+    :rtype: pd.DataFrame
+    """
+    conn = duckdb.connect(duckdb_file)
+    query = f"""
+        SELECT *
+        FROM dcas
+        WHERE grid_crop_key IN {grid_crop_keys}
+    """
+    df = conn.sql(query).df()
+    conn.close()
+    return df
+
+
 def remove_dcas_output_file(file_path: str, delivery_by: str):
     """Remove dcas output file.
 

@@ -11,7 +11,8 @@ from dcas.tests.base import DCASPipelineBaseTest
 from dcas.utils import (
     read_grid_crop_data, read_grid_data,
     remove_dcas_output_file,
-    dcas_output_file_exists
+    dcas_output_file_exists,
+    get_previous_week_message
 )
 
 
@@ -66,6 +67,19 @@ class DCASUtilsTest(DCASPipelineBaseTest):
         mock_duckdb_connect.return_value = mock_conn
 
         read_grid_crop_data('test.parquet', ['1_1_1'], 2)
+
+        mock_duckdb_connect.assert_called_once()
+        mock_conn.sql.assert_called_once()
+        mock_conn.close.assert_called_once()
+
+    @patch('dcas.outputs.duckdb.connect')
+    def test_get_previous_week_message(self, mock_duckdb_connect):
+        """Test get_previous_week_message function."""
+        # Mock the connection object
+        mock_conn = MagicMock()
+        mock_duckdb_connect.return_value = mock_conn
+
+        get_previous_week_message('test.parquet', ['column_1'])
 
         mock_duckdb_connect.assert_called_once()
         mock_conn.sql.assert_called_once()
