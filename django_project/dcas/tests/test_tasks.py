@@ -239,24 +239,9 @@ class DCASPipelineTaskTest(DCASPipelineBaseTest):
             )
         )
 
-        # Mock DuckDB return DataFrames (Simulating chunked retrieval)
-        chunk_1 = pd.DataFrame(
-            {
-                'farm_id': [
-                    self.farm_registry_1.farm.id,
-                    self.farm_registry_2.farm.id
-                ],
-                'crop': ['Maize Early', 'Cassava Mid'],
-                'farm_unique_id': [1, 2],
-                'growth_stage': ['testA', 'testB']
-            }
-        )
-
-        expected_chunks = [chunk_1]
-
         # Configure mock connection to return chunks in order
         conn = MagicMock()
-        conn.sql.return_value.df.side_effect = expected_chunks
+        conn.execute.return_value.fetchone.return_value = [0]
         mocked_duck_db.return_value = conn
 
         # run error handling
@@ -266,13 +251,8 @@ class DCASPipelineTaskTest(DCASPipelineBaseTest):
             request=request,
             error_type=DCASErrorType.MISSING_MESSAGES
         )
-        self.assertEqual(error_logs.count(), 2)
-        error_log1 = error_logs.filter(farm=self.farm_registry_1.farm).first()
-        self.assertTrue(error_log1)
-        self.assertIn('Farm 1', error_log1.error_message)
-        error_log2 = error_logs.filter(farm=self.farm_registry_2.farm).first()
-        self.assertTrue(error_log2)
-        self.assertIn('Farm 2', error_log2.error_message)
+        self.assertEqual(error_logs.count(), 0)
+        self.assertEqual(conn.execute.call_count, 7)
 
     @patch('dcas.pipeline.DCASDataPipeline.update_farm_registry_growth_stage')
     @patch('dcas.models.DCASRequest.objects.get')

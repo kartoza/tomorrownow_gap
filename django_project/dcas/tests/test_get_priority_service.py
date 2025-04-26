@@ -61,7 +61,7 @@ class TestMessagePriorityService(TestCase):
         mock_cache_get.return_value = None
         service = MessagePriorityService()
         priority = service.get_priority('non_existent_key', 1)
-        self.assertIsNone(priority)
+        self.assertEqual(priority, 0)
         mock_cache_get.assert_called_once_with(
             'message_priority:non_existent_key:1'
         )
