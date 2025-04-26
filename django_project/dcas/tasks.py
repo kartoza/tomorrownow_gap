@@ -428,3 +428,55 @@ def log_farms_without_messages(request_id, chunk_size=1000):
         logger.error(f"No DCASRequest found for request_id {request_id}.")
     except Exception as e:
         logger.error(f"Error processing missing messages: {str(e)}")
+
+
+def update_farm_registry_growth_stage_output(request_id):
+    """Update farm registry growth stage."""
+    logger.info(f"Starting growth stage update for request_id: {request_id}")
+
+    # Step 1: Get DCAS Request
+    try:
+        dcas_request = DCASRequest.objects.get(id=request_id)
+    except DCASRequest.DoesNotExist:
+        logger.error(f"DCASRequest with ID {request_id} not found.")
+        return
+
+    # Step 2: Update DCASRequest Status to RUNNING
+    dcas_request.status = TaskStatus.RUNNING
+    dcas_request.progress_text = "Growth stage update is in progress..."
+    dcas_request.save()
+
+    # Step 3: Run Growth Stage Update
+    try:
+        pipeline = DCASDataPipeline(
+            dcas_request.farm_registry_group,
+            dcas_request.requested_at.date()
+        )
+        pipeline.update_farm_registry_growth_stage()
+        is_success = True
+    except Exception as ex:
+        logger.error(
+            f"Growth stage update failed for request_id {request_id}: {ex}"
+        )
+        is_success = False
+
+    # Step 4: Update Status in DCASRequest
+    dcas_request.end_time = timezone.now()
+    dcas_request.status = (
+        TaskStatus.COMPLETED if is_success else TaskStatus.STOPPED
+    )
+    dcas_request.progress_text = (
+        "Growth stage update completed successfully!"
+        if is_success else "Growth stage update failed."
+    )
+    dcas_request.save()
+
+    logger.info(
+        f"Growth stage update request_id:{request_id}, Success: {is_success}"
+    )
+
+
+@shared_task(name="update_growth_stage_task")
+def update_growth_stage_task(request_id):
+    """Celery task to update farm registry growth stage."""
+    update_farm_registry_growth_stage_output(request_id)
