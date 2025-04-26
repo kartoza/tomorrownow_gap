@@ -26,6 +26,7 @@ from dcas.models import (
 from dcas.pipeline import DCASDataPipeline
 from dcas.queries import DataQuery
 from dcas.outputs import DCASPipelineOutput
+from dcas.utils import remove_dcas_output_file
 
 
 logger = logging.getLogger(__name__)
@@ -428,6 +429,34 @@ def log_farms_without_messages(request_id, chunk_size=1000):
         logger.error(f"No DCASRequest found for request_id {request_id}.")
     except Exception as e:
         logger.error(f"Error processing missing messages: {str(e)}")
+
+
+@shared_task(name='cleanup_dcas_old_output_files')
+def cleanup_dcas_old_output_files():
+    """
+    Celery task to clean up old DCAS output files.
+
+    This task deletes DCAS output files older than 14 days.
+    """
+    try:
+        # Get the current date
+        current_date = timezone.now().date()
+
+        # Calculate the cutoff date (14 days ago)
+        cutoff_date = current_date - datetime.timedelta(days=14)
+
+        # Query for old DCAS output files
+        old_files = DCASOutput.objects.filter(
+            delivered_at__lt=cutoff_date
+        )
+
+        # Delete old files
+        for file in old_files:
+            if file.file_exists:
+                remove_dcas_output_file(file.path, file.delivery_by)
+
+    except Exception as e:
+        logger.error(f"Error cleaning up old DCAS output files: {str(e)}")
 
 
 def update_farm_registry_growth_stage_output(request_id):

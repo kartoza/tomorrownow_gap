@@ -97,6 +97,11 @@ app.conf.beat_schedule = {
         # Run every 6 hours
         'schedule': crontab(minute='0', hour='*/6'),
     },
+    'cleanup-dcas-old-output-files': {
+        'task': 'cleanup_dcas_old_output_files',
+        # Run every week at 00:15 UTC
+        'schedule': crontab(minute='15', hour='00', day_of_week='0'),
+    },
 }
 
 
