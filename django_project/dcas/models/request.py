@@ -55,5 +55,5 @@ class DCASRequest(models.Model):
         ordering = ['-requested_at']
 
     def __str__(self):
-        """String representation of the DCASRequest."""
-        return f"DCASRequest {self.id} - {self.requested_at}"
+        """Get string representation of the DCASRequest."""
+        return f"DCASRequest {self.id} - {self.requested_at.date()}"
