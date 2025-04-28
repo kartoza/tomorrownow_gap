@@ -245,7 +245,7 @@ class CollectorTaskTest(TestCase):
         mock_count.count.return_value = 5
 
         def mocked_run():
-            """Mocked run method."""
+            """Run collector that does nothing."""
             pass
 
         mock_collector_run.side_effect = mocked_run
