@@ -107,6 +107,11 @@ app.conf.beat_schedule = {
         # Run every first day of each month at 06:00 UTC
         'schedule': crontab(minute='0', hour='6', day_of_month=1),
     },
+    'tio-hourly-collector-session': {
+        'task': 'tio_hourly_collector_session',
+        # Run every day at 03:00 UTC
+        'schedule': crontab(minute='0', hour='3'),
+    }
 }
 
 
