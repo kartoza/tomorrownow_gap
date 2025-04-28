@@ -7,8 +7,10 @@ Tomorrow Now GAP.
 
 from celery.utils.log import get_task_logger
 
+from datetime import date
 from django.core.mail import send_mail
 from django.conf import settings
+from django.utils import timezone
 
 from core.celery import app
 from core.utils.emails import get_admin_emails
@@ -186,3 +188,147 @@ def notify_collector_failure(session_id: int, exception: str):
     return (
         f"Logged collector {session_id} failed. Admins notified."
     )
+
+
+def check_date_in_collectors(date: date, collectors: list):
+    """Check if date is in collectors."""
+    for collector in collectors:
+        forecast_date = collector.additional_config.get('forecast_date', None)
+        if forecast_date and forecast_date == date.isoformat():
+            total_file = collector.dataset_files.count()
+            if (
+                collector.status == IngestorSessionStatus.SUCCESS and
+                total_file > 0
+            ):
+                return True, None
+            else:
+                return False, collector
+
+    return False, None
+
+
+def get_existing_collectors(collectors: list):
+    """Get existing collectors."""
+    existing_collectors = []
+    for existing_collector in collectors:
+        try:
+            collector = CollectorSession.objects.get(
+                id=existing_collector
+            )
+            existing_collectors.append(collector)
+        except CollectorSession.DoesNotExist:
+            logger.error(
+                f"Existing collector {existing_collector} not found."
+            )
+    return existing_collectors
+
+
+@app.task(name='salient_collector_historical')
+def run_salient_collector_historical():
+    """Run collector for historical salient dataset."""
+    dataset = Dataset.objects.get(name='Salient Seasonal Forecast')
+    config = get_ingestor_config_from_preferences(dataset.provider)
+    historical_task = config.get('historical_task', None)
+    if historical_task is None:
+        raise ValueError("No historical_task found in config.")
+
+    collectors = []
+    # add existing from config if any
+    existing_collectors = historical_task.get('existing_collectors', None)
+    if existing_collectors:
+        collectors.extend(get_existing_collectors(existing_collectors))
+
+    dates_to_collect = []
+    # check if need to collect by year
+    collect_by_year = historical_task.get('collect_by_year', None)
+    # check if need to collect by list of date
+    collect_by_dates = historical_task.get('collect_by_dates', None)
+    if collect_by_year:
+        # iterate each month in the year
+        for month in range(1, 13):
+            dates_to_collect.append(
+                date(year=collect_by_year, month=month, day=1)
+            )
+    elif collect_by_dates:
+        # iterate each date in the list
+        for date_str in collect_by_dates:
+            dates_to_collect.append(
+                date.fromisoformat(date_str)
+            )
+    else:
+        # default to use current date
+        # NOTE: if using default, then should be run on first day of the month
+        dates_to_collect.append(timezone.now().date())
+
+    logger.info(
+        f"Collecting historical salient dataset for dates: "
+        f"{dates_to_collect}"
+    )
+
+    for forecast_date in dates_to_collect:
+        exists, collector = check_date_in_collectors(
+            forecast_date, collectors
+        )
+        if exists:
+            logger.info(
+                f"Collector for date {forecast_date} already exists."
+            )
+            continue
+
+        # create the collector session
+        exist_in_list = False
+        if collector is None:
+            collector = CollectorSession.objects.create(
+                ingestor_type=IngestorType.SALIENT,
+                additional_config={
+                    'forecast_date': forecast_date.isoformat()
+                }
+            )
+        else:
+            exist_in_list = True
+
+        # run the collector session
+        collector.run()
+
+        # if success, add to collectors
+        collector.refresh_from_db()
+        total_file = collector.dataset_files.count()
+        if total_file > 0:
+            if not exist_in_list:
+                collectors.append(collector)
+        else:
+            logger.error(
+                f"Collector for date {forecast_date} failed. "
+                f"Please check the logs."
+            )
+
+    # check if successful,
+    if len(collectors) == 0:
+        raise ValueError(
+            "No collector session created. Please check the logs."
+        )
+
+    logger.info(
+        f"Creating ingestor session for historical salient dataset: "
+        f"{len(collectors)} collectors - {dates_to_collect}"
+    )
+    # create the ingestor session
+    session = IngestorSession.objects.create(
+        ingestor_type=IngestorType.SALIENT,
+        trigger_task=False,
+        additional_config={
+            'remove_temp_file': historical_task.get('remove_temp_file', True),
+            'datasourcefile_name': (
+                historical_task.get('datasourcefile_name', None)
+            ),
+            'datasourcefile_id': (
+                historical_task.get('datasourcefile_id', None)
+            ),
+            'datasourcefile_exists': (
+                historical_task.get('datasourcefile_exists', False)
+            )
+        }
+    )
+    session.collectors.set(collectors)
+    session.save()
+    run_ingestor_session.delay(session.id)

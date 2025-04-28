@@ -102,6 +102,11 @@ app.conf.beat_schedule = {
         # Run every week at 00:15 UTC
         'schedule': crontab(minute='15', hour='00', day_of_week='0'),
     },
+    'salient-collector-historical': {
+        'task': 'salient_collector_historical',
+        # Run every first day of each month at 06:00 UTC
+        'schedule': crontab(minute='0', hour='6', day_of_month=1),
+    },
 }
 
 

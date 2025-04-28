@@ -48,7 +48,14 @@ def parse_context_id_from_parameters(parameters: str) -> str:
     :return: context id
     :rtype: str
     """
-    task_param = make_tuple(parameters or '()')
+    task_param = ()
+    try:
+        task_param = make_tuple(parameters or '()')
+    except Exception:
+        logger.error(
+            f'Failed to parse parameters: {parameters}',
+            exc_info=True
+        )
     if len(task_param) == 0:
         return None
     return task_param[0]
