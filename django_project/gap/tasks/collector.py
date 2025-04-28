@@ -144,6 +144,27 @@ def run_tio_collector_session():
     _do_run_zarr_collector(dataset, collector_session, IngestorType.TOMORROWIO)
 
 
+@app.task(name='tio_hourly_collector_session')
+def run_tio_hourly_collector_session():
+    """Run Collector for Hourly Tomorrow.io Dataset."""
+    dataset = Dataset.objects.get(
+        name='Tomorrow.io Short-term Hourly Forecast',
+        store_type=DatasetStore.ZARR
+    )
+
+    config = get_ingestor_config_from_preferences(dataset.provider)
+    # create the collector object
+    collector_session = CollectorSession.objects.create(
+        ingestor_type=IngestorType.HOURLY_TOMORROWIO,
+        additional_config=config
+    )
+    _do_run_zarr_collector(
+        dataset,
+        collector_session,
+        IngestorType.HOURLY_TOMORROWIO
+    )
+
+
 @app.task(name="notify_collector_failure")
 def notify_collector_failure(session_id: int, exception: str):
     """

@@ -40,7 +40,10 @@ from gap.ingestor.exceptions import (
     AdditionalConfigNotFoundException
 )
 from gap.factories import DataSourceFileFactory, GridFactory
-from gap.tasks.collector import run_tio_collector_session
+from gap.tasks.collector import (
+    run_tio_collector_session,
+    run_tio_hourly_collector_session
+)
 
 
 LAT_METADATA = {
@@ -419,6 +422,34 @@ class TestTioIngestor(TestCase):
         # assert
         session = IngestorSession.objects.filter(
             ingestor_type=IngestorType.TOMORROWIO,
+        ).order_by('id').last()
+        self.assertTrue(session)
+        self.assertEqual(session.collectors.count(), 1)
+        mock_collector.assert_called_once()
+        mock_ingestor.assert_called_once_with(session.id)
+
+    @patch('gap.models.ingestor.CollectorSession.dataset_files')
+    @patch('gap.models.ingestor.CollectorSession.run')
+    @patch('gap.tasks.ingestor.run_ingestor_session.delay')
+    def test_run_tio_hourly_collector_session(
+        self, mock_ingestor, mock_collector, mock_count
+    ):
+        """Test run tio hourly collector session."""
+        mock_count.count.return_value = 0
+        run_tio_hourly_collector_session()
+        # assert
+        mock_collector.assert_called_once()
+        mock_ingestor.assert_not_called()
+
+        mock_collector.reset_mock()
+        mock_ingestor.reset_mock()
+        # test with collector result
+        mock_count.count.return_value = 1
+        run_tio_hourly_collector_session()
+
+        # assert
+        session = IngestorSession.objects.filter(
+            ingestor_type=IngestorType.HOURLY_TOMORROWIO,
         ).order_by('id').last()
         self.assertTrue(session)
         self.assertEqual(session.collectors.count(), 1)
