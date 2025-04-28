@@ -41,6 +41,7 @@ class IngestorType:
     DCAS_RULE = 'DCAS Rules'
     FARM_REGISTRY = 'Farm Registry'
     DCAS_MESSAGE = 'DCAS Message'
+    HOURLY_TOMORROWIO = 'Hourly Tomorrow.io'
 
 
 class IngestorSessionStatus:
@@ -87,6 +88,7 @@ class BaseSession(models.Model):
             (IngestorType.DCAS_RULE, IngestorType.DCAS_RULE),
             (IngestorType.FARM_REGISTRY, IngestorType.FARM_REGISTRY),
             (IngestorType.DCAS_MESSAGE, IngestorType.DCAS_MESSAGE),
+            (IngestorType.HOURLY_TOMORROWIO, IngestorType.HOURLY_TOMORROWIO),
         ),
         max_length=512
     )
@@ -137,6 +139,7 @@ class CollectorSession(BaseSession):
             TioShortTermDuckDBCollector
         )
         from gap.ingestor.cbam_bias_adjust import CBAMBiasAdjustCollector
+        from gap.ingestor.tio_hourly import TioHourlyShortTermCollector
 
         ingestor = None
         if self.ingestor_type == IngestorType.CBAM:
@@ -147,6 +150,8 @@ class CollectorSession(BaseSession):
             ingestor = TioShortTermDuckDBCollector(self, working_dir)
         elif self.ingestor_type == IngestorType.CBAM_BIAS_ADJUST:
             ingestor = CBAMBiasAdjustCollector(self, working_dir)
+        elif self.ingestor_type == IngestorType.HOURLY_TOMORROWIO:
+            ingestor = TioHourlyShortTermCollector(self, working_dir)
 
         if ingestor:
             ingestor.run()
@@ -224,6 +229,7 @@ class IngestorSession(BaseSession):
             WindborneParquetIngestorAppender
         )
         from gap.ingestor.dcas_message import DCASMessageIngestor
+        from gap.ingestor.tio_hourly import TioHourlyShortTermIngestor
 
         ingestor = None
         if self.ingestor_type == IngestorType.TAHMO:
@@ -254,6 +260,8 @@ class IngestorSession(BaseSession):
             ingestor = DCASFarmRegistryIngestor
         elif self.ingestor_type == IngestorType.DCAS_MESSAGE:
             ingestor = DCASMessageIngestor
+        elif self.ingestor_type == IngestorType.HOURLY_TOMORROWIO:
+            ingestor = TioHourlyShortTermIngestor
 
         if ingestor:
             ingestor_obj = ingestor(self, working_dir)

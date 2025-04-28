@@ -200,7 +200,10 @@ class TomorrowIODatasetReader(BaseDatasetReader):
         payload = {
             'location': json.loads(self.location_input.geometry.geojson),
             'fields': [attr.source for attr in self.attributes],
-            'timesteps': ['1d'],
+            'timesteps': (
+                ['1h'] if
+                self.dataset.time_step == DatasetTimeStep.HOURLY else ['1d']
+            ),
             'units': 'metric',
         }
         if is_ltn:

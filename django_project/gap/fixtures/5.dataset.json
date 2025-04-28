@@ -152,5 +152,33 @@
       "is_internal_use": false,
       "observation_type": "NOT_SPECIFIED"
     }
+  },
+  {
+    "model": "gap.dataset",
+    "pk": 12,
+    "fields": {
+      "name": "Tomorrow.io Short-term Hourly Forecast",
+      "description": null,
+      "provider": 4,
+      "type": 11,
+      "time_step": "HOURLY",
+      "store_type": "ZARR",
+      "is_internal_use": false,
+      "observation_type": "NOT_SPECIFIED"
+    }
+  },
+  {
+    "model": "gap.dataset",
+    "pk": 13,
+    "fields": {
+      "name": "Tomorrow.io Short-term Hourly Forecast",
+      "description": null,
+      "provider": 4,
+      "type": 11,
+      "time_step": "HOURLY",
+      "store_type": "EXT_API",
+      "is_internal_use": true,
+      "observation_type": "NOT_SPECIFIED"
+    }
   }
 ]
