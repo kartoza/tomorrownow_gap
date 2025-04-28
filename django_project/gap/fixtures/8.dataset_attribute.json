@@ -1324,8 +1324,8 @@
     "pk": 121,
     "fields": {
       "dataset": 12,
-      "attribute": 9,
-      "source": "max_temperature",
+      "attribute": 23,
+      "source": "temperature",
       "source_unit": 5,
       "ensembles": false
     }
@@ -1333,17 +1333,6 @@
   {
     "model": "gap.datasetattribute",
     "pk": 122,
-    "fields": {
-      "dataset": 12,
-      "attribute": 17,
-      "source": "min_temperature",
-      "source_unit": 5,
-      "ensembles": false
-    }
-  },
-  {
-    "model": "gap.datasetattribute",
-    "pk": 123,
     "fields": {
       "dataset": 12,
       "attribute": 36,
@@ -1354,40 +1343,29 @@
   },
   {
     "model": "gap.datasetattribute",
+    "pk": 123,
+    "fields": {
+      "dataset": 12,
+      "attribute": 68,
+      "source": "humidity",
+      "source_unit": 6,
+      "ensembles": false
+    }
+  },
+  {
+    "model": "gap.datasetattribute",
     "pk": 124,
     "fields": {
       "dataset": 12,
-      "attribute": 54,
-      "source": "humidity_maximum",
-      "source_unit": 6,
-      "ensembles": false
-    }
-  },
-  {
-    "model": "gap.datasetattribute",
-    "pk": 125,
-    "fields": {
-      "dataset": 12,
-      "attribute": 55,
-      "source": "humidity_minimum",
-      "source_unit": 6,
-      "ensembles": false
-    }
-  },
-  {
-    "model": "gap.datasetattribute",
-    "pk": 126,
-    "fields": {
-      "dataset": 12,
-      "attribute": 56,
-      "source": "wind_speed_avg",
+      "attribute": 33,
+      "source": "wind_speed",
       "source_unit": 8,
       "ensembles": false
     }
   },
   {
     "model": "gap.datasetattribute",
-    "pk": 127,
+    "pk": 125,
     "fields": {
       "dataset": 12,
       "attribute": 6,
@@ -1398,7 +1376,7 @@
   },
   {
     "model": "gap.datasetattribute",
-    "pk": 128,
+    "pk": 126,
     "fields": {
       "dataset": 12,
       "attribute": 65,
@@ -1409,7 +1387,7 @@
   },
   {
     "model": "gap.datasetattribute",
-    "pk": 129,
+    "pk": 127,
     "fields": {
       "dataset": 12,
       "attribute": 66,
@@ -1420,51 +1398,40 @@
   },
   {
     "model": "gap.datasetattribute",
-    "pk": 130,
+    "pk": 128,
     "fields": {
       "dataset": 13,
       "attribute": 15,
-      "source": "rainAccumulationSum",
+      "source": "rainAccumulation",
       "source_unit": 1,
+      "ensembles": false
+    }
+  },
+  {
+    "model": "gap.datasetattribute",
+    "pk": 129,
+    "fields": {
+      "dataset": 13,
+      "attribute": 8,
+      "source": "evapotranspiration",
+      "source_unit": 1,
+      "ensembles": false
+    }
+  },
+  {
+    "model": "gap.datasetattribute",
+    "pk": 130,
+    "fields": {
+      "dataset": 13,
+      "attribute": 23,
+      "source": "temperature",
+      "source_unit": 5,
       "ensembles": false
     }
   },
   {
     "model": "gap.datasetattribute",
     "pk": 131,
-    "fields": {
-      "dataset": 13,
-      "attribute": 8,
-      "source": "evapotranspirationSum",
-      "source_unit": 1,
-      "ensembles": false
-    }
-  },
-  {
-    "model": "gap.datasetattribute",
-    "pk": 132,
-    "fields": {
-      "dataset": 13,
-      "attribute": 9,
-      "source": "temperatureMax",
-      "source_unit": 5,
-      "ensembles": false
-    }
-  },
-  {
-    "model": "gap.datasetattribute",
-    "pk": 133,
-    "fields": {
-      "dataset": 13,
-      "attribute": 17,
-      "source": "temperatureMin",
-      "source_unit": 5,
-      "ensembles": false
-    }
-  },
-  {
-    "model": "gap.datasetattribute",
-    "pk": 134,
     "fields": {
       "dataset": 13,
       "attribute": 36,
@@ -1475,51 +1442,40 @@
   },
   {
     "model": "gap.datasetattribute",
-    "pk": 135,
+    "pk": 132,
     "fields": {
       "dataset": 13,
-      "attribute": 54,
-      "source": "humidityMax",
+      "attribute": 68,
+      "source": "humidity",
       "source_unit": 6,
       "ensembles": false
     }
   },
   {
     "model": "gap.datasetattribute",
-    "pk": 136,
+    "pk": 133,
     "fields": {
       "dataset": 13,
-      "attribute": 55,
-      "source": "humidityMin",
-      "source_unit": 6,
-      "ensembles": false
-    }
-  },
-  {
-    "model": "gap.datasetattribute",
-    "pk": 137,
-    "fields": {
-      "dataset": 13,
-      "attribute": 56,
-      "source": "windSpeedAvg",
+      "attribute": 33,
+      "source": "windSpeed",
       "source_unit": 8,
       "ensembles": false
     }
   },
   {
     "model": "gap.datasetattribute",
-    "pk": 138,
+    "pk": 134,
     "fields": {
       "dataset": 13,
       "attribute": 6,
-      "source": "solarGHISum",
+      "source": "solarGHI",
       "source_unit": 7,
       "ensembles": false
     }
   },
   {
     "model": "gap.datasetattribute",
-    "pk": 139,
+    "pk": 135,
     "fields": {
       "dataset": 13,
       "attribute": 65,
@@ -1530,7 +1486,7 @@
   },
   {
     "model": "gap.datasetattribute",
-    "pk": 140,
+    "pk": 136,
     "fields": {
       "dataset": 13,
       "attribute": 66,

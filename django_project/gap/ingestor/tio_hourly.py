@@ -67,6 +67,17 @@ class TioHourlyShortTermIngestor(TioShortTermDuckDBIngestor):
         'lat': 20,
         'lon': 20
     }
+    variables = [
+        'total_rainfall',
+        'total_evapotranspiration_flux',
+        'temperature',
+        'precipitation_probability',
+        'humidity',
+        'wind_speed',
+        'solar_radiation',
+        'weather_code',
+        'flood_index'
+    ]
 
     def __init__(self, session: CollectorSession, working_dir: str = '/tmp'):
         """Initialize TioHourlyShortTermIngestor."""

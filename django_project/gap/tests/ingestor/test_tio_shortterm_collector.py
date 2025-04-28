@@ -782,7 +782,7 @@ class TioHourlyShortTermDuckDBCollectorTest(
             self.assertEqual(rows[0], 24)
             # Check the columns in the table
             columns = duckdb_conn.execute("DESCRIBE weather").fetchall()
-            self.assertEqual(len(columns), 17)
+            self.assertEqual(len(columns), 15)
             columns_str = [col[0] for col in columns]
             self.assertIn('id', columns_str)
             self.assertIn('grid_id', columns_str)
@@ -792,12 +792,10 @@ class TioHourlyShortTermDuckDBCollectorTest(
             self.assertIn('time', columns_str)
             self.assertIn('total_rainfall', columns_str)
             self.assertIn('total_evapotranspiration_flux', columns_str)
-            self.assertIn('max_temperature', columns_str)
-            self.assertIn('min_temperature', columns_str)
+            self.assertIn('temperature', columns_str)
             self.assertIn('precipitation_probability', columns_str)
-            self.assertIn('humidity_maximum', columns_str)
-            self.assertIn('humidity_minimum', columns_str)
-            self.assertIn('wind_speed_avg', columns_str)
+            self.assertIn('humidity', columns_str)
+            self.assertIn('wind_speed', columns_str)
             self.assertIn('solar_radiation', columns_str)
             self.assertIn('weather_code', columns_str)
             self.assertIn('flood_index', columns_str)
@@ -820,15 +818,13 @@ class TioHourlyShortTermDuckDBCollectorTest(
                     {
                         'solar_radiation': 658.0,
                         'total_evapotranspiration_flux': 0.365,
-                        'max_temperature': 21.7,
                         'total_rainfall': 0.0,
-                        'min_temperature': 21.7,
+                        'temperature': 21.7,
+                        'wind_speed': 2.3,
                         'precipitation_probability': 0.0,
-                        'humidity_maximum': 61.0,
-                        'humidity_minimum': 61.0,
-                        'wind_speed_avg': 2.3,
                         'weather_code': 1100.0,
-                        'flood_index': np.nan
+                        'flood_index': np.nan,
+                        'humidity': 61.0
                     }
                 ])
             )

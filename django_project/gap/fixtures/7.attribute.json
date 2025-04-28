@@ -735,5 +735,16 @@
       "unit": 24,
       "is_active": true
     }
+  },
+  {
+    "model": "gap.attribute",
+    "pk": 68,
+    "fields": {
+      "name": "Humidity",
+      "description": "The concentration of water vapor present in the air",
+      "variable_name": "humidity",
+      "unit": 6,
+      "is_active": true
+    }
   }
 ]

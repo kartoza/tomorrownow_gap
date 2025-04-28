@@ -29,9 +29,12 @@ from gap.ingestor.tio_shortterm import (
     TioShortTermIngestor,
     CoordMapping,
     TioShortTermDuckDBIngestor,
-    TioShortTermDuckDBCollector
+    TioShortTermDuckDBCollector,
 )
-from gap.ingestor.tio_hourly import TioHourlyShortTermIngestor
+from gap.ingestor.tio_hourly import (
+    TioHourlyShortTermIngestor,
+    TioHourlyShortTermCollector
+)
 from gap.ingestor.exceptions import (
     MissingCollectorSessionException, FileNotFoundException,
     AdditionalConfigNotFoundException
@@ -108,7 +111,7 @@ def mock_hourly_open_zarr_dataset():
     empty_shape = (1, 21, 24, len(new_lat), len(new_lon))
     chunks = (1, 21, 24, 20, 20)
     data_vars = {
-        'max_temperature': (
+        'temperature': (
             ['forecast_date', 'forecast_day_idx', 'time', 'lat', 'lon'],
             da.empty(empty_shape, chunks=chunks)
         )
@@ -635,7 +638,7 @@ class TestDuckDBTioHourlyIngestor(TestCase):
             '/tmp', f'{str(uuid.uuid4())}.duckdb'
         )
         duckdb_conn = duckdb.connect(tmp_filepath)
-        collector_runner = TioShortTermDuckDBCollector(self.collector)
+        collector_runner = TioHourlyShortTermCollector(self.collector)
         collector_runner._init_table(duckdb_conn)
         json_data = json.load(json_f)
         forecast_day_indices = range(-6, 15, 1)
