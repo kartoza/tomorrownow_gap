@@ -1,0 +1,373 @@
+{
+  "data": {
+    "timelines": [
+      {
+        "timestep": "1h",
+        "endTime": "2025-04-24T23:00:00Z",
+        "startTime": "2025-04-24T00:00:00Z",
+        "intervals": [
+          {
+            "startTime": "2025-04-24T00:00:00Z",
+            "values": {
+              "evapotranspirationSum": 0,
+              "humidityMax": 85,
+              "humidityMin": 85,
+              "precipitationProbability": 0,
+              "rainAccumulationSum": 0,
+              "solarGHISum": 0,
+              "temperatureMax": 17.2,
+              "temperatureMin": 17.2,
+              "weatherCode": 1001,
+              "windSpeedAvg": 3.2
+            }
+          },
+          {
+            "startTime": "2025-04-24T01:00:00Z",
+            "values": {
+              "evapotranspirationSum": 0,
+              "humidityMax": 84,
+              "humidityMin": 84,
+              "precipitationProbability": 0,
+              "rainAccumulationSum": 0,
+              "solarGHISum": 0,
+              "temperatureMax": 17.1,
+              "temperatureMin": 17.1,
+              "weatherCode": 1001,
+              "windSpeedAvg": 3.3
+            }
+          },
+          {
+            "startTime": "2025-04-24T02:00:00Z",
+            "values": {
+              "evapotranspirationSum": 0,
+              "humidityMax": 82,
+              "humidityMin": 82,
+              "precipitationProbability": 0,
+              "rainAccumulationSum": 0,
+              "solarGHISum": 0,
+              "temperatureMax": 17.1,
+              "temperatureMin": 17.1,
+              "weatherCode": 1001,
+              "windSpeedAvg": 3.1
+            }
+          },
+          {
+            "startTime": "2025-04-24T03:00:00Z",
+            "values": {
+              "evapotranspirationSum": 0,
+              "humidityMax": 85,
+              "humidityMin": 85,
+              "precipitationProbability": 0,
+              "rainAccumulationSum": 0,
+              "solarGHISum": 28,
+              "temperatureMax": 16.6,
+              "temperatureMin": 16.6,
+              "weatherCode": 1001,
+              "windSpeedAvg": 2.9
+            }
+          },
+          {
+            "startTime": "2025-04-24T04:00:00Z",
+            "values": {
+              "evapotranspirationSum": 0.004,
+              "humidityMax": 81,
+              "humidityMin": 81,
+              "precipitationProbability": 0,
+              "rainAccumulationSum": 0,
+              "solarGHISum": 186,
+              "temperatureMax": 17.5,
+              "temperatureMin": 17.5,
+              "weatherCode": 1100,
+              "windSpeedAvg": 2.5
+            }
+          },
+          {
+            "startTime": "2025-04-24T05:00:00Z",
+            "values": {
+              "evapotranspirationSum": 0.166,
+              "humidityMax": 67,
+              "humidityMin": 67,
+              "precipitationProbability": 0,
+              "rainAccumulationSum": 0,
+              "solarGHISum": 445,
+              "temperatureMax": 20.3,
+              "temperatureMin": 20.3,
+              "weatherCode": 1000,
+              "windSpeedAvg": 0.8
+            }
+          },
+          {
+            "startTime": "2025-04-24T06:00:00Z",
+            "values": {
+              "evapotranspirationSum": 0.365,
+              "humidityMax": 61,
+              "humidityMin": 61,
+              "precipitationProbability": 0,
+              "rainAccumulationSum": 0,
+              "solarGHISum": 658,
+              "temperatureMax": 21.7,
+              "temperatureMin": 21.7,
+              "weatherCode": 1100,
+              "windSpeedAvg": 2.3
+            }
+          },
+          {
+            "startTime": "2025-04-24T07:00:00Z",
+            "values": {
+              "evapotranspirationSum": 0.48,
+              "humidityMax": 56,
+              "humidityMin": 56,
+              "precipitationProbability": 0,
+              "rainAccumulationSum": 0,
+              "solarGHISum": 822,
+              "temperatureMax": 22.9,
+              "temperatureMin": 22.9,
+              "weatherCode": 1100,
+              "windSpeedAvg": 2.4
+            }
+          },
+          {
+            "startTime": "2025-04-24T08:00:00Z",
+            "values": {
+              "evapotranspirationSum": 0.622,
+              "humidityMax": 52,
+              "humidityMin": 52,
+              "precipitationProbability": 0,
+              "rainAccumulationSum": 0,
+              "solarGHISum": 920,
+              "temperatureMax": 24.3,
+              "temperatureMin": 24.3,
+              "weatherCode": 1100,
+              "windSpeedAvg": 2.5
+            }
+          },
+          {
+            "startTime": "2025-04-24T09:00:00Z",
+            "values": {
+              "evapotranspirationSum": 0.664,
+              "humidityMax": 46,
+              "humidityMin": 46,
+              "precipitationProbability": 0,
+              "rainAccumulationSum": 0,
+              "solarGHISum": 909,
+              "temperatureMax": 25.6,
+              "temperatureMin": 25.6,
+              "weatherCode": 1100,
+              "windSpeedAvg": 3.2
+            }
+          },
+          {
+            "startTime": "2025-04-24T10:00:00Z",
+            "values": {
+              "evapotranspirationSum": 0.64,
+              "humidityMax": 41,
+              "humidityMin": 41,
+              "precipitationProbability": 0,
+              "rainAccumulationSum": 0,
+              "solarGHISum": 922,
+              "temperatureMax": 26.6,
+              "temperatureMin": 26.6,
+              "weatherCode": 1100,
+              "windSpeedAvg": 4.6
+            }
+          },
+          {
+            "startTime": "2025-04-24T11:00:00Z",
+            "values": {
+              "evapotranspirationSum": 0.709,
+              "humidityMax": 35,
+              "humidityMin": 35,
+              "precipitationProbability": 0,
+              "rainAccumulationSum": 0,
+              "solarGHISum": 873,
+              "temperatureMax": 27.8,
+              "temperatureMin": 27.8,
+              "weatherCode": 1100,
+              "windSpeedAvg": 5.1
+            }
+          },
+          {
+            "startTime": "2025-04-24T12:00:00Z",
+            "values": {
+              "evapotranspirationSum": 0.611,
+              "humidityMax": 32,
+              "humidityMin": 32,
+              "precipitationProbability": 0,
+              "rainAccumulationSum": 0,
+              "solarGHISum": 664,
+              "temperatureMax": 27.9,
+              "temperatureMin": 27.9,
+              "weatherCode": 1100,
+              "windSpeedAvg": 5.3
+            }
+          },
+          {
+            "startTime": "2025-04-24T13:00:00Z",
+            "values": {
+              "evapotranspirationSum": 0.448,
+              "humidityMax": 33,
+              "humidityMin": 33,
+              "precipitationProbability": 0,
+              "rainAccumulationSum": 0,
+              "solarGHISum": 433,
+              "temperatureMax": 27.6,
+              "temperatureMin": 27.6,
+              "weatherCode": 1100,
+              "windSpeedAvg": 5.1
+            }
+          },
+          {
+            "startTime": "2025-04-24T14:00:00Z",
+            "values": {
+              "evapotranspirationSum": 0.302,
+              "humidityMax": 37,
+              "humidityMin": 37,
+              "precipitationProbability": 0,
+              "rainAccumulationSum": 0,
+              "solarGHISum": 206,
+              "temperatureMax": 26.8,
+              "temperatureMin": 26.8,
+              "weatherCode": 1100,
+              "windSpeedAvg": 5.1
+            }
+          },
+          {
+            "startTime": "2025-04-24T15:00:00Z",
+            "values": {
+              "evapotranspirationSum": 0.125,
+              "humidityMax": 43,
+              "humidityMin": 43,
+              "precipitationProbability": 0,
+              "rainAccumulationSum": 0,
+              "solarGHISum": 46,
+              "temperatureMax": 25.2,
+              "temperatureMin": 25.2,
+              "weatherCode": 1000,
+              "windSpeedAvg": 4.6
+            }
+          },
+          {
+            "startTime": "2025-04-24T16:00:00Z",
+            "values": {
+              "evapotranspirationSum": 0.018,
+              "humidityMax": 56,
+              "humidityMin": 56,
+              "precipitationProbability": 0,
+              "rainAccumulationSum": 0,
+              "solarGHISum": 0,
+              "temperatureMax": 21.9,
+              "temperatureMin": 21.9,
+              "weatherCode": 1100,
+              "windSpeedAvg": 2.1
+            }
+          },
+          {
+            "startTime": "2025-04-24T17:00:00Z",
+            "values": {
+              "evapotranspirationSum": 0.01,
+              "humidityMax": 62,
+              "humidityMin": 62,
+              "precipitationProbability": 0,
+              "rainAccumulationSum": 0,
+              "solarGHISum": 0,
+              "temperatureMax": 20.9,
+              "temperatureMin": 20.9,
+              "weatherCode": 1100,
+              "windSpeedAvg": 2
+            }
+          },
+          {
+            "startTime": "2025-04-24T18:00:00Z",
+            "values": {
+              "evapotranspirationSum": 0.003,
+              "humidityMax": 67,
+              "humidityMin": 67,
+              "precipitationProbability": 0,
+              "rainAccumulationSum": 0,
+              "solarGHISum": 0,
+              "temperatureMax": 20,
+              "temperatureMin": 20,
+              "weatherCode": 1000,
+              "windSpeedAvg": 1.9
+            }
+          },
+          {
+            "startTime": "2025-04-24T19:00:00Z",
+            "values": {
+              "evapotranspirationSum": 0,
+              "humidityMax": 72,
+              "humidityMin": 72,
+              "precipitationProbability": 0,
+              "rainAccumulationSum": 0,
+              "solarGHISum": 0,
+              "temperatureMax": 19.3,
+              "temperatureMin": 19.3,
+              "weatherCode": 1000,
+              "windSpeedAvg": 2
+            }
+          },
+          {
+            "startTime": "2025-04-24T20:00:00Z",
+            "values": {
+              "evapotranspirationSum": 0,
+              "humidityMax": 74,
+              "humidityMin": 74,
+              "precipitationProbability": 0,
+              "rainAccumulationSum": 0,
+              "solarGHISum": 0,
+              "temperatureMax": 18.9,
+              "temperatureMin": 18.9,
+              "weatherCode": 1100,
+              "windSpeedAvg": 1.8
+            }
+          },
+          {
+            "startTime": "2025-04-24T21:00:00Z",
+            "values": {
+              "evapotranspirationSum": 0.001,
+              "humidityMax": 76,
+              "humidityMin": 76,
+              "precipitationProbability": 0,
+              "rainAccumulationSum": 0,
+              "solarGHISum": 0,
+              "temperatureMax": 18.4,
+              "temperatureMin": 18.4,
+              "weatherCode": 1100,
+              "windSpeedAvg": 2.4
+            }
+          },
+          {
+            "startTime": "2025-04-24T22:00:00Z",
+            "values": {
+              "evapotranspirationSum": 0,
+              "humidityMax": 79,
+              "humidityMin": 79,
+              "precipitationProbability": 0,
+              "rainAccumulationSum": 0,
+              "solarGHISum": 0,
+              "temperatureMax": 17.8,
+              "temperatureMin": 17.8,
+              "weatherCode": 1100,
+              "windSpeedAvg": 2.4
+            }
+          },
+          {
+            "startTime": "2025-04-24T23:00:00Z",
+            "values": {
+              "evapotranspirationSum": 0,
+              "humidityMax": 81,
+              "humidityMin": 81,
+              "precipitationProbability": 0,
+              "rainAccumulationSum": 0,
+              "solarGHISum": 0,
+              "temperatureMax": 17.3,
+              "temperatureMin": 17.3,
+              "weatherCode": 1100,
+              "windSpeedAvg": 2.4
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

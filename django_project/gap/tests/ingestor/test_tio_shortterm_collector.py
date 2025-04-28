@@ -12,7 +12,7 @@ import tempfile
 import duckdb
 import pandas as pd
 import numpy as np
-from datetime import datetime
+from datetime import datetime, time
 from unittest.mock import patch
 
 import responses
@@ -699,3 +699,174 @@ class TioShortTermDuckDBCollectorTest(
         self.assertEqual(session.status, IngestorSessionStatus.SUCCESS)
         self.assertEqual(session.dataset_files.count(), 1)
         self.assert_empty_duckdb_file(session.dataset_files.first())
+
+
+class TioHourlyShortTermDuckDBCollectorTest(
+    BaseTestWithPatchResponses, TransactionTestCase
+):
+    """Tio Hourly DuckDB Collector test case."""
+
+    fixtures = [
+        '2.provider.json',
+        '3.station_type.json',
+        '4.dataset_type.json',
+        '5.dataset.json',
+        '6.unit.json',
+        '7.attribute.json',
+        '8.dataset_attribute.json'
+    ]
+    ingestor_type = IngestorType.HOURLY_TOMORROWIO
+    responses_folder = absolute_path(
+        'gap', 'tests', 'ingestor', 'data', 'tio_shorterm_collector'
+    )
+    api_key = 'tomorrow_api_key'
+
+    def setUp(self):
+        """Init test case."""
+        os.environ['TOMORROW_IO_API_KEY'] = self.api_key
+        # Init kenya Country
+        shp_path = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            'data',
+            'Kenya.geojson'
+        )
+        data_source = DataSource(shp_path)
+        layer = data_source[0]
+        for feature in layer:
+            geometry = GEOSGeometry(feature.geom.wkt, srid=4326)
+            Country.objects.create(
+                name=feature['name'],
+                iso_a3=feature['iso_a3'],
+                geometry=geometry
+            )
+        self.dataset = Dataset.objects.get(
+            name='Tomorrow.io Short-term Hourly Forecast',
+            store_type=DatasetStore.ZARR
+        )
+
+    @property
+    def mock_requests(self):
+        """Mock requests."""
+        return [
+            # Devices API
+            PatchRequest(
+                f'https://api.tomorrow.io/v4/timelines?apikey={self.api_key}',
+                file_response=os.path.join(
+                    self.responses_folder, 'hourly.json'
+                ),
+                request_method='POST'
+            )
+        ]
+
+    def assert_duckdb_file(self, data_source: DataSourceFile):
+        """Download and check duckdb file."""
+        s3_storage: S3Boto3Storage = storages["gap_products"]
+        with tempfile.NamedTemporaryFile(suffix='.duckdb') as tmp:
+            remote_path = data_source.metadata['remote_url']
+            # Download the file
+            with (
+                s3_storage.open(remote_path, "rb") as remote_file,
+                open(tmp.name, "wb") as local_file
+            ):
+                local_file.write(remote_file.read())
+            duckdb_conn = duckdb.connect(tmp.name)
+            # Check the number of tables in the database
+            tables = duckdb_conn.execute("SHOW TABLES").fetchall()
+            self.assertEqual(len(tables), 1)
+            # Check the table name
+            self.assertEqual(tables[0][0], "weather")
+            # Check the number of rows in the table
+            rows = duckdb_conn.execute(
+                "SELECT COUNT(*) FROM weather"
+            ).fetchone()
+            self.assertEqual(rows[0], 24)
+            # Check the columns in the table
+            columns = duckdb_conn.execute("DESCRIBE weather").fetchall()
+            self.assertEqual(len(columns), 17)
+            columns_str = [col[0] for col in columns]
+            self.assertIn('id', columns_str)
+            self.assertIn('grid_id', columns_str)
+            self.assertIn('lat', columns_str)
+            self.assertIn('lon', columns_str)
+            self.assertIn('date', columns_str)
+            self.assertIn('time', columns_str)
+            self.assertIn('total_rainfall', columns_str)
+            self.assertIn('total_evapotranspiration_flux', columns_str)
+            self.assertIn('max_temperature', columns_str)
+            self.assertIn('min_temperature', columns_str)
+            self.assertIn('precipitation_probability', columns_str)
+            self.assertIn('humidity_maximum', columns_str)
+            self.assertIn('humidity_minimum', columns_str)
+            self.assertIn('wind_speed_avg', columns_str)
+            self.assertIn('solar_radiation', columns_str)
+            self.assertIn('weather_code', columns_str)
+            self.assertIn('flood_index', columns_str)
+            # Check the data in the table
+            data = duckdb_conn.sql(
+                "SELECT * FROM weather where date='2025-04-24'"
+            ).to_df()
+            self.assertEqual(data.shape[0], 24)
+            data = data[data['time'] == time(6, 0, 0)]
+            data = data.drop(
+                columns=['id', 'grid_id', 'lat', 'lon', 'date', 'time']
+            )
+            data = data.reset_index(drop=True)
+            print(data)
+            print(data.iloc[0].to_dict())
+            # compare dataframe
+            pd.testing.assert_frame_equal(
+                data,
+                pd.DataFrame([
+                    {
+                        'solar_radiation': 658.0,
+                        'total_evapotranspiration_flux': 0.365,
+                        'max_temperature': 21.7,
+                        'total_rainfall': 0.0,
+                        'min_temperature': 21.7,
+                        'precipitation_probability': 0.0,
+                        'humidity_maximum': 61.0,
+                        'humidity_minimum': 61.0,
+                        'wind_speed_avg': 2.3,
+                        'weather_code': 1100.0,
+                        'flood_index': np.nan
+                    }
+                ])
+            )
+            # Close the connection
+            duckdb_conn.close()
+
+    @patch('gap.ingestor.tio_shortterm.timezone')
+    @responses.activate
+    def test_collector_one_grid_start_new(self, mock_timezone):
+        """Testing collector."""
+        self.init_mock_requests()
+        today = datetime(
+            2025, 4, 24, 6, 0, 0
+        )
+        today = timezone.make_aware(
+            today, timezone.get_default_timezone()
+        )
+        mock_timezone.now.return_value = today
+        GridFactory(
+            geometry=Polygon(
+                (
+                    (0, 0), (0, 0.01), (0.01, 0.01), (0.01, 0), (0, 0)
+                )
+            )
+        )
+        session = CollectorSession.objects.create(
+            ingestor_type=self.ingestor_type,
+            additional_config={
+                'duckdb_num_threads': 1
+            }
+        )
+        session.run()
+        session.refresh_from_db()
+        self.assertEqual(session.dataset_files.count(), 1)
+        print(session.notes)
+        self.assertEqual(session.status, IngestorSessionStatus.SUCCESS)
+        self.assertEqual(session.dataset_files.count(), 1)
+        data_source = session.dataset_files.first()
+        self.assertIn('forecast_date', data_source.metadata)
+        self.assertIn('remote_url', data_source.metadata)
+        self.assert_duckdb_file(data_source)
