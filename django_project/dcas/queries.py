@@ -418,7 +418,7 @@ class DataQuery:
             # ensure compatibility that final_message column exists
             if 'final_message' not in column_names:
                 logger.warning(
-                    f"final_message column not found."
+                    "final_message column not found."
                 )
                 return None
 
