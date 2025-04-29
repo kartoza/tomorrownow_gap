@@ -406,6 +406,22 @@ class DataQuery:
             conn.load_extension("httpfs")
             conn.install_extension("spatial")
             conn.load_extension("spatial")
+
+            # Get columns from the parquet file
+            column_df = conn.execute(f"""
+                DESCRIBE SELECT *
+                FROM read_parquet({parquet_path}, hive_partitioning=true)
+            """).fetchdf()
+
+            # Extract just column names if needed
+            column_names = column_df['column_name'].tolist()
+            # ensure compatibility that final_message column exists
+            if 'final_message' not in column_names:
+                logger.warning(
+                    f"final_message column not found."
+                )
+                return None
+
             # Copy data from parquet to duckdb table
             conn.execute(f"""
                 CREATE TABLE dcas AS
