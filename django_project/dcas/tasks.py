@@ -105,7 +105,15 @@ class DCASPreferences:
     @property
     def duck_db_num_threads(self):
         """Get the number of threads for duckdb."""
+        threads = self.dcas_config.get('duckdb_threads_num', None)
+        if threads:
+            return threads
         return Preferences.load().duckdb_threads_num
+
+    @property
+    def duck_db_memory_limit(self):
+        """Get the memory limit for duckdb."""
+        return self.dcas_config.get('duckdb_memory_limit', None)
 
     @property
     def store_csv_to_minio(self):
@@ -143,7 +151,8 @@ class DCASPreferences:
             'store_csv_to_minio': self.store_csv_to_minio,
             'store_csv_to_sftp': self.store_csv_to_sftp,
             'trigger_error_handling': self.trigger_error_handling,
-            'csv_columns': self.csv_columns
+            'csv_columns': self.csv_columns,
+            'duckdb_memory_limit': self.duck_db_memory_limit
         }
 
     @staticmethod
@@ -202,7 +211,8 @@ def export_dcas_output(request_id, delivery_method):
     dcas_config = DCASPreferences(dcas_request.requested_at.date())
     dcas_output = DCASPipelineOutput(
         dcas_request.requested_at.date(),
-        duck_db_num_threads=Preferences.load().duckdb_threads_num
+        duck_db_num_threads=dcas_config.duck_db_num_threads,
+        duckdb_memory_limit=dcas_config.duck_db_memory_limit
     )
 
     dcas_ouput_file = DCASOutput.objects.create(

@@ -79,12 +79,13 @@ class DCASPipelineOutput:
     }
 
     def __init__(
-        self, request_date, duck_db_num_threads=None
+        self, request_date, duck_db_num_threads=None, duckdb_memory_limit=None
     ):
         """Initialize DCASPipelineOutput."""
         self.fs = None
         self.request_date = request_date
         self.duck_db_num_threads = duck_db_num_threads
+        self.duckdb_memory_limit = duckdb_memory_limit or '1GB'
 
     def setup(self):
         """Set DCASPipelineOutput."""
@@ -302,7 +303,8 @@ class DCASPipelineOutput:
             's3_region': 'us-east-1',
             's3_url_style': 'path',
             's3_endpoint': endpoint,
-            's3_use_ssl': not settings.DEBUG
+            's3_use_ssl': not settings.DEBUG,
+            'memory_limit': self.duckdb_memory_limit,
         }
         if self.duck_db_num_threads:
             config['threads'] = self.duck_db_num_threads
@@ -347,7 +349,7 @@ class DCASPipelineOutput:
         # Copy data from parquet to duckdb table
         conn.execute(f"""
             CREATE TABLE dcas AS
-            SELECT *, '' as message_final, '' as message_english
+            SELECT *
             FROM read_parquet({parquet_path}, hive_partitioning=true)
             WHERE year={self.request_date.year} AND
             month={self.request_date.month} AND
@@ -369,28 +371,21 @@ class DCASPipelineOutput:
             WHERE application = 'DCAS';
         """)
 
-        # Merge en/sw translations into dcas table
         sql = (
             """
-            WITH matched AS (
+            CREATE TABLE matched AS (
                 SELECT
-                d.registry_id,
+                d.*,
                 m.template_en AS message_english,
                 CASE d.preferred_language
                     WHEN 'en' THEN m.template_en
                     WHEN 'sw' THEN m.template_sw
                     ELSE m.template_en
                 END AS message_final
-                FROM message_template m
-                JOIN dcas d
+                FROM dcas d
+                LEFT JOIN message_template m
                 ON d.final_message = m.code
-                WHERE d.final_message IS NOT NULL
             )
-            UPDATE dcas d
-            SET message_final = matched.message_final,
-            message_english = matched.message_english
-            FROM matched
-            WHERE d.registry_id = matched.registry_id
             """
         )
         conn.execute(sql)
@@ -399,7 +394,7 @@ class DCASPipelineOutput:
         sql = (
             f"""
             SELECT {','.join(column_list)}
-            FROM dcas
+            FROM matched
             """
         )
         final_query = (
