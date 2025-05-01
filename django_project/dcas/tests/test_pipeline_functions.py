@@ -233,18 +233,18 @@ class DCASPipelineFunctionTest(DCASPipelineBaseTest):
         mock_data = pd.DataFrame({
             'farm_id': [1, 1, 1, 2, 2, 3],
             'crop_id': [100, 100, 100, 101, 101, 102],
-            'message': ['MSG1', 'MSG2', 'MSG1', 'MSG3', 'MSG1', 'MSG4'],
-            'message_2': [None, 'MSG1', None, None, 'MSG3', None],
-            'message_3': [None, None, 'MSG1', None, None, None],
+            'message': ['1001', '1002', '1001', '1003', '1001', '1004'],
+            'message_2': [None, '1001', None, None, '1003', None],
+            'message_3': [None, None, '1001', None, None, None],
             'message_4': [None, None, None, None, None, None],
-            'message_5': [None, None, None, 'MSG1', None, 'MSG4'],
+            'message_5': [None, None, None, '1001', None, '1004'],
             'message_date': [
-                now - timedelta(days=15),  # MSG1 - Oldest farm 1, crop 100
-                now - timedelta(days=10),  # MSG2
-                now - timedelta(days=5),   # MSG1 - More recent
-                now - timedelta(days=12),  # MSG3
-                now - timedelta(days=3),   # MSG1 - Most recent
-                now - timedelta(days=20)   # MSG4 - Oldest
+                now - timedelta(days=15),  # 1001 - Oldest farm 1, crop 100
+                now - timedelta(days=10),  # 1002
+                now - timedelta(days=5),   # 1001 - More recent
+                now - timedelta(days=12),  # 1003
+                now - timedelta(days=3),   # 1001 - Most recent
+                now - timedelta(days=20)   # 1004 - Oldest
             ]
         })
 
@@ -254,27 +254,27 @@ class DCASPipelineFunctionTest(DCASPipelineBaseTest):
         # Pre-filter messages for farm 2
         farm_messages_farm_2 = mock_data[mock_data["farm_id"] == 2]
 
-        # Latest MSG1 for farm 2, crop 101 should be at index 4 (3 days ago)
-        result = get_last_message_date(farm_messages_farm_2, 101, "MSG1")
+        # Latest 1001 for farm 2, crop 101 should be at index 4 (3 days ago)
+        result = get_last_message_date(farm_messages_farm_2, 101, "1001")
         self.assertEqual(result, mock_data['message_date'].iloc[4])
 
-        # Latest MSG3 for farm 2, crop 101 should be at index 3 (12 days ago)
-        result = get_last_message_date(farm_messages_farm_2, 101, "MSG3")
+        # Latest 1003 for farm 2, crop 101 should be at index 3 (12 days ago)
+        result = get_last_message_date(farm_messages_farm_2, 101, "1003")
         self.assertEqual(result, mock_data['message_date'].iloc[4])
 
         # Pre-filter messages for farm 1
         farm_messages_farm_1 = mock_data[mock_data["farm_id"] == 1]
 
-        # Latest MSG2 for farm 1, crop 100 should be at index 1 (10 days ago)
-        result = get_last_message_date(farm_messages_farm_1, 100, "MSG2")
+        # Latest 1002 for farm 1, crop 100 should be at index 1 (10 days ago)
+        result = get_last_message_date(farm_messages_farm_1, 100, "1002")
         self.assertEqual(result, mock_data['message_date'].iloc[1])
 
-        # Latest MSG1 for farm 1, crop 100 should be at index 2 (5 days ago)
-        result = get_last_message_date(farm_messages_farm_1, 100, "MSG1")
+        # Latest 1001 for farm 1, crop 100 should be at index 2 (5 days ago)
+        result = get_last_message_date(farm_messages_farm_1, 100, "1001")
         self.assertEqual(result, mock_data['message_date'].iloc[2])
 
         # MSG5 does not exist in the dataset for farm 2, crop 101
-        result = get_last_message_date(farm_messages_farm_2, 101, "MSG5")
+        result = get_last_message_date(farm_messages_farm_2, 101, "1005")
         self.assertIsNone(result)
 
     @patch("dcas.functions.read_grid_crop_data")
@@ -282,26 +282,26 @@ class DCASPipelineFunctionTest(DCASPipelineBaseTest):
         """Test when the message does not exist in history."""
         now = pd.Timestamp(datetime.now())
 
-        # Mock DataFrame with different messages, but not "MSG1"
+        # Mock DataFrame with different messages, but not "1001"
         mock_data = pd.DataFrame({
             'farm_id': [1, 1, 2],
             'crop_id': [100, 100, 101],
-            'message': ['MSG2', 'MSG3', 'MSG4'],
-            'message_2': ['MSG5', None, None],  # Different message
-            'message_3': [None, 'MSG6', None],  # Different message
-            'message_4': [None, None, 'MSG7'],  # Different message
+            'message': ['1002', '1003', '1004'],
+            'message_2': ['1005', None, None],  # Different message
+            'message_3': [None, '1006', None],  # Different message
+            'message_4': [None, None, '1007'],  # Different message
             'message_5': [None, None, None],  # No relevant messages
             'message_date': [
-                now - timedelta(days=10),  # MSG2
-                now - timedelta(days=5),   # MSG3
-                now - timedelta(days=3)    # MSG4
+                now - timedelta(days=10),  # 1002
+                now - timedelta(days=5),   # 1003
+                now - timedelta(days=3)    # 1004
             ]
         })
 
         mock_read_grid_crop_data.return_value = mock_data
 
-        # Attempting to get "MSG1", which is not present in the history
-        result = get_last_message_date(mock_data, 100, "MSG1")
+        # Attempting to get "1001", which is not present in the history
+        result = get_last_message_date(mock_data, 100, "1001")
 
         # Ensure that the function correctly returns None
         self.assertIsNone(result)
@@ -319,7 +319,7 @@ class DCASPipelineFunctionTest(DCASPipelineBaseTest):
         mock_data = pd.DataFrame({
             'farm_id': [1, 1, 1],
             'crop_id': [100, 100, 100],
-            'message': ['MSG1', 'MSG1', 'MSG1'],
+            'message': ['1001', '1001', '1001'],
             'message_2': [None, None, None],
             'message_3': [None, None, None],
             'message_4': [None, None, None],
@@ -338,7 +338,7 @@ class DCASPipelineFunctionTest(DCASPipelineBaseTest):
         farm_messages = mock_data[mock_data["farm_id"] == 1]
 
         # Call function with the updated parameters
-        result = get_last_message_date(farm_messages, 100, "MSG1")
+        result = get_last_message_date(farm_messages, 100, "1001")
 
         # Expected result: Most recent message date
         expected_result = mock_data['message_date'].max()
@@ -360,7 +360,7 @@ class DCASPipelineFunctionTest(DCASPipelineBaseTest):
         df = pd.DataFrame({
             'farm_id': [1, 2, 3],
             'crop_id': [100, 200, 300],
-            'message': ['MSG1', 'MSG2', 'MSG3'],
+            'message': ['1001', '1002', '1003'],
             'message_2': [None, None, None],
             'message_3': [None, None, None],
             'message_4': [None, None, None],
@@ -371,7 +371,7 @@ class DCASPipelineFunctionTest(DCASPipelineBaseTest):
         historical_df = pd.DataFrame({
             'farm_id': [1, 2],  # Only farms 1 and 2 have historical messages
             'crop_id': [100, 200],
-            'message': ['MSG1', 'MSG2'],
+            'message': ['1001', '1002'],
             'message_2': [None, None],
             'message_3': [None, None],
             'message_4': [None, None],
@@ -389,8 +389,8 @@ class DCASPipelineFunctionTest(DCASPipelineBaseTest):
 
         # Assertions
         self.assertIsNone(filtered_df.loc[0, 'message'])
-        self.assertEqual(filtered_df.loc[1, 'message'], 'MSG2')
-        self.assertEqual(filtered_df.loc[2, 'message'], 'MSG3')
+        self.assertEqual(filtered_df.loc[1, 'message'], '1002')
+        self.assertEqual(filtered_df.loc[2, 'message'], '1003')
 
         # Ensure `read_grid_crop_data` was called once
         mock_read_grid_crop_data.assert_called_once_with("/fake/path", [], [])
@@ -415,11 +415,11 @@ class DCASPipelineFunctionTest(DCASPipelineBaseTest):
 
         # Mock the rule engine's behavior
         def mock_execute_rule(input_data):
-            input_data.message_codes.add('MSG1')
-            input_data.message_codes.add('MSG2')
+            input_data.message_codes.add('1001')
+            input_data.message_codes.add('1002')
         mock_rule_engine = MagicMock()
         mock_rule_engine.execute_rule.side_effect = mock_execute_rule
-        mock_sort_messages.return_value = ['MSG1', 'MSG2']
+        mock_sort_messages.return_value = ['1001', '1002']
 
         # Call the function
         result = calculate_message_output(
@@ -433,10 +433,10 @@ class DCASPipelineFunctionTest(DCASPipelineBaseTest):
         self.assertIn('message_2', result)
         self.assertIn('is_empty_message', result)
         self.assertIn('final_message', result)
-        self.assertEqual(result['message'], 'MSG1')
-        self.assertEqual(result['message_2'], 'MSG2')
+        self.assertEqual(result['message'], 1001)
+        self.assertEqual(result['message_2'], 1002)
         self.assertEqual(result['is_empty_message'], False)
-        self.assertEqual(result['final_message'], 'MSG1')
+        self.assertEqual(result['final_message'], 1001)
 
         # Ensure the rule engine was called with the correct parameters
         mock_rule_engine.execute_rule.assert_called_once()
@@ -494,7 +494,7 @@ class DCASPipelineFunctionTest(DCASPipelineBaseTest):
             'config_id': 1,
             'gdd_sum': 450,
             'temperature': 25,
-            'prev_week_message': 'MSG1',
+            'prev_week_message': 1001,
         }
         attrib_dict = {
             'temperature': 1
@@ -502,11 +502,11 @@ class DCASPipelineFunctionTest(DCASPipelineBaseTest):
 
         # Mock the rule engine's behavior
         def mock_execute_rule(input_data):
-            input_data.message_codes.add('MSG1')
-            input_data.message_codes.add('MSG2')
+            input_data.message_codes.add('1001')
+            input_data.message_codes.add('1002')
         mock_rule_engine = MagicMock()
         mock_rule_engine.execute_rule.side_effect = mock_execute_rule
-        mock_sort_messages.return_value = ['MSG1', 'MSG2']
+        mock_sort_messages.return_value = ['1001', '1002']
 
         # Call the function
         result = calculate_message_output(
@@ -521,11 +521,11 @@ class DCASPipelineFunctionTest(DCASPipelineBaseTest):
         self.assertIn('is_empty_message', result)
         self.assertIn('has_repetitive_message', result)
         self.assertIn('final_message', result)
-        self.assertEqual(result['message'], 'MSG1')
-        self.assertEqual(result['message_2'], 'MSG2')
+        self.assertEqual(result['message'], 1001)
+        self.assertEqual(result['message_2'], 1002)
         self.assertEqual(result['is_empty_message'], False)
         self.assertEqual(result['has_repetitive_message'], True)
-        self.assertEqual(result['final_message'], 'MSG2')
+        self.assertEqual(result['final_message'], 1002)
 
         # Ensure the rule engine was called with the correct parameters
         mock_rule_engine.execute_rule.assert_called_once()
