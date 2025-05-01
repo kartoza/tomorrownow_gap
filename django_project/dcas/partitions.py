@@ -20,6 +20,7 @@ from dcas.functions import (
     calculate_growth_stage,
     calculate_message_output
 )
+from dcas.data_type import DCASDataType, DCASDataVariable
 
 
 def process_partition_total_gdd(
@@ -101,6 +102,11 @@ def process_partition_total_gdd(
     # combine df with cumulative sum of gdd
     df = pd.concat([df, cumsum_gdd_df], axis=1)
 
+    del grid_data_df
+    del norm_temperature_df
+    del gdd_temp_df
+    del cumsum_gdd_df
+
     return df
 
 
@@ -154,6 +160,9 @@ def process_partition_seasonal_precipitation(
 
     df = pd.concat([df, seasonal_precipitation_df], axis=1)
 
+    del grid_data_df
+    del seasonal_precipitation_df
+
     return df
 
 
@@ -183,6 +192,8 @@ def process_partition_other_params(
     # merge the df with grid_data
     df = df.merge(grid_data_df, on=['grid_id'], how='inner')
 
+    del grid_data_df
+
     return df
 
 
@@ -201,8 +212,16 @@ def process_partition_growth_stage(
     """
     last_gdd_epoch = epoch_list[-1]
     df = df.assign(
-        growth_stage_start_date=pd.Series(dtype='double'),
-        growth_stage_id=pd.Series(dtype='int'),
+        growth_stage_start_date=pd.Series(
+            dtype=DCASDataType.MAP_TYPES[
+                DCASDataVariable.GROWTH_STAGE_START_DATE_EPOCH
+            ]
+        ),
+        growth_stage_id=pd.Series(
+            dtype=DCASDataType.MAP_TYPES[
+                DCASDataVariable.GROWTH_STAGE_ID
+            ]
+        ),
         total_gdd=df[f'gdd_sum_{last_gdd_epoch}']
     )
 
@@ -263,6 +282,9 @@ def process_partition_growth_stage_precipitation(
 
     df = pd.concat([df, growth_stage_precipitation_df], axis=1)
 
+    del grid_data_df
+    del growth_stage_precipitation_df
+
     return df
 
 
@@ -279,14 +301,26 @@ def process_partition_message_output(
     :rtype: pd.DataFrame
     """
     df = df.assign(
-        message=None,
-        message_2=None,
-        message_3=None,
-        message_4=None,
-        message_5=None,
+        message=pd.Series(dtype=DCASDataType.MAP_TYPES[
+            DCASDataVariable.MESSAGE
+        ]),
+        message_2=pd.Series(dtype=DCASDataType.MAP_TYPES[
+            DCASDataVariable.MESSAGE_2
+        ]),
+        message_3=pd.Series(dtype=DCASDataType.MAP_TYPES[
+            DCASDataVariable.MESSAGE_3
+        ]),
+        message_4=pd.Series(dtype=DCASDataType.MAP_TYPES[
+            DCASDataVariable.MESSAGE_4
+        ]),
+        message_5=pd.Series(dtype=DCASDataType.MAP_TYPES[
+            DCASDataVariable.MESSAGE_5
+        ]),
         is_empty_message=False,
         has_repetitive_message=False,
-        final_message=None
+        final_message=pd.Series(dtype=DCASDataType.MAP_TYPES[
+            DCASDataVariable.FINAL_MESSAGE
+        ])
     )
 
     # load previous final message by grid_id and crop_id
@@ -308,15 +342,19 @@ def process_partition_message_output(
             how='left'
         )
         # Replace NaN with None
-        df['prev_week_message'] = (
-            df['prev_week_message'].where(
-                pd.notnull(df['prev_week_message']),
-                None
-            )
-        )
+        # df['prev_week_message'] = (
+        #     df['prev_week_message'].where(
+        #         pd.notnull(df['prev_week_message']),
+        #         None
+        #     )
+        # )
     else:
         # If no previous message, set prev_week_message to None
-        df = df.assign(prev_week_message=None)
+        df = df.assign(prev_week_message=pd.Series(
+            dtype=DCASDataType.MAP_TYPES[
+                DCASDataVariable.PREV_WEEK_MESSAGE
+            ]
+        ))
 
     attrib_dict = {
         'temperature': Attribute.objects.get(variable_name='temperature').id,
@@ -412,5 +450,7 @@ def process_partition_farm_registry(
     )
 
     df['growth_stage'] = df['growth_stage_id'].map(growth_stage_mapping)
+
+    del grid_data_df
 
     return df

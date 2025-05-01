@@ -57,7 +57,7 @@ class DCASPipelineTest(DCASPipelineBaseTest):
             'country_id': country_id_list,
             'config_id': [self.default_config.id, config.id]
         }, index=df.index)
-        expected_df['config_id'] = expected_df['config_id'].astype('Int64')
+        expected_df['config_id'] = expected_df['config_id'].astype('UInt16')
         pd.testing.assert_frame_equal(df, expected_df)
 
     def test_merge_grid_data_with_config_using_default(self):
@@ -79,7 +79,7 @@ class DCASPipelineTest(DCASPipelineBaseTest):
             'country_id': country_id_list,
             'config_id': [self.default_config.id, self.default_config.id]
         }, index=df.index)
-        expected_df['config_id'] = expected_df['config_id'].astype('Int64')
+        expected_df['config_id'] = expected_df['config_id'].astype('UInt16')
         pd.testing.assert_frame_equal(df, expected_df)
 
     # @patch("dcas.queries.DataQuery.read_grid_data_crop_meta_parquet")

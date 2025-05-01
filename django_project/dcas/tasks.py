@@ -116,6 +116,11 @@ class DCASPreferences:
         return self.dcas_config.get('duckdb_memory_limit', None)
 
     @property
+    def dask_threads_number(self):
+        """Get the dask threads number."""
+        return self.dcas_config.get('dask_threads_number', None)
+
+    @property
     def store_csv_to_minio(self):
         """Check if process should store csv to minio."""
         return self.dcas_config.get('store_csv_to_minio', False)
@@ -152,7 +157,8 @@ class DCASPreferences:
             'store_csv_to_sftp': self.store_csv_to_sftp,
             'trigger_error_handling': self.trigger_error_handling,
             'csv_columns': self.csv_columns,
-            'duckdb_memory_limit': self.duck_db_memory_limit
+            'duckdb_memory_limit': self.duck_db_memory_limit,
+            'dask_threads_number': self.dask_threads_number
         }
 
     @staticmethod
@@ -344,7 +350,9 @@ def run_dcas(request_id=None):
         dcas_config.farm_registry_groups, dcas_config.request_date,
         farm_num_partitions=dcas_config.farm_num_partitions,
         grid_crop_num_partitions=dcas_config.grid_crop_num_partitions,
-        duck_db_num_threads=dcas_config.duck_db_num_threads
+        duck_db_num_threads=dcas_config.duck_db_num_threads,
+        previous_days_to_check=7,
+        dask_num_threads=dcas_config.dask_threads_number,
     )
 
     errors = None

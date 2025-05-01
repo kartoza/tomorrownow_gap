@@ -129,7 +129,7 @@ def calculate_message_output(
 
     for idx, code in enumerate(messages):
         var_name = f'message_{idx + 1}' if idx > 0 else 'message'
-        row[var_name] = code
+        row[var_name] = int(code)
 
     # Check if the message codes are empty
     if data.is_empty():
@@ -138,13 +138,16 @@ def calculate_message_output(
     else:
         row['is_empty_message'] = False
         # set the final message to be the highest priority message
-        row['final_message'] = messages[0]
-        if row['final_message'] == row['prev_week_message']:
+        row['final_message'] = int(messages[0])
+        if (
+            pd.notna(row['prev_week_message']) and
+            row['final_message'] == row['prev_week_message']
+        ):
             # set flag has_repetitive_message
             row['has_repetitive_message'] = True
             if len(messages) > 1:
                 # set the final_message as the second message
-                row['final_message'] = messages[1]
+                row['final_message'] = int(messages[1])
 
     return row
 

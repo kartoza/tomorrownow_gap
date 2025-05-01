@@ -41,6 +41,7 @@ from dcas.outputs import DCASPipelineOutput, OutputType
 from dcas.inputs import DCASPipelineInput
 from dcas.functions import filter_messages_by_weeks
 from dcas.service import GrowthStageService, MessagePriorityService
+from dcas.data_type import DCASDataVariable, DCASDataType
 
 
 logger = logging.getLogger(__name__)
@@ -59,7 +60,7 @@ class DCASDataPipeline:
         self, farm_registry_group_ids: list,
         request_date: datetime.date, farm_num_partitions = None,
         grid_crop_num_partitions = None, duck_db_num_threads=None,
-        previous_days_to_check=7
+        previous_days_to_check=7, dask_num_threads=None
     ):
         """Initialize DCAS Data Pipeline.
 
@@ -76,6 +77,8 @@ class DCASDataPipeline:
         :param previous_days_to_check: number of days to
             check message that has been sent (Default: 7)
         :type previous_days_to_check: int
+        :param dask_num_threads: number of threads for dask
+        :type dask_num_threads: int
         """
         self.farm_registry_group_ids = farm_registry_group_ids
         self.fs = None
@@ -86,7 +89,8 @@ class DCASDataPipeline:
         self.duck_db_num_threads = duck_db_num_threads
         self.data_query = DataQuery(self.LIMIT)
         self.data_output = DCASPipelineOutput(
-            request_date, duck_db_num_threads=duck_db_num_threads
+            request_date, duck_db_num_threads=duck_db_num_threads,
+            dask_num_threads=dask_num_threads
         )
         self.data_input = DCASPipelineInput(request_date)
         self.NUM_PARTITIONS = (
@@ -144,6 +148,9 @@ class DCASDataPipeline:
                 con=conn,
                 index_col=self.data_query.grid_id_index_col,
             )
+            df = df.astype(
+                DCASDataType.get_column_map(df.columns)
+            )
 
         return self._merge_grid_data_with_config(df)
 
@@ -176,7 +183,9 @@ class DCASDataPipeline:
         else:
             df['config_id'] = default_config.id
 
-        df['config_id'] = df['config_id'].astype('Int64')
+        df['config_id'] = df['config_id'].astype(
+            DCASDataType.MAP_TYPES[DCASDataVariable.CONFIG_ID]
+        )
 
         return df
 
@@ -283,10 +292,9 @@ class DCASDataPipeline:
         )
 
         # adjust type
-        ddf = ddf.astype({
-            'prev_growth_stage_id': 'Int64',
-            'prev_growth_stage_start_date': 'Float64'
-        })
+        ddf = ddf.astype(
+            DCASDataType.get_column_map(ddf.columns)
+        )
 
         return ddf
 
@@ -312,6 +320,11 @@ class DCASDataPipeline:
             year=lambda x: x.date.dt.year,
             month=lambda x: x.date.dt.month,
             day=lambda x: x.date.dt.day
+        )
+
+        # adjust type
+        df = df.astype(
+            DCASDataType.get_column_map(df.columns)
         )
         return df
 
@@ -368,7 +381,9 @@ class DCASDataPipeline:
 
         # add config_id
         grid_crop_df_meta = grid_crop_df_meta.assign(
-            config_id=pd.Series(dtype='Int64')
+            config_id=pd.Series(
+                dtype=DCASDataType.MAP_TYPES[DCASDataVariable.CONFIG_ID]
+            ),
         )
         # add gdd columns for each date
         gdd_columns = []
@@ -386,8 +401,16 @@ class DCASDataPipeline:
 
         # Identify crop growth stage
         grid_crop_df_meta = grid_crop_df_meta.assign(
-            growth_stage_start_date=pd.Series(dtype='double'),
-            growth_stage_id=pd.Series(dtype='int'),
+            growth_stage_start_date=pd.Series(
+                dtype=DCASDataType.MAP_TYPES[
+                    DCASDataVariable.GROWTH_STAGE_START_DATE_EPOCH
+                ]
+            ),
+            growth_stage_id=pd.Series(
+                dtype=DCASDataType.MAP_TYPES[
+                    DCASDataVariable.GROWTH_STAGE_ID
+                ]
+            ),
             total_gdd=np.nan
         )
         grid_crop_df = grid_crop_df.map_partitions(
@@ -439,15 +462,29 @@ class DCASDataPipeline:
 
         # Calculate message codes
         grid_crop_df_meta = grid_crop_df_meta.assign(
-            message=None,
-            message_2=None,
-            message_3=None,
-            message_4=None,
-            message_5=None,
+            message=pd.Series(dtype=DCASDataType.MAP_TYPES[
+                DCASDataVariable.MESSAGE
+            ]),
+            message_2=pd.Series(dtype=DCASDataType.MAP_TYPES[
+                DCASDataVariable.MESSAGE_2
+            ]),
+            message_3=pd.Series(dtype=DCASDataType.MAP_TYPES[
+                DCASDataVariable.MESSAGE_3
+            ]),
+            message_4=pd.Series(dtype=DCASDataType.MAP_TYPES[
+                DCASDataVariable.MESSAGE_4
+            ]),
+            message_5=pd.Series(dtype=DCASDataType.MAP_TYPES[
+                DCASDataVariable.MESSAGE_5
+            ]),
             is_empty_message=False,
             has_repetitive_message=False,
-            final_message=None,
-            prev_week_message=None
+            final_message=pd.Series(dtype=DCASDataType.MAP_TYPES[
+                DCASDataVariable.FINAL_MESSAGE
+            ]),
+            prev_week_message=pd.Series(dtype=DCASDataType.MAP_TYPES[
+                DCASDataVariable.PREV_WEEK_MESSAGE
+            ])
         )
         grid_crop_df = grid_crop_df.map_partitions(
             process_partition_message_output,
