@@ -95,6 +95,6 @@ class DCASDataType:
         :rtype: dict
         """
         return {
-            col: cls.MAP_TYPES[col] for col in column_list if \
-                col in cls.MAP_TYPES
+            col: cls.MAP_TYPES[col] for col in column_list if
+            col in cls.MAP_TYPES
         }

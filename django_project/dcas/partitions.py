@@ -191,7 +191,7 @@ def process_partition_other_params(
 
     # merge the df with grid_data
     df = df.merge(grid_data_df, on=['grid_id'], how='inner')
-    
+
     del grid_data_df
 
     return df

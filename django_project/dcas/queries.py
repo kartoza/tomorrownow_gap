@@ -185,7 +185,7 @@ class DataQuery:
                 con=conn,
                 index_col=self.grid_id_index_col,
             )
-        
+
         # adjust column types
         df = df.astype(DCASDataType.get_column_map(df.columns))
 
