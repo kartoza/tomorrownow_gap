@@ -42,7 +42,10 @@ class DCASPipelineOutput:
         'message_english': 'message_english',
         'message_code': 'final_message',
         'crop': 'crop',
-        'planting_date': 'planting_date',
+        'planting_date': (
+            "strftime(to_timestamp(planting_date_epoch)" +
+            ", '%Y-%m-%d')"
+        ),
         'growth_stage': 'growth_stage',
         'county': 'county',
         'subcounty': 'subcounty',
@@ -79,13 +82,15 @@ class DCASPipelineOutput:
     }
 
     def __init__(
-        self, request_date, duck_db_num_threads=None, duckdb_memory_limit=None
+        self, request_date, duck_db_num_threads=None, duckdb_memory_limit=None,
+        dask_num_threads=None
     ):
         """Initialize DCASPipelineOutput."""
         self.fs = None
         self.request_date = request_date
         self.duck_db_num_threads = duck_db_num_threads
         self.duckdb_memory_limit = duckdb_memory_limit or '1GB'
+        self.dask_num_threads = dask_num_threads
 
     def setup(self):
         """Set DCASPipelineOutput."""
@@ -230,7 +235,7 @@ class DCASPipelineOutput:
             compute=False
         )
         print(f'writing to {self._get_directory_path(self.DCAS_OUTPUT_DIR)}')
-        execute_dask_compute(x)
+        execute_dask_compute(x, dask_num_threads=self.dask_num_threads)
 
     def _save_grid_crop_data(self, df: dask_df):
         dir_path = self.grid_crop_data_dir_path
@@ -246,7 +251,7 @@ class DCASPipelineOutput:
             compute=False
         )
         print(f'writing to {dir_path}')
-        execute_dask_compute(x)
+        execute_dask_compute(x, dask_num_threads=self.dask_num_threads)
 
     def _save_grid_data(self, df: pd.DataFrame):
         file_path = self.grid_data_file_path

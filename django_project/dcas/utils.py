@@ -10,6 +10,8 @@ import pandas as pd
 import duckdb
 from django.core.files.storage import storages
 
+from dcas.data_type import DCASDataType
+
 
 logger = logging.getLogger(__name__)
 
@@ -44,6 +46,12 @@ def read_grid_data(
     )
     df = conndb.sql(query).df()
     conndb.close()
+
+    # Convert columns to appropriate types
+    df = df.astype(
+        DCASDataType.get_column_map(column_list)
+    )
+
     return df
 
 
@@ -75,6 +83,11 @@ def read_grid_crop_data(
     # grid_crop_key = crop_id || '_' || crop_stage_type_id || '_' || grid_id
     df = conndb.sql(query).df()
     conndb.close()
+
+    # Convert columns to appropriate types
+    df = df.astype(
+        DCASDataType.get_column_map(df.columns)
+    )
     return df
 
 
@@ -101,14 +114,21 @@ def get_previous_week_message(duckdb_file: str, grid_crop_keys: list):
     :return: DataFrame containing the previous week's message.
     :rtype: pd.DataFrame
     """
-    conn = duckdb.connect(duckdb_file)
+    conn = duckdb.connect(duckdb_file, read_only=True)
     query = f"""
-        SELECT *
+        SELECT grid_id, crop_id, crop_stage_type_id,
+        planting_date_epoch, prev_week_message
         FROM dcas
         WHERE grid_crop_key IN {grid_crop_keys}
     """
     df = conn.sql(query).df()
     conn.close()
+
+    # Convert columns to appropriate types
+    df = df.astype(
+        DCASDataType.get_column_map(df.columns)
+    )
+
     return df
 
 

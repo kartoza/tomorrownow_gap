@@ -16,6 +16,8 @@ from sqlalchemy.types import String as SqlString
 from geoalchemy2.functions import ST_X, ST_Y, ST_Centroid
 import duckdb
 
+from dcas.data_type import DCASDataType
+
 
 logger = logging.getLogger(__name__)
 
@@ -183,18 +185,15 @@ class DataQuery:
                 con=conn,
                 index_col=self.grid_id_index_col,
             )
-        df['prev_growth_stage_id'] = (
-            df['prev_growth_stage_id'].astype('Int64')
-        )
-        df['prev_growth_stage_start_date'] = (
-            df['prev_growth_stage_start_date'].astype('Float64')
-        )
+        
+        # adjust column types
+        df = df.astype(DCASDataType.get_column_map(df.columns))
+
         return df
 
     def _farm_registry_subquery(self, farm_registry_group_ids):
         subquery = select(
             self.farmregistry.c.id.label('farmregistry_id'),
-            self.farmregistry.c.planting_date.label('planting_date'),
             extract(
                 'epoch',
                 func.DATE(self.farmregistry.c.planting_date)
@@ -286,6 +285,10 @@ class DataQuery:
             month=lambda x: x.date.dt.month,
             day=lambda x: x.date.dt.day
         )
+
+        # adjust column types
+        df = df.astype(DCASDataType.get_column_map(df.columns))
+
         return df
 
     def read_grid_data_crop_meta_parquet(
@@ -310,6 +313,10 @@ class DataQuery:
         )
         df = conndb.sql(query).df()
         conndb.close()
+
+        # adjust column types
+        df = df.astype(DCASDataType.get_column_map(df.columns))
+
         return df
 
     def get_farms_without_messages(
