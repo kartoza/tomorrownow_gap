@@ -627,6 +627,7 @@ class TioShortTermDuckDBCollector(BaseIngestor):
     """Collector for Tio Short Term data."""
 
     TIME_STEP = DatasetTimeStep.DAILY
+    DEFAULT_GRID_BATCH_SIZE = 500
 
     def __init__(self, session: CollectorSession, working_dir: str = '/tmp'):
         """Initialize TioShortTermCollector."""
@@ -647,6 +648,9 @@ class TioShortTermDuckDBCollector(BaseIngestor):
         self.attribute_names = [
             f.attribute.variable_name for f in self.forecast_attrs
         ]
+        self.grid_batch_size = self.get_config(
+            'grid_batch_size', self.DEFAULT_GRID_BATCH_SIZE
+        )
 
     def _init_dataset(self) -> Dataset:
         """Fetch dataset for this ingestor.
@@ -775,6 +779,7 @@ class TioShortTermDuckDBCollector(BaseIngestor):
             self.working_dir, f'{data_source.name}'
         )
         conn = duckdb.connect(duckdb_filepath)
+        conn.execute("PRAGMA wal_autocheckpoint='64MB'")
         return conn
 
     def _get_duckdb_filesize(self, data_source: DataSourceFile):
@@ -834,6 +839,7 @@ class TioShortTermDuckDBCollector(BaseIngestor):
         # init table
         self._init_table(conn)
 
+        conn.execute("BEGIN TRANSACTION")
         count_processed = 0
         count_error = 0
         status_codes_error = {}
@@ -910,8 +916,14 @@ class TioShortTermDuckDBCollector(BaseIngestor):
                 """, batch_values
             )
             count_processed += 1
+            if count_processed % self.grid_batch_size == 0:
+                conn.execute("COMMIT")
+                conn.execute("BEGIN TRANSACTION")
+                logger.info(f'Processed {count_processed} grids')
 
+        conn.execute("COMMIT")
         conn.close()
+        logger.info(f'Processed {count_processed} grids')
 
         metadata_result = {
             'count_processed': count_processed,

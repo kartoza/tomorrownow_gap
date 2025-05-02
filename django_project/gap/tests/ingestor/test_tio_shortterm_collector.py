@@ -853,7 +853,8 @@ class TioHourlyShortTermDuckDBCollectorTest(
         session = CollectorSession.objects.create(
             ingestor_type=self.ingestor_type,
             additional_config={
-                'duckdb_num_threads': 1
+                'duckdb_num_threads': 1,
+                'grid_batch_size': 1
             }
         )
         session.run()
