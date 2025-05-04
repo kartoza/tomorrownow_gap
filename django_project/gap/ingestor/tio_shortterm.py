@@ -167,6 +167,7 @@ class TioShortTermIngestor(BaseZarrIngestor):
     """Ingestor Tio Short Term data into Zarr."""
 
     DATE_VARIABLE = 'forecast_date'
+    TRIGGER_DCAS = True
     default_chunks = {
         'forecast_date': 10,
         'forecast_day_idx': 21,
@@ -534,7 +535,7 @@ class TioShortTermIngestor(BaseZarrIngestor):
             logger.error(traceback.format_exc())
             raise e
         finally:
-            if is_success:
+            if is_success and self.TRIGGER_DCAS:
                 trigger_task_after_ingestor_completed()
 
     def _process_tio_shortterm_data(
