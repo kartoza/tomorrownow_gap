@@ -60,6 +60,7 @@ class TioHourlyShortTermIngestor(TioShortTermDuckDBIngestor):
     """Ingestor for Tio Hourly Short-Term forecast data."""
 
     TIME_STEP = DatasetTimeStep.HOURLY
+    TRIGGER_DCAS = False
     default_chunks = {
         'forecast_date': 10,
         'forecast_day_idx': 21,
