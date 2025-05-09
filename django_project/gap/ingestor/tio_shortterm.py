@@ -43,7 +43,7 @@ from gap.ingestor.exceptions import (
 )
 from gap.models import (
     CastType, CollectorSession, DataSourceFile, DatasetStore, Grid,
-    IngestorSession, Dataset, DatasetTimeStep
+    IngestorSession, Dataset, DatasetTimeStep, Preferences
 )
 from gap.providers import TomorrowIODatasetReader
 from gap.providers.tio import tomorrowio_shortterm_forecast_dataset
@@ -632,6 +632,10 @@ class TioShortTermDuckDBCollector(BaseIngestor):
 
     def __init__(self, session: CollectorSession, working_dir: str = '/tmp'):
         """Initialize TioShortTermCollector."""
+        # use separate working dir that persist in tmp
+        working_dir = '/tmp/tio_collector'
+        if not os.path.exists(working_dir):
+            os.makedirs(working_dir, exist_ok=True)
         super().__init__(session, working_dir)
         self.dataset = self._init_dataset()
         today = timezone.now().replace(
@@ -779,8 +783,25 @@ class TioShortTermDuckDBCollector(BaseIngestor):
         duckdb_filepath = os.path.join(
             self.working_dir, f'{data_source.name}'
         )
-        conn = duckdb.connect(duckdb_filepath)
-        conn.execute("PRAGMA wal_autocheckpoint='64MB'")
+        config = {
+            'threads': self.get_config(
+                'duckdb_config_threads',
+                Preferences.load().duckdb_threads_num
+            ),
+            'memory_limit': self.get_config(
+                'duckdb_config_memory_limit',
+                '256MB'
+            )
+        }
+        wal_autocheckpoint = self.get_config(
+            'duckdb_wal_autocheckpoint',
+            '64MB'
+        )
+        conn = duckdb.connect(
+            duckdb_filepath,
+            config=config
+        )
+        conn.execute(f"PRAGMA wal_autocheckpoint='{wal_autocheckpoint}'")
         return conn
 
     def _get_duckdb_filesize(self, data_source: DataSourceFile):
@@ -811,6 +832,15 @@ class TioShortTermDuckDBCollector(BaseIngestor):
         # update metadata with its full remote_url
         data_source.metadata['remote_url'] = remote_url
         data_source.save()
+        # remove local file
+        try:
+            if os.path.exists(duckdb_filepath):
+                os.remove(duckdb_filepath)
+        except OSError as e:
+            logger.error(
+                f"Error deleting file {duckdb_filepath}: {e}",
+                exc_info=True
+            )
 
     def _init_table(self, conn: duckdb.DuckDBPyConnection):
         attrib_cols = [f'{attr} DOUBLE' for attr in self.attribute_names]
@@ -840,6 +870,11 @@ class TioShortTermDuckDBCollector(BaseIngestor):
         # init table
         self._init_table(conn)
 
+        # fetch existing grid_id
+        grid_id_df = conn.sql(
+            "SELECT DISTINCT grid_id FROM weather"
+        ).to_df()
+
         conn.execute("BEGIN TRANSACTION")
         count_processed = 0
         count_error = 0
@@ -851,10 +886,10 @@ class TioShortTermDuckDBCollector(BaseIngestor):
             grid_id = grid['id']
 
             # check if grid_id exists
-            count = conn.execute(
-                "SELECT COUNT(*) FROM weather WHERE grid_id=?", (grid_id,)
-            ).fetchone()[0]
-            if count > 0:
+            exists = grid_id_df[
+                grid_id_df['grid_id'] == grid_id
+            ].shape[0]
+            if exists > 0:
                 continue
 
             # fetch data
@@ -962,7 +997,22 @@ class TioShortTermDuckDBIngestor(TioShortTermIngestor):
         duckdb_filepath = os.path.join(
             self.working_dir, f'{str(uuid.uuid4())}'
         )
-        conn = duckdb.connect(duckdb_filepath)
+        config = {
+            'threads': self.get_config(
+                'duckdb_config_threads',
+                Preferences.load().duckdb_threads_num
+            ),
+            'memory_limit': self.get_config(
+                'duckdb_config_memory_limit',
+                '256MB'
+            )
+        }
+        conn = duckdb.connect(duckdb_filepath, config=config)
+        wal_autocheckpoint = self.get_config(
+            'duckdb_wal_autocheckpoint',
+            '64MB'
+        )
+        conn.execute(f"PRAGMA wal_autocheckpoint='{wal_autocheckpoint}'")
         self._init_table(conn)
 
         column_names = ['grid_id', 'lat', 'lon', 'date', 'time']
