@@ -409,6 +409,28 @@ class SalientIngestor(BaseZarrIngestor):
         forecast_date_array = pd.date_range(
             forecast_date.isoformat(), periods=1)
 
+        # open existing zarr
+        existing_ds = self._open_zarr_dataset(
+            drop_variables=self.variables
+        )
+
+        # find index of forecast_date
+        new_forecast_date = forecast_date_array[0]
+        forecast_date_idx = (
+            np.where(
+                existing_ds['forecast_date'].values == new_forecast_date
+            )[0][0]
+        )
+        existing_ds.close()
+
+        total_progress = (
+            len(lat_slices) * len(lon_slices) * len(variable_slices)
+        )
+        progress.row_count = total_progress
+        progress.notes = f'Processing {total_progress} chunks'
+        progress.save()
+        total_processed = 0
+
         for lat_slice in lat_slices:
             for lon_slice in lon_slices:
                 # Extract corresponding latitude & longitude values
@@ -419,39 +441,47 @@ class SalientIngestor(BaseZarrIngestor):
                 lat_arr = self._transform_coordinates_array(lat_values, 'lat')
                 lon_arr = self._transform_coordinates_array(lon_values, 'lon')
 
+                # get the data array
+                da = ds.isel(lat=lat_slice, lon=lon_slice)
+
+                # assign forecast_date coords
+                da = da.assign_coords(
+                    forecast_date=forecast_date_array[0].value
+                )
+
+                # transform forecast_day into number of days
+                fd = np.datetime64(forecast_date.isoformat())
+                forecast_day_idx = (da['forecast_day'] - fd).dt.days.data
+                da = da.assign_coords(
+                    forecast_day_idx=("forecast_day", forecast_day_idx))
+                da = da.swap_dims({'forecast_day': 'forecast_day_idx'})
+                da = da.drop_vars('forecast_day')
+
+                # expand dimension to forecast_date
+                da = da.expand_dims("forecast_date")
+
                 # iterate self.variables with chunks of 10
                 for var_slice in variable_slices:
                     subset_vars = self.variables[var_slice]
                     # write to zarr
                     new_data = {}
 
-                    # get the data array
-                    da = ds[subset_vars].isel(lat=lat_slice, lon=lon_slice)
-
-                    # assign forecast_date coords
-                    da = da.assign_coords(
-                        forecast_date=forecast_date_array[0].value
-                    )
-
-                    # transform forecast_day into number of days
-                    fd = np.datetime64(forecast_date.isoformat())
-                    forecast_day_idx = (da['forecast_day'] - fd).dt.days.data
-                    da = da.assign_coords(
-                        forecast_day_idx=("forecast_day", forecast_day_idx))
-                    da = da.swap_dims({'forecast_day': 'forecast_day_idx'})
-                    da = da.drop_vars('forecast_day')
-
-                    # expand dimension to forecast_date
-                    da = da.expand_dims("forecast_date")
-
                     for var_name in subset_vars:
                         subset_da = da[var_name]
-                        new_data[var_name] = subset_da.values
+                        new_data[var_name] = subset_da.data
 
                     # write to zarr
                     self._update_by_region(
-                        forecast_date, lat_arr, lon_arr, subset_vars, new_data
+                        new_forecast_date, forecast_date_idx,
+                        lat_arr, lon_arr, subset_vars, new_data
                     )
+
+                    total_processed += 1
+                    progress.notes = (
+                        f'Processing {total_processed}/{total_progress} '
+                        'chunks'
+                    )
+                    progress.save()
 
         # close the dataset
         ds.close()
@@ -625,9 +655,9 @@ class SalientIngestor(BaseZarrIngestor):
         progress.save()
 
     def _update_by_region(
-        self, forecast_date: datetime.date, lat_arr: List[CoordMapping],
-        lon_arr: List[CoordMapping], subset_vars: List[str],
-        new_data: dict
+        self, forecast_date: pd.Timestamp, forecast_date_idx,
+        lat_arr: List[CoordMapping], lon_arr: List[CoordMapping],
+        subset_vars: List[str], new_data: dict
     ):
         """Update new_data to the zarr by its forecast_date.
 
@@ -642,17 +672,7 @@ class SalientIngestor(BaseZarrIngestor):
         :param new_data: dictionary of new data
         :type new_data: dict
         """
-        # open existing zarr
-        ds = self._open_zarr_dataset()
-
-        # find index of forecast_date
-        forecast_date_array = pd.date_range(
-            forecast_date.isoformat(), periods=1)
-        new_forecast_date = forecast_date_array[0]
-        forecast_date_idx = (
-            np.where(ds['forecast_date'].values == new_forecast_date)[0][0]
-        )
-
+        forecast_day_indices = np.arange(0, self.num_dates, 1)
         # find nearest lat and lon and its indices
         nearest_lat_arr = [lat.nearest_val for lat in lat_arr]
         nearest_lat_indices = [lat.nearest_idx for lat in lat_arr]
@@ -689,8 +709,8 @@ class SalientIngestor(BaseZarrIngestor):
         new_ds = xr.Dataset(
             data_vars=data_vars,
             coords={
-                'forecast_date': [new_forecast_date],
-                'forecast_day_idx': ds['forecast_day_idx'],
+                'forecast_date': [forecast_date],
+                'forecast_day_idx': forecast_day_indices,
                 'lat': nearest_lat_arr,
                 'lon': nearest_lon_arr
             }
@@ -723,9 +743,6 @@ class SalientIngestor(BaseZarrIngestor):
             compute=False
         )
         execute_dask_compute(x)
-
-        # close ds
-        ds.close()
 
     def run(self):
         """Run Salient Ingestor."""
