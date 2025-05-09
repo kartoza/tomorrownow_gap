@@ -43,7 +43,8 @@ from gap.ingestor.exceptions import (
 )
 from gap.models import (
     CastType, CollectorSession, DataSourceFile, DatasetStore, Grid,
-    IngestorSession, Dataset, DatasetTimeStep, Preferences
+    IngestorSession, Dataset, DatasetTimeStep, Preferences,
+    IngestorSessionStatus
 )
 from gap.providers import TomorrowIODatasetReader
 from gap.providers.tio import tomorrowio_shortterm_forecast_dataset
@@ -310,6 +311,10 @@ class TioShortTermIngestor(BaseZarrIngestor):
         :param forecast_date: forecast date
         :type forecast_date: date
         """
+        progress = self._add_progress(
+            f'Appending {forecast_date.isoformat()}-{is_new_dataset}'
+        )
+        start_time = time.time()
         # expand lat and lon
         min_lat = find_start_latlng(self.lat_metadata)
         min_lon = find_start_latlng(self.lon_metadata)
@@ -378,6 +383,12 @@ class TioShortTermIngestor(BaseZarrIngestor):
         ds.close()
         del ds
         del empty_data
+
+        # update progress
+        total_time = time.time() - start_time
+        progress.notes = f"Execution time: {total_time}"
+        progress.status = IngestorSessionStatus.SUCCESS
+        progress.save()
 
     def _update_by_region(
             self, forecast_date: date, lat_arr: List[CoordMapping],
@@ -1250,6 +1261,11 @@ class TioShortTermDuckDBIngestor(TioShortTermIngestor):
         lon_slices = self._find_chunk_slices(
             len(lon_arr), self.default_chunks['lon'])
 
+        progress = self._add_progress(
+            f'Processing {forecast_date.isoformat()}'
+        )
+        start_time = time.time()
+
         # process the data by chunks
         for lat_slice in lat_slices:
             for lon_slice in lon_slices:
@@ -1266,6 +1282,9 @@ class TioShortTermDuckDBIngestor(TioShortTermIngestor):
                 })
                 self.metadata['total_json_processed'] += count
 
+        # close connection
+        conn.close()
+
         # update end date of zarr datasource file
         self._update_zarr_source_file(forecast_date)
 
@@ -1276,6 +1295,12 @@ class TioShortTermDuckDBIngestor(TioShortTermIngestor):
 
         # invalidate zarr cache
         self._invalidate_zarr_cache()
+
+        # update progress
+        total_time = time.time() - start_time
+        progress.notes = f"Execution time: {total_time}"
+        progress.status = IngestorSessionStatus.SUCCESS
+        progress.save()
 
     def _remove_source_files(self, collector: CollectorSession):
         s3_storage: S3Boto3Storage = storages["gap_products"]

@@ -613,6 +613,11 @@ class SalientIngestor(BaseZarrIngestor):
             # execute_dask_compute will write empty data
             execute_dask_compute(x)
 
+        # close dataset and remove empty_data
+        ds.close()
+        del ds
+        del empty_data
+
         # update progress
         total_time = time.time() - start_time
         progress.notes = f"Execution time: {total_time}"
