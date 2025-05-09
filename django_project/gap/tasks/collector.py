@@ -85,6 +85,9 @@ def _do_run_zarr_collector(
     if total_file > 0:
         additional_conf = {}
         config = get_ingestor_config_from_preferences(dataset.provider)
+        # check if hourly ingestor
+        if ingestor_type == IngestorType.HOURLY_TOMORROWIO:
+            config = config.get('hourly_config', {})
 
         use_latest_datasource = config.get('use_latest_datasource', True)
         if use_latest_datasource:
@@ -153,10 +156,11 @@ def run_tio_hourly_collector_session():
     )
 
     config = get_ingestor_config_from_preferences(dataset.provider)
+    hourly_config = config.get('hourly_config', {})
     # create the collector object
     collector_session = CollectorSession.objects.create(
         ingestor_type=IngestorType.HOURLY_TOMORROWIO,
-        additional_config=config
+        additional_config=hourly_config
     )
     _do_run_zarr_collector(
         dataset,

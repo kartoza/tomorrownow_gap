@@ -532,8 +532,9 @@ class TestDuckDBTioIngestor(TestCase):
         grid = GridFactory(geometry=create_polygon())
 
         # read the json file and create a duckdb file
+        os.makedirs('/tmp/tio_collector', exist_ok=True)
         tmp_filepath = os.path.join(
-            '/tmp', f'{str(uuid.uuid4())}.duckdb'
+            '/tmp', 'tio_collector', f'{str(uuid.uuid4())}.duckdb'
         )
         duckdb_conn = duckdb.connect(tmp_filepath)
         collector_runner = TioShortTermDuckDBCollector(self.collector)
@@ -573,8 +574,6 @@ class TestDuckDBTioIngestor(TestCase):
 
         json_f.close()
         f.close()
-        # remove local file
-        os.remove(tmp_filepath)
         return grid
 
     @patch('xarray.Dataset.to_zarr')
@@ -665,8 +664,9 @@ class TestDuckDBTioHourlyIngestor(TestCase):
         grid = GridFactory(geometry=create_polygon())
 
         # read the json file and create a duckdb file
+        os.makedirs('/tmp/tio_collector', exist_ok=True)
         tmp_filepath = os.path.join(
-            '/tmp', f'{str(uuid.uuid4())}.duckdb'
+            '/tmp', 'tio_collector', f'{str(uuid.uuid4())}.duckdb'
         )
         duckdb_conn = duckdb.connect(tmp_filepath)
         collector_runner = TioHourlyShortTermCollector(self.collector)
@@ -711,8 +711,6 @@ class TestDuckDBTioHourlyIngestor(TestCase):
         collector_runner._upload_duckdb_file(self.datasourcefile)
 
         json_f.close()
-        # remove local file
-        os.remove(tmp_filepath)
         return grid
 
     @patch('xarray.Dataset.to_zarr')
