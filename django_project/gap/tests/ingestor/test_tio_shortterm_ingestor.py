@@ -532,6 +532,7 @@ class TestDuckDBTioIngestor(TestCase):
         grid = GridFactory(geometry=create_polygon())
 
         # read the json file and create a duckdb file
+        os.makedirs('/tmp/tio_collector', exist_ok=True)
         tmp_filepath = os.path.join(
             '/tmp', 'tio_collector', f'{str(uuid.uuid4())}.duckdb'
         )
@@ -663,6 +664,7 @@ class TestDuckDBTioHourlyIngestor(TestCase):
         grid = GridFactory(geometry=create_polygon())
 
         # read the json file and create a duckdb file
+        os.makedirs('/tmp/tio_collector', exist_ok=True)
         tmp_filepath = os.path.join(
             '/tmp', 'tio_collector', f'{str(uuid.uuid4())}.duckdb'
         )
