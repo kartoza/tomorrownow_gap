@@ -763,8 +763,8 @@ class TioShortTermDuckDBCollector(BaseIngestor):
             try:
                 reader.read()
                 if reader.is_success():
-                    values = reader.get_data_values()
-                    return values.to_json(), None
+                    values = reader.get_raw_results()
+                    return values, None
                 else:
                     if attempt < 2:
                         logger.warning(
@@ -926,12 +926,11 @@ class TioShortTermDuckDBCollector(BaseIngestor):
                 param_names.append(attr)
                 param_placeholders.append('?')
 
-            data = api_result['data']
             batch_values = []
-            for item in data:
+            for item in api_result:
                 # insert into table
-                values = item['values']
-                dt = datetime.fromisoformat(item['datetime'])
+                values = item.values
+                dt = item.datetime
                 if self._should_skip_date(dt.date()):
                     continue
 
@@ -948,11 +947,7 @@ class TioShortTermDuckDBCollector(BaseIngestor):
                     )
 
                 for attr in self.attribute_names:
-                    if attr in values:
-                        param.append(values[attr])
-                    else:
-                        param.append(None)
-
+                    param.append(values.get(attr, None))
                 batch_values.append(param)
 
             # execute many
