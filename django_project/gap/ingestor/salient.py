@@ -417,11 +417,15 @@ class SalientIngestor(BaseZarrIngestor):
         # find index of forecast_date
         new_forecast_date = forecast_date_array[0]
         forecast_date_idx = (
-            np.where(existing_ds['forecast_date'].values == new_forecast_date)[0][0]
+            np.where(
+                existing_ds['forecast_date'].values == new_forecast_date
+            )[0][0]
         )
         existing_ds.close()
 
-        total_progress = len(lat_slices) * len(lon_slices) * len(variable_slices)
+        total_progress = (
+            len(lat_slices) * len(lon_slices) * len(variable_slices)
+        )
         progress.row_count = total_progress
         progress.notes = f'Processing {total_progress} chunks'
         progress.save()
@@ -473,7 +477,10 @@ class SalientIngestor(BaseZarrIngestor):
                     )
 
                     total_processed += 1
-                    progress.notes = f'Processing {total_processed}/{total_progress} chunks'
+                    progress.notes = (
+                        f'Processing {total_processed}/{total_progress} '
+                        'chunks'
+                    )
                     progress.save()
 
         # close the dataset
