@@ -96,6 +96,10 @@ STORAGE_DIR_PREFIX = os.environ.get("MINIO_AWS_DIR_PREFIX", "media")
 if STORAGE_DIR_PREFIX and not STORAGE_DIR_PREFIX.endswith("/"):
     STORAGE_DIR_PREFIX = f"{STORAGE_DIR_PREFIX}/"
 
+GAP_PRODUCTS_DIR_PREFIX = os.environ.get("MINIO_GAP_AWS_DIR_PREFIX", "staging")
+if GAP_PRODUCTS_DIR_PREFIX and not GAP_PRODUCTS_DIR_PREFIX.endswith("/"):
+    GAP_PRODUCTS_DIR_PREFIX = f"{GAP_PRODUCTS_DIR_PREFIX}/"
+
 DATA_UPLOAD_MAX_NUMBER_FIELDS = 1500
 
 # Required for import_export_celery tasks
