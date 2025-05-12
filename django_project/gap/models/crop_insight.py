@@ -13,6 +13,7 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.gis.db import models
 from django.core.files.base import ContentFile
+from django.core.files.storage import storages
 from django.core.mail import EmailMessage
 from django.utils import timezone
 
@@ -31,8 +32,13 @@ User = get_user_model()
 
 
 def ingestor_file_path(instance, filename):
-    """Return upload path for Ingestor files."""
-    return f'{settings.STORAGE_DIR_PREFIX}crop-insight/{filename}'
+    """Return files path for crop request."""
+    return f'{settings.GAP_PRODUCTS_DIR_PREFIX}crop-insight/{filename}'
+
+
+def crop_insight_storage():
+    """Return storage for crop insight."""
+    return storages['gap_products']
 
 
 class Crop(Definition):
@@ -534,6 +540,7 @@ class CropInsightRequest(models.Model):
         FarmGroup, null=True, blank=True, on_delete=models.CASCADE
     )
     file = models.FileField(
+        storage=crop_insight_storage,
         upload_to=ingestor_file_path,
         null=True, blank=True
     )
