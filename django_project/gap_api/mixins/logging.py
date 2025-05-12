@@ -16,6 +16,11 @@ class GAPAPILoggingMixin(BaseLoggingMixin):
 
     CACHE_KEY = 'gap_logs_queue'
 
+    def set_output_file_size(self, size):
+        """Set output file size."""
+        if self.log is not None:
+            self.log['output_file_size'] = size
+
     def handle_log(self):
         """Store log to redis queue cache."""
         # remove data and response

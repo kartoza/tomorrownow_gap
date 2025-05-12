@@ -367,6 +367,8 @@ class MeasurementAPI(GAPAPILoggingMixin, APIView):
         if user_file:
             cache_exist = user_file.find_in_cache()
             if cache_exist:
+                # set output file size
+                self.set_output_file_size(cache_exist.size)
                 return self._get_accel_redirect_response(
                     cache_exist.generate_url(),
                     os.path.basename(cache_exist.name),
@@ -381,6 +383,7 @@ class MeasurementAPI(GAPAPILoggingMixin, APIView):
         file_name = 'data.nc'
         # check config for using X-Accel-Redirect
         if user_file is None:
+            self.set_output_file_size(reader_value.size)
             response = StreamingHttpResponse(
                 reader_value.to_netcdf_stream(),
                 content_type='application/x-netcdf'
@@ -400,6 +403,8 @@ class MeasurementAPI(GAPAPILoggingMixin, APIView):
             user_file.name = file_path
             user_file.size = s3_storage.size(file_path)
             user_file.save()
+            # set output file size
+            self.set_output_file_size(user_file.size)
 
         return response
 
@@ -412,6 +417,8 @@ class MeasurementAPI(GAPAPILoggingMixin, APIView):
         if user_file:
             cache_exist = user_file.find_in_cache()
             if cache_exist:
+                # set output file size
+                self.set_output_file_size(cache_exist.size)
                 return self._get_accel_redirect_response(
                     cache_exist.generate_url(),
                     os.path.basename(cache_exist.name),
@@ -426,6 +433,7 @@ class MeasurementAPI(GAPAPILoggingMixin, APIView):
         file_name = f'data{suffix}'
         # check config for using X-Accel-Redirect
         if user_file is None:
+            self.set_output_file_size(reader_value.size)
             response = StreamingHttpResponse(
                 reader_value.to_csv_stream(
                     suffix=suffix,
@@ -451,6 +459,8 @@ class MeasurementAPI(GAPAPILoggingMixin, APIView):
             user_file.name = file_path
             user_file.size = s3_storage.size(file_path)
             user_file.save()
+            # set output file size
+            self.set_output_file_size(user_file.size)
 
         return response
 

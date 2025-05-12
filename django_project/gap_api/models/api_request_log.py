@@ -27,6 +27,12 @@ class APIRequestLog(BaseAPIRequestLog):
         blank=True
     )
 
+    output_file_size = models.BigIntegerField(
+        default=0,
+        null=True,
+        blank=True
+    )
+
     @classmethod
     def export_resource_classes(cls):
         """Export resource classes for import-export."""
