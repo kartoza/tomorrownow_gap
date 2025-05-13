@@ -335,6 +335,19 @@ class DatasetReaderValue:
         return None
 
     @property
+    def size(self) -> int:
+        """Get size of the dataset.
+
+        :return: size of the dataset
+        :rtype: int
+        """
+        if self._is_xr_dataset:
+            # estimate size of dataset
+            return self._val.nbytes
+        # for list of dataset timeline value
+        return len(self.values)
+
+    @property
     def xr_dataset(self) -> xrDataset:
         """Return the value as xarray Dataset.
 

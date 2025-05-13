@@ -29,7 +29,8 @@ class APIRequestLogResource(ModelResource):
             "response_ms", "status_code", "view_method", "path",
             "remote_addr", "host",
             # Explicitly include custom extracted fields
-            "product", "attributes", "output_type", "start_date", "end_date"
+            "product", "attributes", "output_type", "start_date", "end_date",
+            "output_file_size"
         ]
         export_order = fields
 
