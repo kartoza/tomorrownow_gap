@@ -642,8 +642,6 @@ def clear_all_dcas_error_logs():
         with connection.cursor() as cursor:
             # Clear all DCAS error logs
             cursor.execute("DELETE FROM dcas_error_log;")
-            # Commit the changes
-            connection.commit()
         logger.info("All DCAS error logs cleared successfully.")
     except Exception as e:
         logger.error(

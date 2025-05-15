@@ -29,7 +29,8 @@ from dcas.tasks import (
     run_dcas,
     log_dcas_error,
     cleanup_dcas_old_output_files,
-    update_growth_stage_task
+    update_growth_stage_task,
+    clear_all_dcas_error_logs
 )
 from gap.factories import FarmRegistryGroupFactory
 
@@ -341,3 +342,26 @@ class DCASPipelineTaskTest(DCASPipelineBaseTest):
         # Assertions
         mock_get_request.assert_called_once_with(id=123)
         mock_update_stage.assert_called_once()
+
+    def test_clear_all_dcas_error_logs(self):
+        """Test clear_all_dcas_error_logs."""
+        # create request
+        request = DCASRequest.objects.create(
+            requested_at=datetime.datetime(
+                2025, 1, 27, 0, 0, 0,
+                tzinfo=pytz.UTC
+            )
+        )
+        # Create some error logs
+        for _ in range(5):
+            DCASErrorLog.objects.create(
+                request=request,
+                error_type=DCASErrorType.MISSING_MESSAGES,
+                error_message="Test error message"
+            )
+
+        # Call the task
+        clear_all_dcas_error_logs()
+
+        # Check that all error logs are deleted
+        self.assertEqual(DCASErrorLog.objects.count(), 0)

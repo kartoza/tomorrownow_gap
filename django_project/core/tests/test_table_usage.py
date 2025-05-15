@@ -6,6 +6,7 @@ Tomorrow Now GAP.
 """
 
 from django.test import TestCase
+from django.db import connection
 
 from core.models.table_usage import TableUsage
 from django.contrib.admin.sites import AdminSite
@@ -42,6 +43,38 @@ class TableUsageModelTest(TestCase):
             updated_table_usage.data['core_tableusage']['row_count'],
             1
         )
+
+    def test_clear_temp_table(self):
+        """Test the clear_temp_table method."""
+        # test create table in temp schema
+        with connection.cursor() as cursor:
+            cursor.execute(
+                'CREATE SCHEMA IF NOT EXISTS temp;'
+            )
+            cursor.execute(
+                'CREATE TABLE IF NOT EXISTS temp.example_table '
+                '(id SERIAL PRIMARY KEY);'
+            )
+            cursor.execute(
+                'INSERT INTO temp.example_table (id) VALUES (1), (2), (3);'
+            )
+
+        # Create a temp table usage
+        temp_table_usage = TableUsage.objects.create(
+            schema_name='temp',
+            data={'example_table': 'data'}
+        )
+        # Call the method
+        TableUsage.clear_temp_table(temp_table_usage.id)
+        # Check if the table is dropped
+        with connection.cursor() as cursor:
+            cursor.execute(
+                'SELECT EXISTS (SELECT 1 FROM information_schema.tables '
+                'WHERE table_name = %s);',
+                ['example_table']
+            )
+            table_exists = cursor.fetchone()[0]
+            self.assertFalse(table_exists)
 
 
 class MockRequest:
