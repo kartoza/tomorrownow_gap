@@ -633,3 +633,21 @@ def update_farm_registry_growth_stage_output(request_id):
 def update_growth_stage_task(request_id):
     """Celery task to update farm registry growth stage."""
     update_farm_registry_growth_stage_output(request_id)
+
+
+@shared_task(name="clear_all_dcas_error_logs")
+def clear_all_dcas_error_logs():
+    """Celery task to clear all DCAS error logs."""
+    try:
+        with connection.cursor() as cursor:
+            # Clear all DCAS error logs
+            cursor.execute("DELETE FROM dcas_error_log;")
+            # Commit the changes
+            connection.commit()
+        logger.info("All DCAS error logs cleared successfully.")
+    except Exception as e:
+        logger.error(
+            f"Error clearing DCAS error logs: {str(e)}",
+            exc_info=True
+        )
+        raise e
