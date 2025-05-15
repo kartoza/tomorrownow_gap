@@ -109,3 +109,6 @@ django-import-export-celery==1.7.1
 
 # fix zarr numcodecs issue #733
 numcodecs==0.15.1
+
+# asyncio rate limiter
+aiolimiter==1.2.1
