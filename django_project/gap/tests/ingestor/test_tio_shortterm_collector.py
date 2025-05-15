@@ -28,8 +28,9 @@ from functools import partial
 
 from core.settings.utils import absolute_path
 from gap.factories.grid import GridFactory
-from gap.ingestor.tio_shortterm import (
-    path, TioShortTermCollector
+from gap.ingestor.tomorrowio import (
+    path, TioShortTermCollector, TioShortTermDuckDBCollector,
+    TioShortTermHourlyDuckDBCollector
 )
 from gap.models import (
     Country, IngestorSessionStatus, IngestorType,
@@ -39,10 +40,10 @@ from gap.models.ingestor import CollectorSession
 from gap.tests.mock_response import BaseTestWithPatchResponses, PatchRequest
 
 
-def mock_collector_run(self_obj, working_dir):
+def mock_collector_run(self_obj, cls, working_dir):
     """Mock collector run."""
     # Mock the collector run method
-    collector = TioShortTermCollector(
+    collector = cls(
         self_obj, working_dir=working_dir
     )
     collector.run()
@@ -112,7 +113,11 @@ class TioShortTermCollectorTest(BaseTestWithPatchResponses, TestCase):
         session = CollectorSession.objects.create(
             ingestor_type=self.ingestor_type
         )
-        mock_run.side_effect = partial(mock_collector_run, session)
+        mock_run.side_effect = partial(
+            mock_collector_run,
+            session,
+            TioShortTermCollector
+        )
         session.run()
         session.refresh_from_db()
         print(session.notes)
@@ -123,7 +128,7 @@ class TioShortTermCollectorTest(BaseTestWithPatchResponses, TestCase):
             self.assertEqual(len(zip_file.filelist), 0)
 
     @patch.object(CollectorSession, '_run')
-    @patch('gap.ingestor.tio_shortterm.timezone')
+    @patch('gap.ingestor.tomorrowio.json_collector.timezone')
     @responses.activate
     def test_collector_one_grid(self, mock_timezone, mock_run):
         """Testing collector."""
@@ -145,7 +150,11 @@ class TioShortTermCollectorTest(BaseTestWithPatchResponses, TestCase):
         session = CollectorSession.objects.create(
             ingestor_type=self.ingestor_type
         )
-        mock_run.side_effect = partial(mock_collector_run, session)
+        mock_run.side_effect = partial(
+            mock_collector_run,
+            session,
+            TioShortTermCollector
+        )
         session.run()
         session.refresh_from_db()
         self.assertEqual(session.dataset_files.count(), 1)
@@ -569,9 +578,10 @@ class TioShortTermDuckDBCollectorTest(
             ).fetchone()
             self.assertEqual(rows[0], 0)
 
-    @patch('gap.ingestor.tio_shortterm.timezone')
+    @patch.object(CollectorSession, '_run')
+    @patch('gap.ingestor.tomorrowio.threads_collector.timezone')
     @responses.activate
-    def test_collector_one_grid(self, mock_timezone):
+    def test_collector_one_grid(self, mock_timezone, mock_run):
         """Testing collector."""
         self.init_mock_requests()
         today = datetime(
@@ -593,6 +603,11 @@ class TioShortTermDuckDBCollectorTest(
             additional_config={
                 'duckdb_num_threads': 1
             }
+        )
+        mock_run.side_effect = partial(
+            mock_collector_run,
+            session,
+            TioShortTermDuckDBCollector
         )
         # create DataSourceFile for the session
         data_source = DataSourceFile.objects.create(
@@ -623,9 +638,10 @@ class TioShortTermDuckDBCollectorTest(
         self.assertIn('remote_url', data_source.metadata)
         self.assert_duckdb_file(data_source)
 
-    @patch('gap.ingestor.tio_shortterm.timezone')
+    @patch.object(CollectorSession, '_run')
+    @patch('gap.ingestor.tomorrowio.threads_collector.timezone')
     @responses.activate
-    def test_collector_one_grid_start_new(self, mock_timezone):
+    def test_collector_one_grid_start_new(self, mock_timezone, mock_run):
         """Testing collector."""
         self.init_mock_requests()
         today = datetime(
@@ -648,6 +664,11 @@ class TioShortTermDuckDBCollectorTest(
                 'duckdb_num_threads': 1
             }
         )
+        mock_run.side_effect = partial(
+            mock_collector_run,
+            session,
+            TioShortTermDuckDBCollector
+        )
         session.run()
         session.refresh_from_db()
         self.assertEqual(session.dataset_files.count(), 1)
@@ -659,9 +680,10 @@ class TioShortTermDuckDBCollectorTest(
         self.assertIn('remote_url', data_source.metadata)
         self.assert_duckdb_file(data_source)
 
-    @patch('gap.ingestor.tio_shortterm.timezone')
+    @patch.object(CollectorSession, '_run')
+    @patch('gap.ingestor.tomorrowio.threads_collector.timezone')
     @responses.activate
-    def test_failed_api(self, mock_timezone):
+    def test_failed_api(self, mock_timezone, mock_run):
         """Testing collector."""
         self._mock_request(PatchRequest(
             f'https://api.tomorrow.io/v4/timelines?apikey={self.api_key}',
@@ -691,6 +713,11 @@ class TioShortTermDuckDBCollectorTest(
             additional_config={
                 'duckdb_num_threads': 1
             }
+        )
+        mock_run.side_effect = partial(
+            mock_collector_run,
+            session,
+            TioShortTermDuckDBCollector
         )
         session.run()
         session.refresh_from_db()
@@ -831,9 +858,10 @@ class TioHourlyShortTermDuckDBCollectorTest(
             # Close the connection
             duckdb_conn.close()
 
-    @patch('gap.ingestor.tio_shortterm.timezone')
+    @patch.object(CollectorSession, '_run')
+    @patch('gap.ingestor.tomorrowio.threads_collector.timezone')
     @responses.activate
-    def test_collector_one_grid_start_new(self, mock_timezone):
+    def test_collector_one_grid_start_new(self, mock_timezone, mock_run):
         """Testing collector."""
         self.init_mock_requests()
         today = datetime(
@@ -856,6 +884,11 @@ class TioHourlyShortTermDuckDBCollectorTest(
                 'duckdb_num_threads': 1,
                 'grid_batch_size': 1
             }
+        )
+        mock_run.side_effect = partial(
+            mock_collector_run,
+            session,
+            TioShortTermHourlyDuckDBCollector
         )
         session.run()
         session.refresh_from_db()

@@ -29,7 +29,7 @@ from gap.ingestor.exceptions import (
 )
 from gap.models import (
     CastType, CollectorSession, DataSourceFile, DatasetStore, Grid,
-    Dataset, DatasetTimeStep, Preferences
+    Dataset, DatasetTimeStep, Preferences, Provider, DatasetType
 )
 from gap.providers.tio import tomorrowio_shortterm_forecast_dataset
 from gap.utils.geometry import ST_X, ST_Y
@@ -47,8 +47,8 @@ class TioShortTermDailyCollector(BaseIngestor):
     TIME_STEP = DatasetTimeStep.DAILY
     DEFAULT_BATCH_SIZE = 500
     DEFAULT_MAX_RETRIES = 3
-    DEFAULT_RATE_LIMIT_PER_SECOND = 80
-    DEFAULT_MAX_CONCURRENT_REQUESTS = 50
+    DEFAULT_RATE_LIMIT_PER_SECOND = 70
+    DEFAULT_MAX_CONCURRENT_REQUESTS = 30
     DEFAULT_BASE_URL = 'https://api.tomorrow.io/v4'
 
     def __init__(self, session: CollectorSession, working_dir: str = '/tmp'):
@@ -505,7 +505,7 @@ class TioShortTermDailyCollector(BaseIngestor):
         ).annotate(
             lat=ST_Y('centroid'),
             lon=ST_X('centroid')
-        ).values('id', 'lat', 'lon')[:25]
+        ).values('id', 'lat', 'lon')
         self.total_grid = _grids.count()
         grids = []
         for grid in _grids:
@@ -536,3 +536,38 @@ class TioShortTermDailyCollector(BaseIngestor):
             raise Exception(e)
         finally:
             pass
+
+
+class TioShortTermHourlyCollector(TioShortTermDailyCollector):
+    """Collector for Tomorrow.io Short Term Hourly data."""
+
+    CANCEL_KEY_TEMPLATE = '{}_cancel_{}'
+    INGESTOR_NAME = 'tio_short_term_hourly'
+    TIME_STEP = DatasetTimeStep.HOURLY
+    DEFAULT_BATCH_SIZE = 100
+    DEFAULT_MAX_RETRIES = 3
+    DEFAULT_BASE_URL = 'https://api.tomorrow.io/v4'
+
+    def __init__(self, session: CollectorSession, working_dir: str = '/tmp'):
+        """Initialize the collector."""
+        super().__init__(session, working_dir)
+
+    def _init_dataset(self) -> Dataset:
+        """Fetch dataset for this ingestor.
+
+        :return: Dataset for this ingestor
+        :rtype: Dataset
+        """
+        provider = Provider.objects.get(name='Tomorrow.io')
+        dt_shorttermforecast = DatasetType.objects.get(
+            variable_name='cbam_shortterm_hourly_forecast',
+            type=CastType.FORECAST
+        )
+        return Dataset.objects.get(
+            name='Tomorrow.io Short-term Hourly Forecast',
+            provider=provider,
+            type=dt_shorttermforecast,
+            store_type=DatasetStore.EXT_API,
+            time_step=DatasetTimeStep.HOURLY,
+            is_internal_use=True
+        )

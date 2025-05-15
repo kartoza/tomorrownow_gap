@@ -25,15 +25,13 @@ from gap.models.ingestor import (
     IngestorType,
     CollectorSession
 )
-from gap.ingestor.tio_shortterm import (
+from gap.ingestor.base import CoordMapping
+from gap.ingestor.tomorrowio import (
     TioShortTermIngestor,
-    CoordMapping,
     TioShortTermDuckDBIngestor,
     TioShortTermDuckDBCollector,
-)
-from gap.ingestor.tio_hourly import (
     TioHourlyShortTermIngestor,
-    TioHourlyShortTermCollector
+    TioShortTermHourlyDuckDBCollector
 )
 from gap.ingestor.exceptions import (
     MissingCollectorSessionException, FileNotFoundException,
@@ -265,7 +263,7 @@ class TestTioIngestor(TestCase):
             ingestor.run()
         self.assertTrue('metadata.forecast_date' in context.exception.message)
 
-    @patch('gap.ingestor.tio_shortterm.execute_dask_compute')
+    @patch('gap.ingestor.tomorrowio.json_ingestor.execute_dask_compute')
     def test_append_new_forecast_date(self, mock_dask_compute):
         """Test append new forecast date method."""
         forecast_date = date(2024, 10, 1)
@@ -329,7 +327,7 @@ class TestTioIngestor(TestCase):
             [slice(0, 60), slice(60, 120), slice(120, 150)]
         )
 
-    @patch('gap.ingestor.tio_shortterm.execute_dask_compute')
+    @patch('gap.ingestor.tomorrowio.json_ingestor.execute_dask_compute')
     def test_update_by_region(self, mock_dask_compute):
         """Test update_by_region function."""
         with patch.object(self.ingestor, '_open_zarr_dataset') as mock_open:
@@ -669,7 +667,7 @@ class TestDuckDBTioHourlyIngestor(TestCase):
             '/tmp', 'tio_collector', f'{str(uuid.uuid4())}.duckdb'
         )
         duckdb_conn = duckdb.connect(tmp_filepath)
-        collector_runner = TioHourlyShortTermCollector(self.collector)
+        collector_runner = TioShortTermHourlyDuckDBCollector(self.collector)
         collector_runner._init_table(duckdb_conn)
         json_data = json.load(json_f)
         forecast_day_indices = range(-6, 15, 1)
