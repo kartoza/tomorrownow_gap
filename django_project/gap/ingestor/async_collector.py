@@ -498,7 +498,7 @@ class AsyncCollector(BaseIngestor):
         ).annotate(
             lat=ST_Y('centroid'),
             lon=ST_X('centroid')
-        ).values('id', 'lat', 'lon')[:20]  # TODO: DEBUG only - remove limit
+        ).values('id', 'lat', 'lon')
         self.total_grid = _grids.count()
         grids = []
         for grid in _grids:
