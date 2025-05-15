@@ -61,6 +61,165 @@ def mock_collector_run_with_dt(self_obj, dt, cls, working_dir):
     collector.run()
 
 
+class DailyDuckDBAssert:
+    """Assert daily DuckDB."""
+
+    def assert_duckdb_file(self, data_source: DataSourceFile):
+        """Download and check duckdb file."""
+        s3_storage: S3Boto3Storage = storages["gap_products"]
+        remote_path = data_source.metadata['remote_url']
+        with tempfile.NamedTemporaryFile(suffix='.duckdb') as tmp:
+            # Download the file
+            with (
+                s3_storage.open(remote_path, "rb") as remote_file,
+                open(tmp.name, "wb") as local_file
+            ):
+                local_file.write(remote_file.read())
+            duckdb_conn = duckdb.connect(tmp.name)
+            # Check the number of tables in the database
+            tables = duckdb_conn.execute("SHOW TABLES").fetchall()
+            self.assertEqual(len(tables), 1)
+            # Check the table name
+            self.assertEqual(tables[0][0], "weather")
+            # Check the number of rows in the table
+            rows = duckdb_conn.execute(
+                "SELECT COUNT(*) FROM weather"
+            ).fetchone()
+            self.assertEqual(rows[0], 15)
+            # Check the columns in the table
+            columns = duckdb_conn.execute("DESCRIBE weather").fetchall()
+            self.assertEqual(len(columns), 17)
+            columns_str = [col[0] for col in columns]
+            self.assertIn('id', columns_str)
+            self.assertIn('grid_id', columns_str)
+            self.assertIn('lat', columns_str)
+            self.assertIn('lon', columns_str)
+            self.assertIn('date', columns_str)
+            self.assertIn('time', columns_str)
+            self.assertIn('total_rainfall', columns_str)
+            self.assertIn('total_evapotranspiration_flux', columns_str)
+            self.assertIn('max_temperature', columns_str)
+            self.assertIn('min_temperature', columns_str)
+            self.assertIn('precipitation_probability', columns_str)
+            self.assertIn('humidity_maximum', columns_str)
+            self.assertIn('humidity_minimum', columns_str)
+            self.assertIn('wind_speed_avg', columns_str)
+            self.assertIn('solar_radiation', columns_str)
+            self.assertIn('weather_code', columns_str)
+            self.assertIn('flood_index', columns_str)
+            # Check the data in the table
+            data = duckdb_conn.sql(
+                "SELECT * FROM weather where date='2024-10-15'"
+            ).to_df()
+            self.assertEqual(data.shape[0], 1)
+            data = data.drop(
+                columns=['id', 'grid_id', 'lat', 'lon', 'date', 'time']
+            )
+            print(data.iloc[0].to_dict())
+            # compare dataframe
+            pd.testing.assert_frame_equal(
+                data,
+                pd.DataFrame([
+                    {
+                        'solar_radiation': np.nan,
+                        'total_evapotranspiration_flux': np.nan,
+                        'max_temperature': 24.9,
+                        'total_rainfall': 0.0,
+                        'min_temperature': 24.12,
+                        'precipitation_probability': 5.0,
+                        'humidity_maximum': 77.83,
+                        'humidity_minimum': 72.77,
+                        'wind_speed_avg': 3.17,
+                        'weather_code': np.nan,
+                        'flood_index': np.nan
+                    }
+                ])
+            )
+            # Close the connection
+            duckdb_conn.close()
+
+        # remove remote file
+        s3_storage.delete(remote_path)
+
+class HourlyDuckDBAssert:
+    """Assert hourly DuckDB."""
+
+    def assert_duckdb_file(self, data_source: DataSourceFile):
+        """Download and check duckdb file."""
+        s3_storage: S3Boto3Storage = storages["gap_products"]
+        remote_path = data_source.metadata['remote_url']
+        with tempfile.NamedTemporaryFile(suffix='.duckdb') as tmp:
+            # Download the file
+            with (
+                s3_storage.open(remote_path, "rb") as remote_file,
+                open(tmp.name, "wb") as local_file
+            ):
+                local_file.write(remote_file.read())
+            duckdb_conn = duckdb.connect(tmp.name)
+            # Check the number of tables in the database
+            tables = duckdb_conn.execute("SHOW TABLES").fetchall()
+            self.assertEqual(len(tables), 1)
+            # Check the table name
+            self.assertEqual(tables[0][0], "weather")
+            # Check the number of rows in the table
+            rows = duckdb_conn.execute(
+                "SELECT COUNT(*) FROM weather"
+            ).fetchone()
+            self.assertEqual(rows[0], 24)
+            # Check the columns in the table
+            columns = duckdb_conn.execute("DESCRIBE weather").fetchall()
+            self.assertEqual(len(columns), 15)
+            columns_str = [col[0] for col in columns]
+            self.assertIn('id', columns_str)
+            self.assertIn('grid_id', columns_str)
+            self.assertIn('lat', columns_str)
+            self.assertIn('lon', columns_str)
+            self.assertIn('date', columns_str)
+            self.assertIn('time', columns_str)
+            self.assertIn('total_rainfall', columns_str)
+            self.assertIn('total_evapotranspiration_flux', columns_str)
+            self.assertIn('temperature', columns_str)
+            self.assertIn('precipitation_probability', columns_str)
+            self.assertIn('humidity', columns_str)
+            self.assertIn('wind_speed', columns_str)
+            self.assertIn('solar_radiation', columns_str)
+            self.assertIn('weather_code', columns_str)
+            self.assertIn('flood_index', columns_str)
+            # Check the data in the table
+            data = duckdb_conn.sql(
+                "SELECT * FROM weather where date='2025-04-24'"
+            ).to_df()
+            self.assertEqual(data.shape[0], 24)
+            data = data[data['time'] == time(6, 0, 0)]
+            data = data.drop(
+                columns=['id', 'grid_id', 'lat', 'lon', 'date', 'time']
+            )
+            data = data.reset_index(drop=True)
+            print(data)
+            print(data.iloc[0].to_dict())
+            # compare dataframe
+            pd.testing.assert_frame_equal(
+                data,
+                pd.DataFrame([
+                    {
+                        'solar_radiation': 658.0,
+                        'total_evapotranspiration_flux': 0.365,
+                        'total_rainfall': 0.0,
+                        'temperature': 21.7,
+                        'wind_speed': 2.3,
+                        'precipitation_probability': 0.0,
+                        'weather_code': 1100.0,
+                        'flood_index': np.nan,
+                        'humidity': 61.0
+                    }
+                ])
+            )
+            # Close the connection
+            duckdb_conn.close()
+
+        # remove remote file
+        s3_storage.delete(remote_path)
+
 class TioShortTermCollectorTest(BaseTestWithPatchResponses, TestCase):
     """Tio Collector test case."""
 
@@ -437,7 +596,7 @@ class TioShortTermCollectorTest(BaseTestWithPatchResponses, TestCase):
 
 
 class TioShortTermDuckDBCollectorTest(
-    BaseTestWithPatchResponses, TransactionTestCase
+    BaseTestWithPatchResponses, DailyDuckDBAssert, TransactionTestCase
 ):
     """Tio DuckDB Collector test case."""
 
@@ -492,80 +651,6 @@ class TioShortTermDuckDBCollectorTest(
                 request_method='POST'
             )
         ]
-
-    def assert_duckdb_file(self, data_source: DataSourceFile):
-        """Download and check duckdb file."""
-        s3_storage: S3Boto3Storage = storages["gap_products"]
-        with tempfile.NamedTemporaryFile(suffix='.duckdb') as tmp:
-            remote_path = data_source.metadata['remote_url']
-            # Download the file
-            with (
-                s3_storage.open(remote_path, "rb") as remote_file,
-                open(tmp.name, "wb") as local_file
-            ):
-                local_file.write(remote_file.read())
-            duckdb_conn = duckdb.connect(tmp.name)
-            # Check the number of tables in the database
-            tables = duckdb_conn.execute("SHOW TABLES").fetchall()
-            self.assertEqual(len(tables), 1)
-            # Check the table name
-            self.assertEqual(tables[0][0], "weather")
-            # Check the number of rows in the table
-            rows = duckdb_conn.execute(
-                "SELECT COUNT(*) FROM weather"
-            ).fetchone()
-            self.assertEqual(rows[0], 15)
-            # Check the columns in the table
-            columns = duckdb_conn.execute("DESCRIBE weather").fetchall()
-            self.assertEqual(len(columns), 17)
-            columns_str = [col[0] for col in columns]
-            self.assertIn('id', columns_str)
-            self.assertIn('grid_id', columns_str)
-            self.assertIn('lat', columns_str)
-            self.assertIn('lon', columns_str)
-            self.assertIn('date', columns_str)
-            self.assertIn('time', columns_str)
-            self.assertIn('total_rainfall', columns_str)
-            self.assertIn('total_evapotranspiration_flux', columns_str)
-            self.assertIn('max_temperature', columns_str)
-            self.assertIn('min_temperature', columns_str)
-            self.assertIn('precipitation_probability', columns_str)
-            self.assertIn('humidity_maximum', columns_str)
-            self.assertIn('humidity_minimum', columns_str)
-            self.assertIn('wind_speed_avg', columns_str)
-            self.assertIn('solar_radiation', columns_str)
-            self.assertIn('weather_code', columns_str)
-            self.assertIn('flood_index', columns_str)
-            # Check the data in the table
-            data = duckdb_conn.sql(
-                "SELECT * FROM weather where date='2024-10-15'"
-            ).to_df()
-            self.assertEqual(data.shape[0], 1)
-            data = data.drop(
-                columns=['id', 'grid_id', 'lat', 'lon', 'date', 'time']
-            )
-            print(data.iloc[0].to_dict())
-            # compare dataframe
-            pd.testing.assert_frame_equal(
-                data,
-                pd.DataFrame([
-                    {
-                        'solar_radiation': np.nan,
-                        'total_evapotranspiration_flux': np.nan,
-                        'max_temperature': 24.9,
-                        'total_rainfall': 0.0,
-                        'min_temperature': 24.12,
-                        'precipitation_probability': 5.0,
-                        'humidity_maximum': 77.83,
-                        'humidity_minimum': 72.77,
-                        'wind_speed_avg': 3.17,
-                        'weather_code': np.nan,
-                        'flood_index': np.nan
-                    }
-                ])
-            )
-            # Close the connection
-            duckdb_conn.close()
 
     def assert_empty_duckdb_file(self, data_source: DataSourceFile):
         """Download and check duckdb file."""
@@ -741,7 +826,7 @@ class TioShortTermDuckDBCollectorTest(
 
 
 class TioHourlyShortTermDuckDBCollectorTest(
-    BaseTestWithPatchResponses, TransactionTestCase
+    BaseTestWithPatchResponses, HourlyDuckDBAssert, TransactionTestCase
 ):
     """Tio Hourly DuckDB Collector test case."""
 
@@ -797,79 +882,6 @@ class TioHourlyShortTermDuckDBCollectorTest(
             )
         ]
 
-    def assert_duckdb_file(self, data_source: DataSourceFile):
-        """Download and check duckdb file."""
-        s3_storage: S3Boto3Storage = storages["gap_products"]
-        with tempfile.NamedTemporaryFile(suffix='.duckdb') as tmp:
-            remote_path = data_source.metadata['remote_url']
-            # Download the file
-            with (
-                s3_storage.open(remote_path, "rb") as remote_file,
-                open(tmp.name, "wb") as local_file
-            ):
-                local_file.write(remote_file.read())
-            duckdb_conn = duckdb.connect(tmp.name)
-            # Check the number of tables in the database
-            tables = duckdb_conn.execute("SHOW TABLES").fetchall()
-            self.assertEqual(len(tables), 1)
-            # Check the table name
-            self.assertEqual(tables[0][0], "weather")
-            # Check the number of rows in the table
-            rows = duckdb_conn.execute(
-                "SELECT COUNT(*) FROM weather"
-            ).fetchone()
-            self.assertEqual(rows[0], 24)
-            # Check the columns in the table
-            columns = duckdb_conn.execute("DESCRIBE weather").fetchall()
-            self.assertEqual(len(columns), 15)
-            columns_str = [col[0] for col in columns]
-            self.assertIn('id', columns_str)
-            self.assertIn('grid_id', columns_str)
-            self.assertIn('lat', columns_str)
-            self.assertIn('lon', columns_str)
-            self.assertIn('date', columns_str)
-            self.assertIn('time', columns_str)
-            self.assertIn('total_rainfall', columns_str)
-            self.assertIn('total_evapotranspiration_flux', columns_str)
-            self.assertIn('temperature', columns_str)
-            self.assertIn('precipitation_probability', columns_str)
-            self.assertIn('humidity', columns_str)
-            self.assertIn('wind_speed', columns_str)
-            self.assertIn('solar_radiation', columns_str)
-            self.assertIn('weather_code', columns_str)
-            self.assertIn('flood_index', columns_str)
-            # Check the data in the table
-            data = duckdb_conn.sql(
-                "SELECT * FROM weather where date='2025-04-24'"
-            ).to_df()
-            self.assertEqual(data.shape[0], 24)
-            data = data[data['time'] == time(6, 0, 0)]
-            data = data.drop(
-                columns=['id', 'grid_id', 'lat', 'lon', 'date', 'time']
-            )
-            data = data.reset_index(drop=True)
-            print(data)
-            print(data.iloc[0].to_dict())
-            # compare dataframe
-            pd.testing.assert_frame_equal(
-                data,
-                pd.DataFrame([
-                    {
-                        'solar_radiation': 658.0,
-                        'total_evapotranspiration_flux': 0.365,
-                        'total_rainfall': 0.0,
-                        'temperature': 21.7,
-                        'wind_speed': 2.3,
-                        'precipitation_probability': 0.0,
-                        'weather_code': 1100.0,
-                        'flood_index': np.nan,
-                        'humidity': 61.0
-                    }
-                ])
-            )
-            # Close the connection
-            duckdb_conn.close()
-
     @patch.object(CollectorSession, '_run')
     @patch('gap.ingestor.tomorrowio.threads_collector.timezone')
     @responses.activate
@@ -914,7 +926,7 @@ class TioHourlyShortTermDuckDBCollectorTest(
         self.assert_duckdb_file(data_source)
 
 
-class TioShortTermAsyncCollectorTest(TestCase):
+class TioShortTermAsyncCollectorTest(DailyDuckDBAssert, TestCase):
     """Tio Async Collector test case."""
 
     fixtures = [
@@ -957,80 +969,6 @@ class TioShortTermAsyncCollectorTest(TestCase):
         self.response = json.loads(
             open(os.path.join(self.responses_folder, 'test.json'), "r").read()
         )
-
-    def assert_duckdb_file(self, data_source: DataSourceFile):
-        """Download and check duckdb file."""
-        s3_storage: S3Boto3Storage = storages["gap_products"]
-        with tempfile.NamedTemporaryFile(suffix='.duckdb') as tmp:
-            remote_path = data_source.metadata['remote_url']
-            # Download the file
-            with (
-                s3_storage.open(remote_path, "rb") as remote_file,
-                open(tmp.name, "wb") as local_file
-            ):
-                local_file.write(remote_file.read())
-            duckdb_conn = duckdb.connect(tmp.name)
-            # Check the number of tables in the database
-            tables = duckdb_conn.execute("SHOW TABLES").fetchall()
-            self.assertEqual(len(tables), 1)
-            # Check the table name
-            self.assertEqual(tables[0][0], "weather")
-            # Check the number of rows in the table
-            rows = duckdb_conn.execute(
-                "SELECT COUNT(*) FROM weather"
-            ).fetchone()
-            self.assertEqual(rows[0], 15)
-            # Check the columns in the table
-            columns = duckdb_conn.execute("DESCRIBE weather").fetchall()
-            self.assertEqual(len(columns), 17)
-            columns_str = [col[0] for col in columns]
-            self.assertIn('id', columns_str)
-            self.assertIn('grid_id', columns_str)
-            self.assertIn('lat', columns_str)
-            self.assertIn('lon', columns_str)
-            self.assertIn('date', columns_str)
-            self.assertIn('time', columns_str)
-            self.assertIn('total_rainfall', columns_str)
-            self.assertIn('total_evapotranspiration_flux', columns_str)
-            self.assertIn('max_temperature', columns_str)
-            self.assertIn('min_temperature', columns_str)
-            self.assertIn('precipitation_probability', columns_str)
-            self.assertIn('humidity_maximum', columns_str)
-            self.assertIn('humidity_minimum', columns_str)
-            self.assertIn('wind_speed_avg', columns_str)
-            self.assertIn('solar_radiation', columns_str)
-            self.assertIn('weather_code', columns_str)
-            self.assertIn('flood_index', columns_str)
-            # Check the data in the table
-            data = duckdb_conn.sql(
-                "SELECT * FROM weather where date='2024-10-15'"
-            ).to_df()
-            self.assertEqual(data.shape[0], 1)
-            data = data.drop(
-                columns=['id', 'grid_id', 'lat', 'lon', 'date', 'time']
-            )
-            print(data.iloc[0].to_dict())
-            # compare dataframe
-            pd.testing.assert_frame_equal(
-                data,
-                pd.DataFrame([
-                    {
-                        'solar_radiation': np.nan,
-                        'total_evapotranspiration_flux': np.nan,
-                        'max_temperature': 24.9,
-                        'total_rainfall': 0.0,
-                        'min_temperature': 24.12,
-                        'precipitation_probability': 5.0,
-                        'humidity_maximum': 77.83,
-                        'humidity_minimum': 72.77,
-                        'wind_speed_avg': 3.17,
-                        'weather_code': np.nan,
-                        'flood_index': np.nan
-                    }
-                ])
-            )
-            # Close the connection
-            duckdb_conn.close()
 
     @patch("aiohttp.ClientSession.post")
     @patch.object(CollectorSession, '_run')
