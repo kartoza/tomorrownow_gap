@@ -487,7 +487,7 @@ class TioShortTermDailyCollector(BaseIngestor):
             logger.info("[Runner] Consumer task cancelled cleanly.")
 
         # close redis connection
-        await self.redis.close()
+        await self.redis.aclose()
 
     def _run(self):
         """Run Tio Short Term Collector."""
