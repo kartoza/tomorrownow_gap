@@ -333,3 +333,28 @@ class IngestorSessionProgress(models.Model):
     notes = models.TextField(
         blank=True, null=True
     )
+
+
+class CollectorSessionProgress(models.Model):
+    """Collector Session Progress model."""
+
+    collector = models.ForeignKey(
+        CollectorSession, on_delete=models.CASCADE
+    )
+    title = models.TextField()
+    status = models.CharField(
+        default=IngestorSessionStatus.RUNNING,
+        choices=(
+            (IngestorSessionStatus.RUNNING, IngestorSessionStatus.RUNNING),
+            (IngestorSessionStatus.SUCCESS, IngestorSessionStatus.SUCCESS),
+            (IngestorSessionStatus.FAILED, IngestorSessionStatus.FAILED),
+        ),
+        max_length=512
+    )
+    row_count = models.IntegerField()
+    notes = models.TextField(
+        blank=True, null=True
+    )
+    datetime = models.DateTimeField(
+        auto_now_add=True
+    )
