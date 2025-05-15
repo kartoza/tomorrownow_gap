@@ -141,6 +141,7 @@ class DailyDuckDBAssert:
         # remove remote file
         s3_storage.delete(remote_path)
 
+
 class HourlyDuckDBAssert:
     """Assert hourly DuckDB."""
 
@@ -219,6 +220,7 @@ class HourlyDuckDBAssert:
 
         # remove remote file
         s3_storage.delete(remote_path)
+
 
 class TioShortTermCollectorTest(BaseTestWithPatchResponses, TestCase):
     """Tio Collector test case."""

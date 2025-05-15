@@ -336,6 +336,9 @@ class IngestorSessionProgress(models.Model):
         blank=True, null=True
     )
 
+    class Meta:  # noqa: D106
+        ordering = ['-id']
+
 
 class CollectorSessionProgress(models.Model):
     """Collector Session Progress model."""
@@ -360,3 +363,6 @@ class CollectorSessionProgress(models.Model):
     datetime = models.DateTimeField(
         auto_now_add=True
     )
+
+    class Meta:  # noqa: D106
+        ordering = ['-id']

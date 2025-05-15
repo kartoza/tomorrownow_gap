@@ -297,19 +297,39 @@ class TioShortTermDuckDBIngestor(TioShortTermIngestor):
         assert self._is_sorted_and_incremented(lon_indices)
 
         # create slices for chunks
+        lat_chunk_size = self.get_config(
+            'lat_chunk_size',
+            self.default_chunks['lat']
+        )
+        lon_chunk_size = self.get_config(
+            'lon_chunk_size',
+            self.default_chunks['lon']
+        )
         lat_slices = self._find_chunk_slices(
-            len(lat_arr), self.default_chunks['lat'])
+            len(lat_arr), lat_chunk_size
+        )
         lon_slices = self._find_chunk_slices(
-            len(lon_arr), self.default_chunks['lon'])
+            len(lon_arr), lon_chunk_size
+        )
 
+        total_progress = (
+            len(lat_slices) * len(lon_slices)
+        )
         progress = self._add_progress(
-            f'Processing {forecast_date.isoformat()}'
+            f'Processing {forecast_date.isoformat()} - '
+            f'{total_progress} chunks',
         )
         start_time = time.time()
+        total_processed = 0
 
         # process the data by chunks
         for lat_slice in lat_slices:
             for lon_slice in lon_slices:
+                chunk_progress = self._add_progress(
+                    f'Chunk {total_processed + 1}/'
+                    f'{total_progress}'
+                )
+                chunk_start_time = time.time()
                 lat_chunks = lat_arr[lat_slice]
                 lon_chunks = lon_arr[lon_slice]
                 warnings, count = self._process_tio_shortterm_data_from_conn(
@@ -322,6 +342,13 @@ class TioShortTermDuckDBIngestor(TioShortTermIngestor):
                     'warnings': warnings
                 })
                 self.metadata['total_json_processed'] += count
+
+                total_processed += 1
+                chunk_progress.notes = (
+                    f"Execution time: {time.time() - chunk_start_time}"
+                )
+                chunk_progress.status = IngestorSessionStatus.SUCCESS
+                chunk_progress.save()
 
         # close connection
         conn.close()
