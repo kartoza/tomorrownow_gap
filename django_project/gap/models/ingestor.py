@@ -135,11 +135,11 @@ class CollectorSession(BaseSession):
         """Run the collector session."""
         from gap.ingestor.cbam import CBAMCollector
         from gap.ingestor.salient import SalientCollector
-        from gap.ingestor.tio_shortterm import (
-            TioShortTermDuckDBCollector
+        from gap.ingestor.tomorrowio import (
+            TioShortTermDailyCollector,
+            TioShortTermHourlyCollector
         )
         from gap.ingestor.cbam_bias_adjust import CBAMBiasAdjustCollector
-        from gap.ingestor.tio_hourly import TioHourlyShortTermCollector
 
         ingestor = None
         if self.ingestor_type == IngestorType.CBAM:
@@ -147,11 +147,11 @@ class CollectorSession(BaseSession):
         elif self.ingestor_type == IngestorType.SALIENT:
             ingestor = SalientCollector(self, working_dir)
         elif self.ingestor_type == IngestorType.TIO_FORECAST_COLLECTOR:
-            ingestor = TioShortTermDuckDBCollector(self, working_dir)
+            ingestor = TioShortTermDailyCollector(self, working_dir)
         elif self.ingestor_type == IngestorType.CBAM_BIAS_ADJUST:
             ingestor = CBAMBiasAdjustCollector(self, working_dir)
         elif self.ingestor_type == IngestorType.HOURLY_TOMORROWIO:
-            ingestor = TioHourlyShortTermCollector(self, working_dir)
+            ingestor = TioShortTermHourlyCollector(self, working_dir)
 
         if ingestor:
             ingestor.run()
@@ -219,7 +219,10 @@ class IngestorSession(BaseSession):
         from gap.ingestor.arable import ArableIngestor
         from gap.ingestor.tahmo_api import TahmoAPIIngestor
         from gap.ingestor.wind_borne_systems import WindBorneSystemsIngestor
-        from gap.ingestor.tio_shortterm import TioShortTermDuckDBIngestor
+        from gap.ingestor.tomorrowio import (
+            TioShortTermDuckDBIngestor,
+            TioHourlyShortTermIngestor
+        )
         from gap.ingestor.cabi_prise import CabiPriseIngestor
         from gap.ingestor.cbam_bias_adjust import CBAMBiasAdjustIngestor
         from gap.ingestor.dcas_rule import DcasRuleIngestor
@@ -229,7 +232,6 @@ class IngestorSession(BaseSession):
             WindborneParquetIngestorAppender
         )
         from gap.ingestor.dcas_message import DCASMessageIngestor
-        from gap.ingestor.tio_hourly import TioHourlyShortTermIngestor
 
         ingestor = None
         if self.ingestor_type == IngestorType.TAHMO:
@@ -333,3 +335,34 @@ class IngestorSessionProgress(models.Model):
     notes = models.TextField(
         blank=True, null=True
     )
+
+    class Meta:  # noqa: D106
+        ordering = ['-id']
+
+
+class CollectorSessionProgress(models.Model):
+    """Collector Session Progress model."""
+
+    collector = models.ForeignKey(
+        CollectorSession, on_delete=models.CASCADE
+    )
+    title = models.TextField()
+    status = models.CharField(
+        default=IngestorSessionStatus.RUNNING,
+        choices=(
+            (IngestorSessionStatus.RUNNING, IngestorSessionStatus.RUNNING),
+            (IngestorSessionStatus.SUCCESS, IngestorSessionStatus.SUCCESS),
+            (IngestorSessionStatus.FAILED, IngestorSessionStatus.FAILED),
+        ),
+        max_length=512
+    )
+    row_count = models.IntegerField()
+    notes = models.TextField(
+        blank=True, null=True
+    )
+    datetime = models.DateTimeField(
+        auto_now_add=True
+    )
+
+    class Meta:  # noqa: D106
+        ordering = ['-id']

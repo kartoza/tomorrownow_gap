@@ -399,12 +399,27 @@ class SalientIngestor(BaseZarrIngestor):
         lon_size = ds.sizes["lon"]
 
         # create slices for chunks
+        lat_chunk_size = self.get_config(
+            'lat_chunk_size',
+            self.default_chunks['lat']
+        )
+        lon_chunk_size = self.get_config(
+            'lon_chunk_size',
+            self.default_chunks['lon']
+        )
+        var_chunk_size = self.get_config(
+            'var_chunk_size',
+            10
+        )
         lat_slices = self._find_chunk_slices(
-            lat_size, self.default_chunks['lat'])
+            lat_size, lat_chunk_size
+        )
         lon_slices = self._find_chunk_slices(
-            lon_size, self.default_chunks['lon'])
+            lon_size, lon_chunk_size
+        )
         variable_slices = self._find_chunk_slices(
-            len(self.variables), 10)
+            len(self.variables), var_chunk_size
+        )
 
         forecast_date_array = pd.date_range(
             forecast_date.isoformat(), periods=1)
