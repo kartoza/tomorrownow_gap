@@ -157,6 +157,12 @@ def fetch_table_stats_task(_id: int):
     TableUsage.get_table_stats_for_schema(_id)
 
 
+@app.task(name='clear_temp_table_task')
+def clear_temp_table_task(_id: int):
+    """Clear temp table."""
+    TableUsage.clear_temp_table(_id)
+
+
 @admin.action(description='Run fetch table stats task')
 def run_fetch_table_stats(modeladmin, request, queryset):
     """Run fetch table stats in background task."""
@@ -166,6 +172,33 @@ def run_fetch_table_stats(modeladmin, request, queryset):
     modeladmin.message_user(
         request,
         'Fetch table stats task has been started.',
+        level='success'
+    )
+
+
+@admin.action(description='Clear temp table')
+def run_clear_temp_table(modeladmin, request, queryset):
+    """Clear temp table in background task."""
+    for table_usage in queryset:
+        if table_usage.schema_name != 'temp':
+            modeladmin.message_user(
+                request,
+                'Only temp table can be cleared.',
+                level='error'
+            )
+            return
+        if not table_usage.data:
+            modeladmin.message_user(
+                request,
+                'No data to clear.',
+                level='error'
+            )
+            return
+        clear_temp_table_task.delay(table_usage.id)
+        break
+    modeladmin.message_user(
+        request,
+        'Clear temp table task has been started.',
         level='success'
     )
 
@@ -180,5 +213,5 @@ class TableUsageAdmin(AbstractDefinitionAdmin):
     search_fields = ('schema_name',)
     list_filter = ('schema_name',)
     ordering = ['-created_on']
-    readonly_fields = ('schema_name', 'created_on')
-    actions = [run_fetch_table_stats]
+    readonly_fields = ('created_on',)
+    actions = [run_fetch_table_stats, run_clear_temp_table]

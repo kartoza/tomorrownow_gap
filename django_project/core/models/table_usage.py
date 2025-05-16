@@ -6,8 +6,12 @@ Tomorrow Now GAP.
 
 """
 
+import logging
 from django.db import models, connection
 from django.utils import timezone
+
+
+logger = logging.getLogger(__name__)
 
 
 class TableUsage(models.Model):
@@ -76,6 +80,26 @@ class TableUsage(models.Model):
         table_usage.save()
 
         return table_usage
+
+    @staticmethod
+    def clear_temp_table(id):
+        """Clear temp table."""
+        table_usage = TableUsage.objects.get(id=id)
+        schema_name = table_usage.schema_name
+        if schema_name != 'temp':
+            raise ValueError('Only temp table can be cleared.')
+        if not table_usage.data:
+            raise ValueError('No data to clear.')
+
+        with connection.cursor() as cursor:
+            for table_name in table_usage.data.keys():
+                if table_name == 'datetime':
+                    continue
+                logger.info(f'Clearing table {table_name}')
+                cursor.execute(
+                    f'DROP TABLE IF EXISTS "{schema_name}"."{table_name}";'
+                )
+
 
     class Meta:
         """Meta class for TableUsage."""

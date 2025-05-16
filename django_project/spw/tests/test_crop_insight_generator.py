@@ -372,7 +372,7 @@ class TestCropInsightGenerator(TestCase):
                         self.assertEqual(row, self.csv_headers)
 
                     # Farm 1
-                    elif row_num == 2:
+                    elif row[0] == self.farm.unique_id:
                         # Farm Unique ID
                         self.assertEqual(row[0], self.farm.unique_id)
                         # Phone Number
@@ -421,7 +421,7 @@ class TestCropInsightGenerator(TestCase):
                         )
 
                     # Farm 2
-                    elif row_num == 3:
+                    elif row[0] == self.farm_2.unique_id:
                         # Farm Unique ID
                         self.assertEqual(row[0], self.farm_2.unique_id)
                         # Phone Number
@@ -444,7 +444,7 @@ class TestCropInsightGenerator(TestCase):
                         self.assertEqual(row[12], 'Light rain')  # Precip Type
 
                     # Farm 3
-                    elif row_num == 4:
+                    elif row[0] == self.farm_3.unique_id:
                         # Farm Unique ID
                         self.assertEqual(row[0], self.farm_3.unique_id)
                         # Phone Number
@@ -466,7 +466,7 @@ class TestCropInsightGenerator(TestCase):
                         self.assertEqual(row[12], '')  # Precip Type
 
                     # Farm 4 has same grid with farm 2
-                    elif row_num == 5:
+                    elif row[0] == self.farm_4.unique_id:
                         # Farm Unique ID
                         self.assertEqual(row[0], self.farm_4.unique_id)
                         # Phone Number
@@ -489,7 +489,7 @@ class TestCropInsightGenerator(TestCase):
                         self.assertEqual(row[12], 'Light rain')  # Precip Type
 
                     # Farm 5 has same grid with farm 3
-                    elif row_num == 6:
+                    elif row[0] == self.farm_5.unique_id:
                         # Farm Unique ID
                         self.assertEqual(row[0], self.farm_5.unique_id)
                         # Phone Number

@@ -26,7 +26,8 @@ from dcas.tasks import (
     run_dcas,
     export_dcas_minio,
     export_dcas_sftp,
-    log_dcas_error
+    log_dcas_error,
+    clear_all_dcas_error_logs
 )
 
 
@@ -135,12 +136,23 @@ class DCASOutputAdmin(admin.ModelAdmin):
     get_size.admin_order_field = 'size'
 
 
+@admin.action(description='Clear all DCAS error logs')
+def run_clear_all_dcas_error_logs(modeladmin, request, queryset):
+    """Clear all DCAS error logs."""
+    clear_all_dcas_error_logs.delay()
+    modeladmin.message_user(
+        request,
+        'Process will be started in background!',
+        messages.SUCCESS
+    )
+
+
 @admin.register(DCASErrorLog)
 class DCASErrorLogAdmin(ExportMixin, admin.ModelAdmin):
     """Admin class for DCASErrorLog model."""
 
     resource_class = DCASErrorLogResource
-    actions = [create_export_job_action]
+    actions = [create_export_job_action, run_clear_all_dcas_error_logs]
 
     list_display = (
         "id",
