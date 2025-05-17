@@ -417,9 +417,14 @@ class TestSalientIngestor(SalientIngestorBaseTest):
         # use gap products dir prefix
         output_url = os.environ.get(
             'GAP_S3_PRODUCTS_BUCKET_NAME', '')
+        dir_prefix = os.environ.get('GAP_S3_PRODUCTS_DIR_PREFIX', '')
         if not output_url.endswith('/'):
             output_url += '/'
-        output_url += f'salient_collector/{filename}'
+        output_url += os.path.join(
+            dir_prefix,
+            'salient_collector',
+            filename
+        )
 
         return output_url
 
