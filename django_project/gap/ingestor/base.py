@@ -176,8 +176,8 @@ class BaseZarrIngestor(BaseIngestor):
 
         self.s3 = BaseZarrReader.get_s3_variables()
         self.s3_options = {
-            'key': self.s3.get('AWS_ACCESS_KEY_ID'),
-            'secret': self.s3.get('AWS_SECRET_ACCESS_KEY'),
+            'key': self.s3.get('S3_ACCESS_KEY_ID'),
+            'secret': self.s3.get('S3_SECRET_ACCESS_KEY'),
             'client_kwargs': BaseZarrReader.get_s3_client_kwargs()
         }
         self.metadata = {}

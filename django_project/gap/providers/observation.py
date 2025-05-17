@@ -642,7 +642,7 @@ class ObservationParquetReaderValue(DatasetReaderValue):
             export_query = (
                 f"""
                 COPY ({self.query})
-                TO 's3://{self.s3['AWS_BUCKET_NAME']}/{output}'
+                TO 's3://{self.s3['S3_BUCKET_NAME']}/{output}'
                 (HEADER, DELIMITER '{separator}');
                 """
             )
@@ -739,7 +739,7 @@ class ObservationParquetReaderValue(DatasetReaderValue):
         """
         s3 = self._get_s3_variables()
 
-        output_url = s3["AWS_DIR_PREFIX"]
+        output_url = s3["S3_DIR_PREFIX"]
         if output_url and not output_url.endswith('/'):
             output_url += '/'
         output_url += f'user_data/{uuid.uuid4().hex}{suffix}'
@@ -786,28 +786,28 @@ class ObservationParquetReader(ObservationDatasetReader):
         :return: Dictionary of S3 env vars
         :rtype: dict
         """
-        prefix = 'MINIO'
+        prefix = 'GAP'
         keys = [
-            'AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY',
-            'AWS_ENDPOINT_URL', 'AWS_REGION_NAME'
+            'S3_ACCESS_KEY_ID', 'S3_SECRET_ACCESS_KEY',
+            'S3_ENDPOINT_URL', 'S3_REGION_NAME'
         ]
         results = {}
         for key in keys:
             results[key] = os.environ.get(f'{prefix}_{key}', '')
-        results['AWS_BUCKET_NAME'] = os.environ.get(
-            'MINIO_GAP_AWS_BUCKET_NAME', '')
-        results['AWS_DIR_PREFIX'] = os.environ.get(
-            'MINIO_GAP_AWS_DIR_PREFIX', '')
+        results['S3_BUCKET_NAME'] = os.environ.get(
+            'GAP_S3_PRODUCTS_BUCKET_NAME', '')
+        results['S3_DIR_PREFIX'] = os.environ.get(
+            'GAP_S3_PRODUCTS_DIR_PREFIX', '')
         if settings.DEBUG:
-            results['AWS_ENDPOINT_URL'] = results['AWS_ENDPOINT_URL'].replace(
+            results['S3_ENDPOINT_URL'] = results['S3_ENDPOINT_URL'].replace(
                 'http://', ''
             )
         else:
-            results['AWS_ENDPOINT_URL'] = results['AWS_ENDPOINT_URL'].replace(
+            results['S3_ENDPOINT_URL'] = results['S3_ENDPOINT_URL'].replace(
                 'https://', ''
             )
-        if results['AWS_ENDPOINT_URL'].endswith('/'):
-            results['AWS_ENDPOINT_URL'] = results['AWS_ENDPOINT_URL'][:-1]
+        if results['S3_ENDPOINT_URL'].endswith('/'):
+            results['S3_ENDPOINT_URL'] = results['S3_ENDPOINT_URL'][:-1]
         return results
 
     def _get_directory_path(self):
@@ -824,8 +824,8 @@ class ObservationParquetReader(ObservationDatasetReader):
             )
 
         return (
-            f"s3://{self.s3['AWS_BUCKET_NAME']}/"
-            f"{self.s3['AWS_DIR_PREFIX']}/"
+            f"s3://{self.s3['S3_BUCKET_NAME']}/"
+            f"{self.s3['S3_DIR_PREFIX']}/"
             f"{data_source.name}/"
         )
 
@@ -834,11 +834,11 @@ class ObservationParquetReader(ObservationDatasetReader):
 
         config = {
             'enable_object_cache': True,
-            's3_access_key_id': self.s3['AWS_ACCESS_KEY_ID'],
-            's3_secret_access_key': self.s3['AWS_SECRET_ACCESS_KEY'],
+            's3_access_key_id': self.s3['S3_ACCESS_KEY_ID'],
+            's3_secret_access_key': self.s3['S3_SECRET_ACCESS_KEY'],
             's3_region': 'us-east-1',
             's3_url_style': 'path',
-            's3_endpoint': self.s3['AWS_ENDPOINT_URL'],
+            's3_endpoint': self.s3['S3_ENDPOINT_URL'],
             's3_use_ssl': not settings.DEBUG
         }
         # Only add 'threads' key if a valid thread count exists

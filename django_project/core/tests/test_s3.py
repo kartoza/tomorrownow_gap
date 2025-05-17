@@ -19,7 +19,7 @@ class TestS3Utilities(TestCase):
 
     def test_bucket_already_created(self):
         """Test S3 bucket already created."""
-        self.assertFalse(create_s3_bucket(settings.MINIO_AWS_BUCKET_NAME))
+        self.assertFalse(create_s3_bucket(settings.GAP_S3_MEDIA_BUCKET_NAME))
 
     def test_zip_folder_in_s3(self):
         """Test zip folder in S3."""

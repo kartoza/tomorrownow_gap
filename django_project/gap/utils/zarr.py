@@ -66,18 +66,18 @@ class BaseZarrReader(BaseNetCDFReader):
         :return: Dictionary of S3 env vars
         :rtype: dict
         """
-        prefix = 'MINIO'
+        prefix = 'GAP'
         keys = [
-            'AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY',
-            'AWS_ENDPOINT_URL', 'AWS_REGION_NAME'
+            'S3_ACCESS_KEY_ID', 'S3_SECRET_ACCESS_KEY',
+            'S3_ENDPOINT_URL', 'S3_REGION_NAME'
         ]
         results = {}
         for key in keys:
             results[key] = os.environ.get(f'{prefix}_{key}', '')
-        results['AWS_BUCKET_NAME'] = os.environ.get(
-            'MINIO_GAP_AWS_BUCKET_NAME', '')
-        results['AWS_DIR_PREFIX'] = os.environ.get(
-            'MINIO_GAP_AWS_DIR_PREFIX', '')
+        results['S3_BUCKET_NAME'] = os.environ.get(
+            'GAP_S3_PRODUCTS_BUCKET_NAME', '')
+        results['S3_DIR_PREFIX'] = os.environ.get(
+            'GAP_S3_PRODUCTS_DIR_PREFIX', '')
         return results
 
     @classmethod
@@ -87,14 +87,14 @@ class BaseZarrReader(BaseNetCDFReader):
         :return: dictionary with key endpoint_url or region_name
         :rtype: dict
         """
-        prefix = 'MINIO'
+        prefix = 'GAP'
         client_kwargs = {}
-        if os.environ.get(f'{prefix}_AWS_ENDPOINT_URL', ''):
+        if os.environ.get(f'{prefix}_S3_ENDPOINT_URL', ''):
             client_kwargs['endpoint_url'] = os.environ.get(
-                f'{prefix}_AWS_ENDPOINT_URL', '')
-        if os.environ.get(f'{prefix}_AWS_REGION_NAME', ''):
+                f'{prefix}_S3_ENDPOINT_URL', '')
+        if os.environ.get(f'{prefix}_S3_REGION_NAME', ''):
             client_kwargs['region_name'] = os.environ.get(
-                f'{prefix}_AWS_REGION_NAME', '')
+                f'{prefix}_S3_REGION_NAME', '')
         return client_kwargs
 
     @classmethod
@@ -106,8 +106,8 @@ class BaseZarrReader(BaseNetCDFReader):
         :return: Base URL with s3 and bucket name
         :rtype: str
         """
-        prefix = s3['AWS_DIR_PREFIX']
-        bucket_name = s3['AWS_BUCKET_NAME']
+        prefix = s3['S3_DIR_PREFIX']
+        bucket_name = s3['S3_BUCKET_NAME']
         zarr_url = f's3://{bucket_name}/{prefix}'
         if not zarr_url.endswith('/'):
             zarr_url += '/'
@@ -130,8 +130,8 @@ class BaseZarrReader(BaseNetCDFReader):
         """Initialize s3fs."""
         self.s3 = self.get_s3_variables()
         self.s3_options = {
-            'key': self.s3.get('AWS_ACCESS_KEY_ID'),
-            'secret': self.s3.get('AWS_SECRET_ACCESS_KEY'),
+            'key': self.s3.get('S3_ACCESS_KEY_ID'),
+            'secret': self.s3.get('S3_SECRET_ACCESS_KEY'),
             'client_kwargs': self.get_s3_client_kwargs()
         }
 
@@ -150,9 +150,9 @@ class BaseZarrReader(BaseNetCDFReader):
 
         # create s3 filecache
         s3_fs = s3fs.S3FileSystem(
-            key=self.s3.get('AWS_ACCESS_KEY_ID'),
-            secret=self.s3.get('AWS_SECRET_ACCESS_KEY'),
-            endpoint_url=self.s3.get('AWS_ENDPOINT_URL')
+            key=self.s3.get('S3_ACCESS_KEY_ID'),
+            secret=self.s3.get('S3_SECRET_ACCESS_KEY'),
+            endpoint_url=self.s3.get('S3_ENDPOINT_URL')
         )
         fs = fsspec.filesystem(
             'filecache',

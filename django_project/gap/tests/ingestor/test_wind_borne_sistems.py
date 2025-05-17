@@ -349,7 +349,7 @@ class WindBorneSystemsAPIIngestorTest(BaseTestWithPatchResponses, TestCase):
         """Remove parquet output from object storage."""
         s3_storage = storages['gap_products']
         path = (
-            f'{s3_path.replace(f's3://{s3['AWS_BUCKET_NAME']}/', '')}'
+            f'{s3_path.replace(f's3://{s3['S3_BUCKET_NAME']}/', '')}'
             f'year={year}'
         )
         _, files = s3_storage.listdir(path)

@@ -53,9 +53,9 @@ class CBAMCollectorTest(CBAMIngestorBaseTest):
     ):
         """Test run cbam collector."""
         mock_get_s3_env.return_value = {
-            'AWS_DIR_PREFIX': 'cbam',
-            'AWS_ENDPOINT_URL': 'test_endpoint',
-            'AWS_BUCKET_NAME': 'test_bucket'
+            'S3_DIR_PREFIX': 'cbam',
+            'S3_ENDPOINT_URL': 'test_endpoint',
+            'S3_BUCKET_NAME': 'test_bucket'
         }
         mock_fs = MagicMock()
         mock_s3fs.return_value = mock_fs
@@ -107,9 +107,9 @@ class CBAMCollectorTest(CBAMIngestorBaseTest):
     ):
         """Test run cbam collector."""
         mock_get_s3_env.return_value = {
-            'AWS_DIR_PREFIX': 'cbam',
-            'AWS_ENDPOINT_URL': 'test_endpoint',
-            'AWS_BUCKET_NAME': 'test_bucket'
+            'S3_DIR_PREFIX': 'cbam',
+            'S3_ENDPOINT_URL': 'test_endpoint',
+            'S3_BUCKET_NAME': 'test_bucket'
         }
         mock_fs = MagicMock()
         mock_s3fs.return_value = mock_fs
@@ -154,8 +154,8 @@ class CBAMIngestorTest(CBAMIngestorBaseTest):
     def test_init(self, mock_get_s3_client_kwargs, mock_get_s3_variables):
         """Test init method."""
         mock_get_s3_variables.return_value = {
-            'AWS_ACCESS_KEY_ID': 'test_access_key',
-            'AWS_SECRET_ACCESS_KEY': 'test_secret_key'
+            'S3_ACCESS_KEY_ID': 'test_access_key',
+            'S3_SECRET_ACCESS_KEY': 'test_secret_key'
         }
         mock_get_s3_client_kwargs.return_value = {
             'endpoint_url': 'https://test-endpoint.com'
@@ -165,7 +165,7 @@ class CBAMIngestorTest(CBAMIngestorBaseTest):
             trigger_task=False
         )
         ingestor = CBAMIngestor(session)
-        self.assertEqual(ingestor.s3['AWS_ACCESS_KEY_ID'], 'test_access_key')
+        self.assertEqual(ingestor.s3['S3_ACCESS_KEY_ID'], 'test_access_key')
         self.assertEqual(ingestor.s3_options['key'], 'test_access_key')
         self.assertTrue(ingestor.datasource_file)
         self.assertIn('.zarr', ingestor.datasource_file.name)
@@ -183,8 +183,8 @@ class CBAMIngestorTest(CBAMIngestorBaseTest):
             name='cbam_test.zarr'
         )
         mock_get_s3_variables.return_value = {
-            'AWS_ACCESS_KEY_ID': 'test_access_key',
-            'AWS_SECRET_ACCESS_KEY': 'test_secret_key'
+            'S3_ACCESS_KEY_ID': 'test_access_key',
+            'S3_SECRET_ACCESS_KEY': 'test_secret_key'
         }
         mock_get_s3_client_kwargs.return_value = {
             'endpoint_url': 'https://test-endpoint.com'
@@ -198,7 +198,7 @@ class CBAMIngestorTest(CBAMIngestorBaseTest):
             trigger_task=False
         )
         ingestor = CBAMIngestor(session)
-        self.assertEqual(ingestor.s3['AWS_ACCESS_KEY_ID'], 'test_access_key')
+        self.assertEqual(ingestor.s3['S3_ACCESS_KEY_ID'], 'test_access_key')
         self.assertEqual(ingestor.s3_options['key'], 'test_access_key')
         self.assertTrue(ingestor.datasource_file)
         self.assertEqual(ingestor.datasource_file.name, datasource.name)
@@ -379,8 +379,8 @@ class CBAMIngestorTest(CBAMIngestorBaseTest):
         instance = CBAMIngestor(session=session)
         instance.created = True  # Simulate that Zarr file doesn't exist yet
         instance.s3 = {
-            'AWS_ACCESS_KEY_ID': 'test_access_key',
-            'AWS_SECRET_ACCESS_KEY': 'test_secret_key'
+            'S3_ACCESS_KEY_ID': 'test_access_key',
+            'S3_SECRET_ACCESS_KEY': 'test_secret_key'
         }
 
         # Act

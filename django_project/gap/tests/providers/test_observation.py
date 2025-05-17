@@ -288,11 +288,11 @@ class TestObservationParquetReader(TestCase):
 
         # Mock S3 settings
         self.s3_mock = {
-            "AWS_BUCKET_NAME": "test-bucket",
-            "AWS_DIR_PREFIX": "test_prefix/",
-            "AWS_ACCESS_KEY_ID": "mock-key",
-            "AWS_SECRET_ACCESS_KEY": "mock-secret",
-            "AWS_ENDPOINT_URL": "http://localhost:9000"
+            "S3_BUCKET_NAME": "test-bucket",
+            "S3_DIR_PREFIX": "test_prefix/",
+            "S3_ACCESS_KEY_ID": "mock-key",
+            "S3_SECRET_ACCESS_KEY": "mock-secret",
+            "S3_ENDPOINT_URL": "http://localhost:9000"
         }
 
         self.start_date = datetime(2020, 1, 1)

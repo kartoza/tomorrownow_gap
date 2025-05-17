@@ -146,14 +146,14 @@ class DCASPipelineOutput:
         """Initialize s3fs."""
         self.s3 = self._get_s3_variables()
         self.s3_options = {
-            'key': self.s3.get('AWS_ACCESS_KEY_ID'),
-            'secret': self.s3.get('AWS_SECRET_ACCESS_KEY'),
+            'key': self.s3.get('S3_ACCESS_KEY_ID'),
+            'secret': self.s3.get('S3_SECRET_ACCESS_KEY'),
             'client_kwargs': self._get_s3_client_kwargs()
         }
         self.fs = fsspec.filesystem(
             's3',
-            key=self.s3.get('AWS_ACCESS_KEY_ID'),
-            secret=self.s3.get('AWS_SECRET_ACCESS_KEY'),
+            key=self.s3.get('S3_ACCESS_KEY_ID'),
+            secret=self.s3.get('S3_SECRET_ACCESS_KEY'),
             client_kwargs=self._get_s3_client_kwargs()
         )
 
@@ -163,18 +163,18 @@ class DCASPipelineOutput:
         :return: Dictionary of S3 env vars
         :rtype: dict
         """
-        prefix = 'MINIO'
+        prefix = 'GAP'
         keys = [
-            'AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY',
-            'AWS_ENDPOINT_URL', 'AWS_REGION_NAME'
+            'S3_ACCESS_KEY_ID', 'S3_SECRET_ACCESS_KEY',
+            'S3_ENDPOINT_URL', 'S3_REGION_NAME'
         ]
         results = {}
         for key in keys:
             results[key] = os.environ.get(f'{prefix}_{key}', '')
-        results['AWS_BUCKET_NAME'] = os.environ.get(
-            'MINIO_GAP_AWS_BUCKET_NAME', '')
-        results['AWS_DIR_PREFIX'] = os.environ.get(
-            'MINIO_GAP_AWS_DIR_PREFIX', '')
+        results['S3_BUCKET_NAME'] = os.environ.get(
+            'GAP_S3_PRODUCTS_BUCKET_NAME', '')
+        results['S3_DIR_PREFIX'] = os.environ.get(
+            'GAP_S3_PRODUCTS_DIR_PREFIX', '')
 
         return results
 
@@ -184,20 +184,20 @@ class DCASPipelineOutput:
         :return: dictionary with key endpoint_url or region_name
         :rtype: dict
         """
-        prefix = 'MINIO'
+        prefix = 'GAP'
         client_kwargs = {}
-        if os.environ.get(f'{prefix}_AWS_ENDPOINT_URL', ''):
+        if os.environ.get(f'{prefix}_S3_ENDPOINT_URL', ''):
             client_kwargs['endpoint_url'] = os.environ.get(
-                f'{prefix}_AWS_ENDPOINT_URL', '')
-        if os.environ.get(f'{prefix}_AWS_REGION_NAME', ''):
+                f'{prefix}_S3_ENDPOINT_URL', '')
+        if os.environ.get(f'{prefix}_S3_REGION_NAME', ''):
             client_kwargs['region_name'] = os.environ.get(
-                f'{prefix}_AWS_REGION_NAME', '')
+                f'{prefix}_S3_REGION_NAME', '')
         return client_kwargs
 
     def _get_directory_path(self, directory_name):
         return (
-            f"s3://{self.s3['AWS_BUCKET_NAME']}/"
-            f"{self.s3['AWS_DIR_PREFIX']}/{directory_name}"
+            f"s3://{self.s3['S3_BUCKET_NAME']}/"
+            f"{self.s3['S3_DIR_PREFIX']}/{directory_name}"
         )
 
     def save(self, type: int, df: Union[pd.DataFrame, dask_df]):
@@ -295,7 +295,7 @@ class DCASPipelineOutput:
         return is_success
 
     def _get_duckdb_config(self, s3):
-        endpoint = s3['AWS_ENDPOINT_URL']
+        endpoint = s3['S3_ENDPOINT_URL']
         # Remove protocol from endpoint
         endpoint = endpoint.replace('http://', '')
         endpoint = endpoint.replace('https://', '')
@@ -303,8 +303,8 @@ class DCASPipelineOutput:
             endpoint = endpoint[:-1]
 
         config = {
-            's3_access_key_id': s3['AWS_ACCESS_KEY_ID'],
-            's3_secret_access_key': s3['AWS_SECRET_ACCESS_KEY'],
+            's3_access_key_id': s3['S3_ACCESS_KEY_ID'],
+            's3_secret_access_key': s3['S3_SECRET_ACCESS_KEY'],
             's3_region': 'us-east-1',
             's3_url_style': 'path',
             's3_endpoint': endpoint,

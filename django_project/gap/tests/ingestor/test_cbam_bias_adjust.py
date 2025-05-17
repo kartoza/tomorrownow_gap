@@ -101,9 +101,9 @@ class CBAMBiasAdjustCollectorTest(CBAMBiasAdjustIngestorBaseTest):
     ):
         """Test run cbam collector."""
         mock_get_s3_env.return_value = {
-            'AWS_DIR_PREFIX': 'cbam',
-            'AWS_ENDPOINT_URL': 'test_endpoint',
-            'AWS_BUCKET_NAME': 'test_bucket'
+            'S3_DIR_PREFIX': 'cbam',
+            'S3_ENDPOINT_URL': 'test_endpoint',
+            'S3_BUCKET_NAME': 'test_bucket'
         }
         mock_fs = MagicMock()
         mock_s3fs.return_value = mock_fs
