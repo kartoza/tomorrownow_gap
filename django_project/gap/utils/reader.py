@@ -10,8 +10,9 @@ import json
 import tempfile
 import dask
 import uuid
+import pandas as pd
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, time
 from typing import Union, List, Tuple
 from django.core.files.storage import storages
 from storages.backends.s3boto3 import S3Boto3Storage
@@ -544,6 +545,10 @@ class DatasetReaderValue:
 
     def _get_dataset_for_csv(self):
         dim_order = [self.date_variable]
+
+        if self.has_time_column:
+            dim_order.append('time')
+
         reordered_cols = [
             attribute.attribute.variable_name for attribute in self.attributes
         ]
@@ -556,10 +561,20 @@ class DatasetReaderValue:
             dim_order.append('lon')
             rechunk['lat'] = 300
             rechunk['lon'] = 300
+            if self.has_time_column:
+                # slightly reducing chunk size for lat/lon
+                rechunk['lat'] = 50 * 3
+                rechunk['lon'] = 50 * 3
+                rechunk['time'] = 24
         else:
             reordered_cols.insert(0, 'lon')
             reordered_cols.insert(0, 'lat')
             rechunk[self.date_variable] = 300
+            if self.has_time_column:
+                # slightly reducing chunk size for lat/lon
+                rechunk[self.date_variable] = 50
+                rechunk['time'] = 24
+
         if 'ensemble' in self.xr_dataset.dims:
             dim_order.append('ensemble')
             rechunk['ensemble'] = 50
@@ -567,7 +582,22 @@ class DatasetReaderValue:
         # rechunk dataset
         ds = self.xr_dataset.chunk(rechunk)
 
+        if self.has_time_column:
+            time_delta = ds['time'].dt.total_seconds().values
+            time_str = [
+                f"{int(x // 3600):02}:{int((x % 3600) // 60):02}"
+                f":{int(x % 60):02}"
+                for x in time_delta
+            ]
+            ds = ds.assign_coords(
+                **{'time': ('time', time_str)}
+            )
+
         return ds, dim_order, reordered_cols
+
+    def _filter_df(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Filter dataframe."""
+        return df
 
     def to_csv_stream(self, suffix='.csv', separator=','):
         """Generate csv bytes stream.
@@ -608,6 +638,7 @@ class DatasetReaderValue:
                             chunk = ds.isel(**slice_dict)
                             chunk_df = chunk.to_dataframe(dim_order=dim_order)
                             chunk_df = chunk_df[reordered_cols]
+                            chunk_df = self._filter_df(chunk_df)
 
                             if write_headers:
                                 headers = dim_order + list(chunk_df.columns)
@@ -631,6 +662,7 @@ class DatasetReaderValue:
                     chunk = ds.isel(**slice_dict)
                     chunk_df = chunk.to_dataframe(dim_order=dim_order)
                     chunk_df = chunk_df[reordered_cols]
+                    chunk_df = self._filter_df(chunk_df)
 
                     if write_headers:
                         headers = dim_order + list(chunk_df.columns)
@@ -689,6 +721,7 @@ class DatasetReaderValue:
                                     dim_order=dim_order
                                 )
                                 chunk_df = chunk_df[reordered_cols]
+                                chunk_df = self._filter_df(chunk_df)
 
                                 chunk_df.to_csv(
                                     tmp_file.name, index=True, mode='a',
@@ -708,6 +741,7 @@ class DatasetReaderValue:
                         chunk = ds.isel(**slice_dict)
                         chunk_df = chunk.to_dataframe(dim_order=dim_order)
                         chunk_df = chunk_df[reordered_cols]
+                        chunk_df = self._filter_df(chunk_df)
 
                         chunk_df.to_csv(
                             tmp_file.name, index=True, mode='a',
@@ -843,3 +877,15 @@ class BaseDatasetReader:
                 'past': (start_date, now - timedelta(days=1)),
                 'future': (now, end_date)
             }
+
+    @property
+    def has_time_column(self) -> bool:
+        """Check if the output has time column.
+
+        :return: True if time column should exist
+        :rtype: bool
+        """
+        return (
+            self.dataset.time_step != DatasetTimeStep.DAILY if
+            self.dataset else False
+        )
