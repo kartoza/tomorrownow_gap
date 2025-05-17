@@ -6,7 +6,8 @@ RUN apt-get update -y && \
     spatialite-bin libsqlite3-mod-spatialite \
     python3-dev python3-gdal python3-psycopg2 python3-ldap \
     python3-pip python3-pil python3-lxml python3-pylibmc \
-    uwsgi uwsgi-plugin-python3 build-essential gdal-bin
+    uwsgi uwsgi-plugin-python3 build-essential gdal-bin \
+    supervisor
 
 # Install pip packages
 ADD deployment/docker/requirements.txt /requirements.txt
@@ -23,6 +24,8 @@ ADD django_project /home/web/django_project
 EXPOSE 8080
 
 ADD deployment/docker/uwsgi.conf /uwsgi.conf
+# Add supervisord config for worker
+ADD deployment/docker/supervisord.conf /supervisord.conf
 
 WORKDIR /home/web/django_project
 ENTRYPOINT ["/home/web/django_project/entrypoint.sh"]
