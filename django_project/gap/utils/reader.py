@@ -12,7 +12,7 @@ import dask
 import uuid
 import pandas as pd
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timedelta, time
+from datetime import datetime, timedelta
 from typing import Union, List, Tuple
 from django.core.files.storage import storages
 from storages.backends.s3boto3 import S3Boto3Storage
@@ -345,8 +345,11 @@ class DatasetReaderValue:
         if self._is_xr_dataset:
             # estimate size of dataset
             return self._val.nbytes
-        # for list of dataset timeline value
-        return len(self.values)
+        try:
+            # for list of dataset timeline value
+            return len(self.values)
+        except Exception:
+            return 0
 
     @property
     def xr_dataset(self) -> xrDataset:
