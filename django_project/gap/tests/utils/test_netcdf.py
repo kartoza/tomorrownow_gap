@@ -53,12 +53,12 @@ class TestNetCDFProvider(TestCase):
         """Set test for NetCDFProvider class."""
         self.provider = Provider(name='CBAM')
         self.env_vars = {
-            'CBAM_AWS_ACCESS_KEY_ID': 'test_key',
-            'CBAM_AWS_SECRET_ACCESS_KEY': 'test_secret',
-            'CBAM_AWS_ENDPOINT_URL': 'https://test.endpoint',
-            'CBAM_AWS_BUCKET_NAME': 'test_bucket',
-            'CBAM_AWS_DIR_PREFIX': 'test_prefix',
-            'CBAM_AWS_REGION_NAME': 'test_region'
+            'CBAM_S3_ACCESS_KEY_ID': 'test_key',
+            'CBAM_S3_SECRET_ACCESS_KEY': 'test_secret',
+            'CBAM_S3_ENDPOINT_URL': 'https://test.endpoint',
+            'CBAM_S3_BUCKET_NAME': 'test_bucket',
+            'CBAM_S3_DIR_PREFIX': 'test_prefix',
+            'CBAM_S3_REGION_NAME': 'test_region'
         }
 
     def test_constants(self):
@@ -67,29 +67,29 @@ class TestNetCDFProvider(TestCase):
         self.assertEqual(NetCDFProvider.SALIENT, 'Salient')
 
     @patch.dict(os.environ, {
-        'CBAM_AWS_ACCESS_KEY_ID': 'test_key',
-        'CBAM_AWS_SECRET_ACCESS_KEY': 'test_secret',
-        'CBAM_AWS_ENDPOINT_URL': 'https://test.endpoint',
-        'CBAM_AWS_BUCKET_NAME': 'test_bucket',
-        'CBAM_AWS_DIR_PREFIX': 'test_prefix',
-        'CBAM_AWS_REGION_NAME': 'test_region'
+        'CBAM_S3_ACCESS_KEY_ID': 'test_key',
+        'CBAM_S3_SECRET_ACCESS_KEY': 'test_secret',
+        'CBAM_S3_ENDPOINT_URL': 'https://test.endpoint',
+        'CBAM_S3_BUCKET_NAME': 'test_bucket',
+        'CBAM_S3_DIR_PREFIX': 'test_prefix',
+        'CBAM_S3_REGION_NAME': 'test_region'
     })
     def test_get_s3_variables(self):
         """Test get_s3_variables method."""
         expected = {
-            'AWS_ACCESS_KEY_ID': 'test_key',
-            'AWS_SECRET_ACCESS_KEY': 'test_secret',
-            'AWS_ENDPOINT_URL': 'https://test.endpoint',
-            'AWS_BUCKET_NAME': 'test_bucket',
-            'AWS_DIR_PREFIX': 'test_prefix',
-            'AWS_REGION_NAME': 'test_region'
+            'S3_ACCESS_KEY_ID': 'test_key',
+            'S3_SECRET_ACCESS_KEY': 'test_secret',
+            'S3_ENDPOINT_URL': 'https://test.endpoint',
+            'S3_BUCKET_NAME': 'test_bucket',
+            'S3_DIR_PREFIX': 'test_prefix',
+            'S3_REGION_NAME': 'test_region'
         }
         self.assertEqual(
             NetCDFProvider.get_s3_variables(self.provider), expected)
 
     @patch.dict(os.environ, {
-        'CBAM_AWS_ENDPOINT_URL': 'https://test.endpoint',
-        'CBAM_AWS_REGION_NAME': 'test_region'
+        'CBAM_S3_ENDPOINT_URL': 'https://test.endpoint',
+        'CBAM_S3_REGION_NAME': 'test_region'
     })
     def test_get_s3_client_kwargs(self):
         """Test for get_s3_client_kwargs."""
@@ -441,8 +441,8 @@ class TestCBAMNetCDFReader(TestCase):
             'endpoint_url': 'test_endpoint'
         }
         mock_get_s3_vars.return_value = {
-            'AWS_ACCESS_KEY_ID': 'test_key_id',
-            'AWS_SECRET_ACCESS_KEY': 'test_key_secret',
+            'S3_ACCESS_KEY_ID': 'test_key_id',
+            'S3_SECRET_ACCESS_KEY': 'test_key_secret',
         }
         reader = CBAMNetCDFReader(Mock(), [], Mock(), Mock(), Mock())
         reader.setup_reader()
@@ -458,8 +458,8 @@ class TestCBAMNetCDFReader(TestCase):
         reader = CBAMNetCDFReader(Mock(), [], Mock(), Mock(), Mock())
         reader.fs = Mock()
         reader.s3 = {
-            'AWS_DIR_PREFIX': '',
-            'AWS_BUCKET_NAME': 'test_bucket'
+            'S3_DIR_PREFIX': '',
+            'S3_BUCKET_NAME': 'test_bucket'
         }
         netcdf_file = Mock()
         netcdf_file.name = 'test_file.nc'

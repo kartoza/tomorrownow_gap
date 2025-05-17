@@ -47,31 +47,31 @@ TEMPLATES[0]['DIRS'] += [
 ]
 
 MB = 1024 ** 2
-AWS_TRANSFER_CONFIG = TransferConfig(
+S3_TRANSFER_CONFIG = TransferConfig(
     multipart_chunksize=512 * MB,
     use_threads=True,
     max_concurrency=10
 )
-AWS_PRODUCTS_TRANSFER_CONFIG = TransferConfig(
+S3_PRODUCTS_TRANSFER_CONFIG = TransferConfig(
     multipart_chunksize=300 * MB,
     use_threads=True,
     max_concurrency=2
 )
-MINIO_AWS_ACCESS_KEY_ID = os.environ.get("MINIO_AWS_ACCESS_KEY_ID")
-MINIO_AWS_SECRET_ACCESS_KEY = os.environ.get("MINIO_AWS_SECRET_ACCESS_KEY")
-MINIO_AWS_BUCKET_NAME = os.environ.get("MINIO_AWS_BUCKET_NAME")
-MINIO_AWS_ENDPOINT_URL = os.environ.get("MINIO_AWS_ENDPOINT_URL")
+GAP_S3_ACCESS_KEY_ID = os.environ.get("GAP_S3_ACCESS_KEY_ID")
+GAP_S3_SECRET_ACCESS_KEY = os.environ.get("GAP_S3_SECRET_ACCESS_KEY")
+GAP_S3_MEDIA_BUCKET_NAME = os.environ.get("GAP_S3_MEDIA_BUCKET_NAME")
+GAP_S3_ENDPOINT_URL = os.environ.get("GAP_S3_ENDPOINT_URL")
 STORAGES = {
     "default": {
         "BACKEND": "storages.backends.s3.S3Storage",
         "OPTIONS": {
-            "access_key": MINIO_AWS_ACCESS_KEY_ID,
-            "secret_key": MINIO_AWS_SECRET_ACCESS_KEY,
-            "bucket_name": MINIO_AWS_BUCKET_NAME,
+            "access_key": GAP_S3_ACCESS_KEY_ID,
+            "secret_key": GAP_S3_SECRET_ACCESS_KEY,
+            "bucket_name": GAP_S3_MEDIA_BUCKET_NAME,
             "file_overwrite": False,
             "max_memory_size": 300 * MB,  # 300MB
-            "transfer_config": AWS_TRANSFER_CONFIG,
-            "endpoint_url": MINIO_AWS_ENDPOINT_URL
+            "transfer_config": S3_TRANSFER_CONFIG,
+            "endpoint_url": GAP_S3_ENDPOINT_URL
         },
     },
     "staticfiles": {
@@ -82,21 +82,24 @@ STORAGES = {
     "gap_products": {
         "BACKEND": "storages.backends.s3.S3Storage",
         "OPTIONS": {
-            "access_key": MINIO_AWS_ACCESS_KEY_ID,
-            "secret_key": MINIO_AWS_SECRET_ACCESS_KEY,
-            "bucket_name": os.environ.get("MINIO_GAP_AWS_BUCKET_NAME"),
+            "access_key": GAP_S3_ACCESS_KEY_ID,
+            "secret_key": GAP_S3_SECRET_ACCESS_KEY,
+            "bucket_name": os.environ.get("GAP_S3_PRODUCTS_BUCKET_NAME"),
             "file_overwrite": False,
-            "transfer_config": AWS_PRODUCTS_TRANSFER_CONFIG,
-            "endpoint_url": MINIO_AWS_ENDPOINT_URL
+            "transfer_config": S3_TRANSFER_CONFIG,
+            "endpoint_url": GAP_S3_ENDPOINT_URL
         },
     }
 }
 
-STORAGE_DIR_PREFIX = os.environ.get("MINIO_AWS_DIR_PREFIX", "media")
+STORAGE_DIR_PREFIX = os.environ.get("GAP_S3_MEDIA_DIR_PREFIX", "media")
 if STORAGE_DIR_PREFIX and not STORAGE_DIR_PREFIX.endswith("/"):
     STORAGE_DIR_PREFIX = f"{STORAGE_DIR_PREFIX}/"
 
-GAP_PRODUCTS_DIR_PREFIX = os.environ.get("MINIO_GAP_AWS_DIR_PREFIX", "staging")
+GAP_PRODUCTS_DIR_PREFIX = os.environ.get(
+    "GAP_S3_PRODUCTS_DIR_PREFIX",
+    "staging"
+)
 if GAP_PRODUCTS_DIR_PREFIX and not GAP_PRODUCTS_DIR_PREFIX.endswith("/"):
     GAP_PRODUCTS_DIR_PREFIX = f"{GAP_PRODUCTS_DIR_PREFIX}/"
 

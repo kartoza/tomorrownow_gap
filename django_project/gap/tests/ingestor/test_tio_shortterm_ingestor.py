@@ -211,8 +211,8 @@ class TestTioIngestor(TestCase):
             name='tio_test.zarr'
         )
         mock_get_s3_variables.return_value = {
-            'AWS_ACCESS_KEY_ID': 'test_access_key',
-            'AWS_SECRET_ACCESS_KEY': 'test_secret_key'
+            'S3_ACCESS_KEY_ID': 'test_access_key',
+            'S3_SECRET_ACCESS_KEY': 'test_secret_key'
         }
         mock_get_s3_client_kwargs.return_value = {
             'endpoint_url': 'https://test-endpoint.com'
@@ -227,7 +227,7 @@ class TestTioIngestor(TestCase):
             trigger_task=False
         )
         ingestor = TioShortTermIngestor(session)
-        self.assertEqual(ingestor.s3['AWS_ACCESS_KEY_ID'], 'test_access_key')
+        self.assertEqual(ingestor.s3['S3_ACCESS_KEY_ID'], 'test_access_key')
         self.assertEqual(ingestor.s3_options['key'], 'test_access_key')
         self.assertTrue(ingestor.datasource_file)
         self.assertEqual(ingestor.datasource_file.name, datasource.name)

@@ -45,14 +45,14 @@ class NetCDFProvider:
 
         :param provider: NetCDF Data Provider
         :type provider: Provider
-        :return: Dict<Key, Value> of AWS Credentials
+        :return: Dict<Key, Value> of S3 Credentials
         :rtype: dict
         """
         prefix = provider.name.upper()
         keys = [
-            'AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY',
-            'AWS_ENDPOINT_URL', 'AWS_BUCKET_NAME',
-            'AWS_DIR_PREFIX', 'AWS_REGION_NAME'
+            'S3_ACCESS_KEY_ID', 'S3_SECRET_ACCESS_KEY',
+            'S3_ENDPOINT_URL', 'S3_BUCKET_NAME',
+            'S3_DIR_PREFIX', 'S3_REGION_NAME'
         ]
         results = {}
         for key in keys:
@@ -70,12 +70,12 @@ class NetCDFProvider:
         """
         prefix = provider.name.upper()
         client_kwargs = {}
-        if os.environ.get(f'{prefix}_AWS_ENDPOINT_URL', ''):
+        if os.environ.get(f'{prefix}_S3_ENDPOINT_URL', ''):
             client_kwargs['endpoint_url'] = os.environ.get(
-                f'{prefix}_AWS_ENDPOINT_URL', '')
-        if os.environ.get(f'{prefix}_AWS_REGION_NAME', ''):
+                f'{prefix}_S3_ENDPOINT_URL', '')
+        if os.environ.get(f'{prefix}_S3_REGION_NAME', ''):
             client_kwargs['region_name'] = os.environ.get(
-                f'{prefix}_AWS_REGION_NAME', '')
+                f'{prefix}_S3_REGION_NAME', '')
         return client_kwargs
 
 
@@ -122,19 +122,19 @@ class NetCDFMediaS3:
         :return: Dictionary of S3 env vars
         :rtype: dict
         """
-        prefix = 'MINIO'
+        prefix = 'GAP'
         keys = [
-            'AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY',
-            'AWS_ENDPOINT_URL', 'AWS_REGION_NAME'
+            'S3_ACCESS_KEY_ID', 'S3_SECRET_ACCESS_KEY',
+            'S3_ENDPOINT_URL', 'S3_REGION_NAME'
         ]
         results = {}
         for key in keys:
             results[key] = os.environ.get(f'{prefix}_{key}', '')
-        results['AWS_BUCKET_NAME'] = os.environ.get(
-            'MINIO_AWS_BUCKET_NAME', '')
+        results['S3_BUCKET_NAME'] = os.environ.get(
+            'GAP_S3_MEDIA_BUCKET_NAME', '')
         dir_prefix = os.environ.get(
-            'MINIO_AWS_DIR_PREFIX', '')
-        results['AWS_DIR_PREFIX'] = os.path.join(
+            'GAP_S3_MEDIA_DIR_PREFIX', '')
+        results['S3_DIR_PREFIX'] = os.path.join(
             dir_prefix,
             dir_name
         )
@@ -147,14 +147,14 @@ class NetCDFMediaS3:
         :return: dictionary with key endpoint_url or region_name
         :rtype: dict
         """
-        prefix = 'MINIO'
+        prefix = 'GAP'
         client_kwargs = {}
-        if os.environ.get(f'{prefix}_AWS_ENDPOINT_URL', ''):
+        if os.environ.get(f'{prefix}_S3_ENDPOINT_URL', ''):
             client_kwargs['endpoint_url'] = os.environ.get(
-                f'{prefix}_AWS_ENDPOINT_URL', '')
-        if os.environ.get(f'{prefix}_AWS_REGION_NAME', ''):
+                f'{prefix}_S3_ENDPOINT_URL', '')
+        if os.environ.get(f'{prefix}_S3_REGION_NAME', ''):
             client_kwargs['region_name'] = os.environ.get(
-                f'{prefix}_AWS_REGION_NAME', '')
+                f'{prefix}_S3_REGION_NAME', '')
         return client_kwargs
 
     @classmethod
@@ -166,8 +166,8 @@ class NetCDFMediaS3:
         :return: Base URL with s3 and bucket name
         :rtype: str
         """
-        prefix = s3['AWS_DIR_PREFIX']
-        bucket_name = s3['AWS_BUCKET_NAME']
+        prefix = s3['S3_DIR_PREFIX']
+        bucket_name = s3['S3_BUCKET_NAME']
         netcdf_url = f's3://{bucket_name}/{prefix}'
         if not netcdf_url.endswith('/'):
             netcdf_url += '/'
@@ -211,8 +211,8 @@ class BaseNetCDFReader(BaseDatasetReader):
         self.s3 = NetCDFProvider.get_s3_variables(self.dataset.provider)
         self.fs = fsspec.filesystem(
             's3',
-            key=self.s3.get('AWS_ACCESS_KEY_ID'),
-            secret=self.s3.get('AWS_SECRET_ACCESS_KEY'),
+            key=self.s3.get('S3_ACCESS_KEY_ID'),
+            secret=self.s3.get('S3_SECRET_ACCESS_KEY'),
             client_kwargs=(
                 NetCDFProvider.get_s3_client_kwargs(self.dataset.provider)
             )
@@ -226,8 +226,8 @@ class BaseNetCDFReader(BaseDatasetReader):
         :return: xArray Dataset object
         :rtype: xrDataset
         """
-        prefix = self.s3['AWS_DIR_PREFIX']
-        bucket_name = self.s3['AWS_BUCKET_NAME']
+        prefix = self.s3['S3_DIR_PREFIX']
+        bucket_name = self.s3['S3_BUCKET_NAME']
         netcdf_url = f's3://{bucket_name}/{prefix}'
         if not netcdf_url.endswith('/'):
             netcdf_url += '/'

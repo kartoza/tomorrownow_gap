@@ -42,8 +42,8 @@ class CBAMCollector(BaseIngestor):
         self.dataset = Dataset.objects.get(name='CBAM Climate Reanalysis')
         self.s3 = NetCDFProvider.get_s3_variables(self.dataset.provider)
         self.fs = s3fs.S3FileSystem(
-            key=self.s3.get('AWS_ACCESS_KEY_ID'),
-            secret=self.s3.get('AWS_SECRET_ACCESS_KEY'),
+            key=self.s3.get('S3_ACCESS_KEY_ID'),
+            secret=self.s3.get('S3_SECRET_ACCESS_KEY'),
             client_kwargs=NetCDFProvider.get_s3_client_kwargs(
                 self.dataset.provider)
         )
@@ -56,8 +56,8 @@ class CBAMCollector(BaseIngestor):
         The filename must be: 'YYYY-MM-DD.nc'
         """
         logger.info(f'Check NETCDF Files by dataset {self.dataset.name}')
-        directory_path = self.s3.get('AWS_DIR_PREFIX')
-        bucket_name = self.s3.get('AWS_BUCKET_NAME')
+        directory_path = self.s3.get('S3_DIR_PREFIX')
+        bucket_name = self.s3.get('S3_BUCKET_NAME')
         self.total_count = 0
         for dirpath, dirnames, filenames in \
             self.fs.walk(f's3://{bucket_name}/{directory_path}'):
@@ -148,8 +148,8 @@ class CBAMIngestor(BaseIngestor):
         self.dataset = self._init_dataset()
         self.s3 = BaseZarrReader.get_s3_variables()
         self.s3_options = {
-            'key': self.s3.get('AWS_ACCESS_KEY_ID'),
-            'secret': self.s3.get('AWS_SECRET_ACCESS_KEY'),
+            'key': self.s3.get('S3_ACCESS_KEY_ID'),
+            'secret': self.s3.get('S3_SECRET_ACCESS_KEY'),
             'client_kwargs': BaseZarrReader.get_s3_client_kwargs()
         }
 
