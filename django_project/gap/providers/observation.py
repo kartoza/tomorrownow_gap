@@ -29,7 +29,6 @@ from gap.models import (
     DatasetAttribute,
     DataSourceFile,
     DatasetStore,
-    DatasetTimeStep,
     Station,
     Measurement,
     Preferences
@@ -778,7 +777,6 @@ class ObservationParquetReader(ObservationDatasetReader):
             altitudes=altitudes
         )
         self.s3 = self._get_s3_variables()
-        self.has_time_column = dataset.time_step != DatasetTimeStep.DAILY
 
     def _get_s3_variables(self) -> dict:
         """Get s3 env variables for product bucket.

@@ -175,6 +175,8 @@ class DCASPipelineInputsTest(TestCase):
             self.ds,
             None,
             [],
+            None,
+            None,
             None
         )
 

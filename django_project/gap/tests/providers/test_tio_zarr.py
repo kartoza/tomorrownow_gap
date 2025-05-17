@@ -101,7 +101,9 @@ class TestTioZarrReaderValue(TestCase):
             val=self.mock_xr_dataset,
             location_input=self.mock_location_input,
             attributes=[self.attribute],
-            forecast_date=self.forecast_date
+            forecast_date=self.forecast_date,
+            start_datetime=None,
+            end_datetime=None,
         )
 
     def test_initialization(self):
@@ -228,7 +230,7 @@ class TestTioZarrReader(TestCase):
             mock_open.assert_called_once()
             result_data = data_value['data']
             self.assertEqual(len(result_data), 3)
-            self.assertIn('max_temperature', result_data[0]['values'])
+            self.assertIn('max_temperature', result_data[0])
 
     def test_read_from_bbox(self):
         """Test for reading forecast data using bbox."""

@@ -273,7 +273,7 @@ class TestSPWFetchDataFunctions(TestCase):
         )
         mocked_results.return_value = TioZarrReaderValue(
             xr_ds, self.location_input, attrs,
-            self.start_dt
+            self.start_dt, None, None
         )
         result = gap_input._read_forecast_from_zarr()
         expected_result = {
