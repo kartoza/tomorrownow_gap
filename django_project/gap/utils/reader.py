@@ -345,11 +345,10 @@ class DatasetReaderValue:
         if self._is_xr_dataset:
             # estimate size of dataset
             return self._val.nbytes
-        try:
+        if isinstance(self._val, list):
             # for list of dataset timeline value
-            return len(self.values)
-        except Exception:
-            return 0
+            return len(self._val)
+        return 0
 
     @property
     def xr_dataset(self) -> xrDataset:
@@ -566,8 +565,8 @@ class DatasetReaderValue:
             rechunk['lon'] = 300
             if self.has_time_column:
                 # slightly reducing chunk size for lat/lon
-                rechunk['lat'] = 50 * 3
-                rechunk['lon'] = 50 * 3
+                rechunk['lat'] = 100
+                rechunk['lon'] = 100
                 rechunk['time'] = 24
         else:
             reordered_cols.insert(0, 'lon')
@@ -575,7 +574,7 @@ class DatasetReaderValue:
             rechunk[self.date_variable] = 300
             if self.has_time_column:
                 # slightly reducing chunk size for lat/lon
-                rechunk[self.date_variable] = 50
+                rechunk[self.date_variable] = 100
                 rechunk['time'] = 24
 
         if 'ensemble' in self.xr_dataset.dims:
@@ -644,7 +643,13 @@ class DatasetReaderValue:
                             chunk_df = self._filter_df(chunk_df)
 
                             if write_headers:
-                                headers = dim_order + list(chunk_df.columns)
+                                _columns = list(chunk_df.columns)
+                                # remote lat lon if exists in _columns
+                                if 'lat' in _columns:
+                                    _columns.remove('lat')
+                                if 'lon' in _columns:
+                                    _columns.remove('lon')
+                                headers = dim_order + _columns
                                 yield bytes(
                                     separator.join(headers) + '\n',
                                     'utf-8'
