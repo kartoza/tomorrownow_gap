@@ -13,6 +13,7 @@ import numpy as np
 import pandas as pd
 from django.contrib.gis.geos import Point, MultiPoint
 from unittest.mock import Mock, patch
+from io import StringIO
 
 from gap.models import (
     DatasetAttribute, Dataset, DatasetStore,
@@ -33,7 +34,8 @@ from gap.factories import (
 from gap.tests.ingestor.test_tio_shortterm_ingestor import (
     mock_open_zarr_dataset,
     LAT_METADATA,
-    LON_METADATA
+    LON_METADATA,
+    mock_hourly_open_zarr_dataset
 )
 
 
@@ -101,7 +103,9 @@ class TestTioZarrReaderValue(TestCase):
             val=self.mock_xr_dataset,
             location_input=self.mock_location_input,
             attributes=[self.attribute],
-            forecast_date=self.forecast_date
+            forecast_date=self.forecast_date,
+            start_datetime=None,
+            end_datetime=None,
         )
 
     def test_initialization(self):
@@ -228,7 +232,7 @@ class TestTioZarrReader(TestCase):
             mock_open.assert_called_once()
             result_data = data_value['data']
             self.assertEqual(len(result_data), 3)
-            self.assertIn('max_temperature', result_data[0]['values'])
+            self.assertIn('max_temperature', result_data[0])
 
     def test_read_from_bbox(self):
         """Test for reading forecast data using bbox."""
@@ -389,3 +393,101 @@ class TestTioZarrReader(TestCase):
             'past': (start_date, now - timedelta(days=1)),
             'future': (now, now)
         })
+
+
+class TestHourlyTioZarrReader(TestCase):
+    """Unit test for Hourly Tio Zarr Reader class."""
+
+    fixtures = [
+        '2.provider.json',
+        '3.station_type.json',
+        '4.dataset_type.json',
+        '5.dataset.json',
+        '6.unit.json',
+        '7.attribute.json',
+        '8.dataset_attribute.json'
+    ]
+
+    def setUp(self):
+        """Set Test class for Tio Zarr Reader."""
+        self.dataset = Dataset.objects.get(
+            name='Tomorrow.io Short-term Hourly Forecast',
+            store_type=DatasetStore.ZARR
+        )
+        self.zarr_source = DataSourceFileFactory.create(
+            dataset=self.dataset,
+            format=DatasetStore.ZARR,
+            name='tio_hourly.zarr',
+            is_latest=True
+        )
+        self.attribute1 = Attribute.objects.get(
+            name='Temperature',
+            variable_name='temperature')
+        self.dataset_attr1 = DatasetAttribute.objects.get(
+            dataset=self.dataset,
+            attribute=self.attribute1,
+            source='temperature'
+        )
+        self.attributes = [self.dataset_attr1]
+        self.location_input = DatasetReaderInput.from_point(
+            Point(LON_METADATA['min'], LAT_METADATA['min'])
+        )
+        self.start_date = datetime(2025, 4, 24)
+        self.end_date = datetime(2025, 4, 28)
+        self.reader = TioZarrReader(
+            self.dataset, self.attributes, self.location_input,
+            self.start_date, self.end_date
+        )
+
+    def test_read_from_bbox(self):
+        """Test for reading forecast data using bbox."""
+        dt1 = datetime(2025, 4, 24, tzinfo=pytz.UTC)
+        dt2 = datetime(2025, 4, 27, tzinfo=pytz.UTC)
+        with patch.object(self.reader, 'open_dataset') as mock_open:
+            mock_open.return_value = mock_hourly_open_zarr_dataset()
+            self.reader.location_input = DatasetReaderInput.from_bbox(
+                [
+                    LON_METADATA['min'],
+                    LAT_METADATA['min'],
+                    LON_METADATA['min'] + LON_METADATA['inc'],
+                    LAT_METADATA['min'] + LAT_METADATA['inc']
+                ]
+            )
+            self.reader.read_forecast_data(dt1, dt2)
+            self.assertEqual(len(self.reader.xrDatasets), 1)
+            data_value = self.reader.get_data_values()
+            mock_open.assert_called_once()
+            self.assertTrue(isinstance(data_value, DatasetReaderValue))
+            self.assertTrue(isinstance(data_value._val, xr.Dataset))
+            dataset = data_value.xr_dataset
+            self.assertIn('temperature', dataset.data_vars)
+            result = list(data_value.to_csv_stream())
+            header = result[0].decode('utf-8')
+            self.assertIn('date', header)
+            self.assertIn('time', header)
+            self.assertIn('lat', header)
+            self.assertIn('lon', header)
+            self.assertIn('temperature', header)
+            result_str = StringIO(header + '\n' + str(result[1]))
+            result_df = pd.read_csv(result_str)
+            df = result_df[
+                (result_df['date'] == '2025-04-24') &
+                (result_df['lat'] == -4.65014) &
+                (result_df['lon'] == 33.9182)
+            ]
+            self.assertEqual(len(df), 24)
+
+    def test_read_past_forecast_data(self):
+        """Test for reading forecast data."""
+        dt1 = datetime(2025, 4, 24, 6, 0, 0, tzinfo=pytz.UTC)
+        dt2 = datetime(2025, 4, 27, 1, 0, 0, tzinfo=pytz.UTC)
+        self.reader.start_date = dt1
+        self.reader.end_date = dt2
+        with patch.object(self.reader, 'open_dataset') as mock_open:
+            mock_open.return_value = mock_hourly_open_zarr_dataset()
+            self.reader.read_forecast_data(dt1, dt2)
+            self.assertEqual(len(self.reader.xrDatasets), 1)
+            data_value = self.reader.get_data_values().to_json()
+            mock_open.assert_called_once()
+            result_data = data_value['data']
+            self.assertEqual(len(result_data), 68)

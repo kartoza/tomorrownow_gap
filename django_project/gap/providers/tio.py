@@ -490,7 +490,9 @@ class TioZarrReaderValue(DatasetReaderValue):
             self, val: xrDataset | List[DatasetTimelineValue],
             location_input: DatasetReaderInput,
             attributes: List[DatasetAttribute],
-            forecast_date: np.datetime64) -> None:
+            forecast_date: np.datetime64,
+            start_datetime: np.datetime64,
+            end_datetime: np.datetime64) -> None:
         """Initialize TioZarrReaderValue class.
 
         :param val: value that has been read
@@ -502,6 +504,8 @@ class TioZarrReaderValue(DatasetReaderValue):
         """
         self.forecast_date = forecast_date
         super().__init__(val, location_input, attributes)
+        self.start_datetime = start_datetime
+        self.end_datetime = end_datetime
 
     def _post_init(self):
         if self.is_empty():
@@ -513,6 +517,28 @@ class TioZarrReaderValue(DatasetReaderValue):
         for attr in self.attributes:
             renamed_dict[attr.source] = attr.attribute.variable_name
         self._val = self._val.rename(renamed_dict)
+
+    def _filter_df(self, df: pd.DataFrame) -> pd.DataFrame:
+        if not self.has_time_column:
+            return df
+
+        # filter the dataframe based on the start and end datetime
+        if 'datetime' in df.columns:
+            return df[
+                (df['datetime'] >= self.start_datetime) &
+                (df['datetime'] <= self.end_datetime)
+            ]
+        df_reset = df.reset_index()
+        df_reset['datetime'] = pd.to_datetime(
+            df_reset['date'].astype(str) + ' ' + df_reset['time'].astype(str)
+        )
+        df_reset = df_reset[
+            (df_reset['datetime'] >= self.start_datetime) &
+            (df_reset['datetime'] <= self.end_datetime)
+        ]
+        df_reset = df_reset.drop(columns=['datetime'])
+
+        return df_reset.set_index(['date', 'time'])
 
     def _xr_dataset_to_dict(self) -> dict:
         """Convert xArray Dataset to dictionary.
@@ -526,24 +552,31 @@ class TioZarrReaderValue(DatasetReaderValue):
                 'geometry': json.loads(self.location_input.point.json),
                 'data': []
             }
-        results: List[DatasetTimelineValue] = []
-        for dt_idx, dt in enumerate(
-            self.xr_dataset[self.date_variable].values):
-            value_data = {}
-            for attribute in self.attributes:
-                var_name = attribute.attribute.variable_name
-                v = self.xr_dataset[var_name].values[dt_idx]
-                value_data[var_name] = (
-                    v if not np.isnan(v) else None
-                )
-            results.append(DatasetTimelineValue(
-                dt,
-                value_data,
-                self.location_input.point
-            ))
+        ds, dim_order, reordered_cols = self._get_dataset_for_csv()
+        df = ds.to_dataframe(dim_order=dim_order)
+        df = df[reordered_cols]
+        df = df.drop(columns=['lat', 'lon'])
+        df = df.reset_index()
+        # Replace NaN with None
+        df = df.astype(object).where(pd.notnull(df), None)
+
+        # add datetime column
+        if self.has_time_column:
+            df['datetime'] = pd.to_datetime(
+                df[self.date_variable].astype(str) + ' ' +
+                df['time'].astype(str)
+            )
+            df = df.drop(columns=['time', self.date_variable])
+        else:
+            df['datetime'] = pd.to_datetime(
+                df[self.date_variable].astype(str)
+            )
+            df = df.drop(columns=[self.date_variable])
+
+        df = self._filter_df(df)
         return {
             'geometry': json.loads(self.location_input.point.json),
-            'data': [result.to_dict() for result in results]
+            'data': df.to_dict(orient='records')
         }
 
 
@@ -636,9 +669,20 @@ class TioZarrReader(BaseZarrReader):
             val = xr.concat(self.xrDatasets, dim='date').sortby('date')
             val = val.chunk({'date': 30})
 
+        start_dt = np.datetime64(self.start_date, 'ns')
+        end_dt = np.datetime64(self.end_date, 'ns')
+
+        if self.has_time_column:
+            date_b, time_b = xr.broadcast(val['date'], val['time'])
+            full_datetime = date_b + time_b
+            mask = (full_datetime >= start_dt) & \
+                (full_datetime <= end_dt)
+            val = val.where(mask, drop=False)
+
         return TioZarrReaderValue(
             val, self.location_input, self.attributes,
-            self.latest_forecast_date)
+            self.latest_forecast_date, start_dt, end_dt
+        )
 
     def _get_forecast_day_idx(self, date: np.datetime64) -> int:
         return int(
