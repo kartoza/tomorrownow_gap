@@ -20,6 +20,7 @@ from gap.models import (
     DataSourceFile,
     DatasetStore
 )
+from gap.providers.base import BaseReaderBuilder
 from gap.utils.reader import (
     DatasetReaderInput,
     DatasetTimelineValue,
@@ -91,8 +92,7 @@ class CBAMNetCDFReader(BaseNetCDFReader):
     def __init__(
             self, dataset: Dataset, attributes: List[DatasetAttribute],
             location_input: DatasetReaderInput, start_date: datetime,
-            end_date: datetime,
-            altitudes: (float, float) = None
+            end_date: datetime
     ) -> None:
         """Initialize CBAMNetCDFReader class.
 
@@ -106,12 +106,9 @@ class CBAMNetCDFReader(BaseNetCDFReader):
         :type start_date: datetime
         :param end_date: End date time filter
         :type end_date: datetime
-        :param altitudes: Altitudes for the reader
-        :type altitudes: (float, float)
         """
         super().__init__(
-            dataset, attributes, location_input, start_date, end_date,
-            altitudes=altitudes
+            dataset, attributes, location_input, start_date, end_date
         )
 
     def read_historical_data(self, start_date: datetime, end_date: datetime):
@@ -219,13 +216,11 @@ class CBAMZarrReader(BaseZarrReader, CBAMNetCDFReader):
     def __init__(
             self, dataset: Dataset, attributes: List[DatasetAttribute],
             location_input: DatasetReaderInput, start_date: datetime,
-            end_date: datetime,
-            altitudes: (float, float) = None
+            end_date: datetime
     ) -> None:
         """Initialize CBAMZarrReader class."""
         super().__init__(
-            dataset, attributes, location_input, start_date, end_date,
-            altitudes=altitudes
+            dataset, attributes, location_input, start_date, end_date
         )
 
     def _read_variables_by_point(
@@ -384,3 +379,18 @@ class CBAMZarrReader(BaseZarrReader, CBAMNetCDFReader):
         if len(self.xrDatasets) > 0:
             val = self.xrDatasets[0]
         return CBAMReaderValue(val, self.location_input, self.attributes)
+
+
+class CBAMReaderBuilder(BaseReaderBuilder):
+    """CBAM Reader Builder."""
+
+    def build(self) -> CBAMZarrReader:
+        """Build a new reader from given dataset.
+
+        :return: Reader Class Type
+        :rtype: CBAMZarrReader
+        """
+        return CBAMZarrReader(
+            self.dataset, self.attributes, self.location_input,
+            self.start_date, self.end_date
+        )

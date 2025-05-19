@@ -9,7 +9,7 @@ import json
 import logging
 import os
 from datetime import datetime, timedelta
-from typing import List, Tuple
+from typing import List
 
 import pytz
 import requests
@@ -30,6 +30,7 @@ from gap.models import (
     DatasetStore,
     DataSourceFile
 )
+from gap.providers.base import BaseReaderBuilder
 from gap.utils.reader import (
     LocationInputType,
     DatasetVariable,
@@ -132,13 +133,11 @@ class TomorrowIODatasetReader(BaseDatasetReader):
     def __init__(
             self, dataset: Dataset, attributes: List[DatasetAttribute],
             location_input: DatasetReaderInput, start_date: datetime,
-            end_date: datetime, verbose = False,
-            altitudes: Tuple[float, float] = None
+            end_date: datetime, verbose = False
     ) -> None:
         """Initialize Dataset Reader."""
         super().__init__(
-            dataset, attributes, location_input, start_date, end_date,
-            altitudes=altitudes
+            dataset, attributes, location_input, start_date, end_date
         )
         self.errors = None
         self.warnings = None
@@ -588,13 +587,11 @@ class TioZarrReader(BaseZarrReader):
     def __init__(
             self, dataset: Dataset, attributes: List[DatasetAttribute],
             location_input: DatasetReaderInput, start_date: datetime,
-            end_date: datetime,
-            altitudes: Tuple[float, float] = None
+            end_date: datetime
     ) -> None:
         """Initialize TioZarrReader class."""
         super().__init__(
-            dataset, attributes, location_input, start_date, end_date,
-            altitudes=altitudes
+            dataset, attributes, location_input, start_date, end_date
         )
         self.latest_forecast_date = None
 
@@ -873,4 +870,20 @@ class TioZarrReader(BaseZarrReader):
         ).where(
             mask_da,
             drop=True
+        )
+
+
+class TioReaderBuilder(BaseReaderBuilder):
+    """Class to build Tomorrow.io reader."""
+
+    def build(self) -> BaseDatasetReader:
+        """Build a new Dataset Reader."""
+        if self.dataset.store_type == DatasetStore.EXT_API:
+            return TomorrowIODatasetReader(
+                self.dataset, self.attributes, self.location_input,
+                self.start_date, self.end_date
+            )
+        return TioZarrReader(
+            self.dataset, self.attributes, self.location_input,
+            self.start_date, self.end_date
         )

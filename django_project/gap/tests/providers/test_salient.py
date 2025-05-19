@@ -14,7 +14,7 @@ from django.contrib.gis.geos import Point, MultiPoint
 from unittest.mock import Mock, patch
 
 from core.settings.utils import absolute_path
-from gap.models import DatasetAttribute, Dataset
+from gap.models import DatasetAttribute, Dataset, DatasetStore
 from gap.utils.reader import (
     DatasetReaderInput,
     LocationInputType,
@@ -25,7 +25,8 @@ from gap.utils.netcdf import (
 )
 from gap.providers.salient import (
     SalientNetCDFReader,
-    SalientReaderValue
+    SalientReaderValue,
+    SalientZarrReader
 )
 from gap.factories import (
     ProviderFactory,
@@ -319,3 +320,64 @@ class TestSalientNetCDFReader(TestCase):
             val = dataset['precip_anom'].sel(lat=p.y, lon=p.x)
             self.assertEqual(len(val['forecast_day']), 3)
             self.assertEqual(len(val.values[:, 0]), 50)
+
+
+class TestSalientZarrReader(TestCase):
+    """Unit test for Salient SalientZarrReader class."""
+
+    fixtures = [
+        '2.provider.json',
+        '3.station_type.json',
+        '4.dataset_type.json',
+        '5.dataset.json',
+        '6.unit.json',
+        '7.attribute.json',
+        '8.dataset_attribute.json'
+    ]
+
+    def setUp(self):
+        """Set TestSalientReaderValue class."""
+        self.dataset = Dataset.objects.get(name='Salient Seasonal Forecast')
+        self.dataset_attr1 = DatasetAttribute.objects.get(
+            dataset=self.dataset,
+            source='temp_clim'
+        )
+        self.dataset_attr2 = DatasetAttribute.objects.get(
+            dataset=self.dataset,
+            source='precip_anom'
+        )
+        self.location_input = DatasetReaderInput.from_point(
+            Point(1.0, 2.0)
+        )
+
+    def test_read_past_forecast_date(self):
+        """Test for reading past forecast date."""
+        dt1 = datetime(2024, 3, 15, 0, 0, 0)
+        dt2 = datetime(2024, 3, 17, 0, 0, 0)
+        p = Point(x=29.12, y=-2.625)
+        latest = DataSourceFileFactory.create(
+            dataset=self.dataset,
+            format=DatasetStore.ZARR,
+            is_latest=True
+        )
+        historical = DataSourceFileFactory.create(
+            dataset=self.dataset,
+            format=DatasetStore.ZARR,
+            is_latest=False,
+            metadata={
+                'is_historical': True
+            }
+        )
+        reader = SalientZarrReader(
+            self.dataset, [self.dataset_attr1, self.dataset_attr2],
+            DatasetReaderInput.from_point(p),
+            dt1,
+            dt2,
+            forecast_date=datetime(2024, 3, 13, 0, 0, 0)
+        )
+        zarr_file = reader._find_zarr_file()
+        self.assertEqual(zarr_file.id, historical.id)
+
+        reader.request_forecast_date = None
+        zarr_file = reader._find_zarr_file()
+        self.assertEqual(zarr_file.id, latest.id)

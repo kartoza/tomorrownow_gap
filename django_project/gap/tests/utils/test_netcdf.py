@@ -32,11 +32,11 @@ from gap.utils.netcdf import (
 )
 from gap.providers import (
     CBAMNetCDFReader,
-    SalientZarrReader,
-    CBAMZarrReader,
-    get_reader_from_dataset,
-    ObservationParquetReader,
-    ObservationAirborneParquetReader
+    get_reader_builder,
+    CBAMReaderBuilder,
+    SalientReaderBuilder,
+    ObservationReaderBuilder,
+    ObservationAirborneReaderBuilder
 )
 from gap.factories import (
     ProviderFactory,
@@ -470,25 +470,31 @@ class TestCBAMNetCDFReader(TestCase):
         """Test for creating NetCDFReader from dataset."""
         dataset1 = DatasetFactory.create(
             provider=ProviderFactory(name=NetCDFProvider.CBAM))
-        reader = get_reader_from_dataset(dataset1)
-        self.assertEqual(reader, CBAMZarrReader)
+        builder = get_reader_builder(dataset1, [], None, None, None)
+        self.assertTrue(isinstance(builder, CBAMReaderBuilder))
         dataset2 = DatasetFactory.create(
             provider=ProviderFactory(name=NetCDFProvider.SALIENT))
-        reader = get_reader_from_dataset(dataset2)
-        self.assertEqual(reader, SalientZarrReader)
+        builder = get_reader_builder(dataset2, [], None, None, None)
+        self.assertTrue(isinstance(builder, SalientReaderBuilder))
         # invalid type
         dataset3 = DatasetFactory.create()
         with self.assertRaises(TypeError):
-            get_reader_from_dataset(dataset3)
+            get_reader_builder(dataset3, [], None, None, None)
         # use_parquet True
         dataset3 = DatasetFactory.create(
             provider=ProviderFactory(name='Arable'))
-        reader = get_reader_from_dataset(dataset3, use_parquet=True)
-        self.assertEqual(reader, ObservationParquetReader)
+        builder = get_reader_builder(
+            dataset3, [], None, None, None, use_parquet=True
+        )
+        self.assertTrue(isinstance(builder, ObservationReaderBuilder))
         dataset4 = DatasetFactory.create(
             provider=ProviderFactory(name='WindBorne Systems'))
-        reader = get_reader_from_dataset(dataset4, use_parquet=True)
-        self.assertEqual(reader, ObservationAirborneParquetReader)
+        builder = get_reader_builder(
+            dataset4, [], None, None, None,
+            altitudes=(18000, 20000),
+            use_parquet=True
+        )
+        self.assertTrue(isinstance(builder, ObservationAirborneReaderBuilder))
 
     def test_read_variables_by_point(self):
         """Test read variables xarray by point."""

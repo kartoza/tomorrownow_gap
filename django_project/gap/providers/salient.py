@@ -21,7 +21,7 @@ from gap.models import (
     DataSourceFile,
     DatasetStore
 )
-
+from gap.providers.base import BaseReaderBuilder
 from gap.utils.reader import (
     DatasetReaderInput,
     DatasetTimelineValue,
@@ -128,8 +128,7 @@ class SalientNetCDFReader(BaseNetCDFReader):
     def __init__(
             self, dataset: Dataset, attributes: List[DatasetAttribute],
             location_input: DatasetReaderInput, start_date: datetime,
-            end_date: datetime,
-            altitudes: (float, float) = None
+            end_date: datetime
     ) -> None:
         """Initialize SalientNetCDFReader class.
 
@@ -145,8 +144,7 @@ class SalientNetCDFReader(BaseNetCDFReader):
         :type end_date: datetime
         """
         super().__init__(
-            dataset, attributes, location_input, start_date, end_date,
-            altitudes=altitudes
+            dataset, attributes, location_input, start_date, end_date
         )
         self.latest_forecast_date = None
 
@@ -271,13 +269,36 @@ class SalientZarrReader(BaseZarrReader, SalientNetCDFReader):
             self, dataset: Dataset, attributes: List[DatasetAttribute],
             location_input: DatasetReaderInput, start_date: datetime,
             end_date: datetime,
-            altitudes: (float, float) = None
+            forecast_date: datetime = None
     ) -> None:
         """Initialize SalientZarrReader class."""
         super().__init__(
-            dataset, attributes, location_input, start_date, end_date,
-            altitudes=altitudes
+            dataset, attributes, location_input, start_date, end_date
         )
+        self.request_forecast_date = forecast_date
+        if self.request_forecast_date:
+            # set to first day of the month
+            self.request_forecast_date = self.request_forecast_date.replace(
+                day=1
+            )
+
+    def _find_zarr_file(self):
+        zarr_file = None
+        if self.request_forecast_date:
+            # use the historical zarr file
+            zarr_file = DataSourceFile.objects.filter(
+                dataset=self.dataset,
+                format=DatasetStore.ZARR,
+                is_latest=False,
+                metadata__is_historical=True
+            ).order_by('id').last()
+        else:
+            zarr_file = DataSourceFile.objects.filter(
+                dataset=self.dataset,
+                format=DatasetStore.ZARR,
+                is_latest=True
+            ).order_by('id').last()
+        return zarr_file
 
     def read_forecast_data(self, start_date: datetime, end_date: datetime):
         """Read forecast data from dataset.
@@ -289,18 +310,20 @@ class SalientZarrReader(BaseZarrReader, SalientNetCDFReader):
         """
         self.setup_reader()
         self.xrDatasets = []
-        zarr_file = DataSourceFile.objects.filter(
-            dataset=self.dataset,
-            format=DatasetStore.ZARR,
-            is_latest=True
-        ).order_by('id').last()
+        zarr_file = self._find_zarr_file()
         if zarr_file is None:
             return
         ds = self.open_dataset(zarr_file)
-        # get latest forecast date
-        self.latest_forecast_date = ds['forecast_date'][-1].values
-        if np.datetime64(start_date) < self.latest_forecast_date:
-            start_date = self.latest_forecast_date
+
+        if self.request_forecast_date:
+            self.latest_forecast_date = np.datetime64(
+                self.request_forecast_date, 'D'
+            )
+        else:
+            # get latest forecast date
+            self.latest_forecast_date = ds['forecast_date'][-1].values
+            if np.datetime64(start_date) < self.latest_forecast_date:
+                start_date = self.latest_forecast_date
         val = self.read_variables(ds, start_date, end_date)
         if val is None:
             return
@@ -461,4 +484,44 @@ class SalientZarrReader(BaseZarrReader, SalientNetCDFReader):
         ).where(
             mask_da,
             drop=True
+        )
+
+
+class SalientReaderBuilder(BaseReaderBuilder):
+    """Class to build Salient Reader."""
+
+    def __init__(
+            self, dataset: Dataset, attributes: List[DatasetAttribute],
+            location_input: DatasetReaderInput,
+            start_date: datetime, end_date: datetime,
+            forecast_date: datetime = None
+    ) -> None:
+        """Initialize SalientReaderBuilder class.
+
+        :param dataset: Dataset from Salient provider
+        :type dataset: Dataset
+        :param attributes: List of attributes to be queried
+        :type attributes: List[DatasetAttribute]
+        :param location_input: Location to be queried
+        :type location_input: DatasetReaderInput
+        :param start_date: Start date time filter
+        :type start_date: datetime
+        :param end_date: End date time filter
+        :type end_date: datetime
+        """
+        super().__init__(
+            dataset, attributes, location_input, start_date, end_date
+        )
+        self.forecast_date = forecast_date
+
+    def build(self) -> SalientZarrReader:
+        """Build Salient Reader.
+
+        :return: Salient Reader
+        :rtype: SalientZarrReader
+        """
+        return SalientZarrReader(
+            self.dataset, self.attributes, self.location_input,
+            self.start_date, self.end_date,
+            forecast_date=self.forecast_date
         )
