@@ -129,7 +129,7 @@ class SalientNetCDFReader(BaseNetCDFReader):
             self, dataset: Dataset, attributes: List[DatasetAttribute],
             location_input: DatasetReaderInput, start_date: datetime,
             end_date: datetime,
-            altitudes: (float, float) = None
+            altitudes: Tuple[float, float] = None
     ) -> None:
         """Initialize SalientNetCDFReader class.
 
@@ -283,7 +283,7 @@ class SalientZarrReader(BaseZarrReader, SalientNetCDFReader):
         if self.request_forecast_date:
             # set to first day of the month
             self.request_forecast_date = self.request_forecast_date.replace(
-                day=1, hour=0, minute=0, second=0, microsecond=0
+                day=1
             )
 
     def read_forecast_data(self, start_date: datetime, end_date: datetime):
@@ -302,7 +302,8 @@ class SalientZarrReader(BaseZarrReader, SalientNetCDFReader):
             zarr_file = DataSourceFile.objects.filter(
                 dataset=self.dataset,
                 format=DatasetStore.ZARR,
-                is_latest=False
+                is_latest=False,
+                metadata__is_historical=True
             ).order_by('id').last()
         else:
             zarr_file = DataSourceFile.objects.filter(

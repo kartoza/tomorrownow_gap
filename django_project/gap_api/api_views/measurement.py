@@ -6,6 +6,7 @@ Tomorrow Now GAP.
 """
 
 import os
+import logging
 from datetime import date, datetime, time
 from typing import Dict
 
@@ -47,6 +48,9 @@ from gap_api.serializers.common import APIErrorSerializer
 from gap_api.utils.helper import ApiTag
 from gap_api.mixins import GAPAPILoggingMixin, CounterSlidingWindowThrottle
 from permission.models import PermissionType
+
+
+logger = logging.getLogger(__name__)
 
 
 def product_type_list():
@@ -677,8 +681,10 @@ class MeasurementAPI(GAPAPILoggingMixin, APIView):
                     )
                     dataset_dict[da.dataset.id] = reader.build()
                 except TypeError as e:
-                    print(e)
-                    pass
+                    logger.error(
+                        f"Error in building dataset reader: {e}",
+                        exc_info=True
+                    )
 
         # Check UserFile cache if x_accel_redirect is enabled
         user_file: UserFile = None
