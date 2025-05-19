@@ -19,6 +19,7 @@ from gap.factories import (
     StationFactory,
     MeasurementFactory
 )
+from gap.providers.base import BaseReaderBuilder
 from gap.models import DatasetAttribute, Dataset, DatasetType, Preferences
 from gap.utils.reader import (
     DatasetReaderValue, DatasetTimelineValue,
@@ -58,6 +59,18 @@ class MockDatasetReader(BaseDatasetReader):
             }, p)],
             DatasetReaderInput.from_point(p),
             self.attributes
+        )
+
+
+class MockBaseReaderBuilder(BaseReaderBuilder):
+    """Class to mock a dataset reader builder."""
+
+    def build(self) -> BaseDatasetReader:
+        """Override build method with a mock object."""
+        return MockDatasetReader(
+            self.dataset, self.attributes,
+            self.location_input, self.start_date,
+            self.end_date
         )
 
 
@@ -242,7 +255,6 @@ class HistoricalAPITest(CommonMeasurementAPITest):
     def test_read_historical_data(self, mocked_builder):
         """Test read historical data."""
         view = MeasurementAPI.as_view()
-        mocked_builder.build.return_value = MockDatasetReader
         dataset = Dataset.objects.get(name='CBAM Climate Reanalysis')
         attribute1 = DatasetAttribute.objects.filter(
             dataset=dataset,
@@ -256,12 +268,18 @@ class HistoricalAPITest(CommonMeasurementAPITest):
             attribute1.attribute.variable_name,
             attribute2.attribute.variable_name
         ]
+        mocked_builder.return_value = MockBaseReaderBuilder(
+            dataset, [attribute1, attribute2],
+            DatasetReaderInput.from_point(Point(x=29.125, y=-2.215)),
+            datetime.fromisoformat('2024-04-01'),
+            datetime.fromisoformat('2024-04-04'),
+        )
         request = self._get_measurement_request_point(
             attributes=','.join(attribs)
         )
         response = view(request)
         self.assertEqual(response.status_code, 200)
-        mocked_builder.build.assert_called_once()
+        mocked_builder.assert_called_once()
         self.assertIn('metadata', response.data)
         self.assertIn('results', response.data)
         results = response.data['results']
@@ -283,7 +301,6 @@ class HistoricalAPITest(CommonMeasurementAPITest):
     def test_read_historical_data_by_polygon(self, mocked_builder):
         """Test read historical data."""
         view = MeasurementAPI.as_view()
-        mocked_builder.build.return_value = MockDatasetReader
         dataset = Dataset.objects.get(name='CBAM Climate Reanalysis')
         attribute1 = DatasetAttribute.objects.filter(
             dataset=dataset,
@@ -297,6 +314,12 @@ class HistoricalAPITest(CommonMeasurementAPITest):
             attribute1.attribute.variable_name,
             attribute2.attribute.variable_name
         ]
+        mocked_builder.return_value = MockBaseReaderBuilder(
+            dataset, [attribute1, attribute2],
+            DatasetReaderInput.from_point(Point(x=29.125, y=-2.215)),
+            datetime.fromisoformat('2024-04-01'),
+            datetime.fromisoformat('2024-04-04'),
+        )
         request = self._post_measurement_request(
             attributes=','.join(attribs),
             output_type='json'
@@ -310,7 +333,7 @@ class HistoricalAPITest(CommonMeasurementAPITest):
         )
         response = view(request)
         self.assertEqual(response.status_code, 200)
-        mocked_builder.build.assert_called_once()
+        mocked_builder.assert_called_once()
         self.assertEqual(response['content-type'], 'text/csv')
         mocked_builder.reset_mock()
         request = self._post_measurement_request(
@@ -319,7 +342,7 @@ class HistoricalAPITest(CommonMeasurementAPITest):
         )
         response = view(request)
         self.assertEqual(response.status_code, 200)
-        mocked_builder.build.assert_called_once()
+        mocked_builder.assert_called_once()
         self.assertEqual(response['content-type'], 'text/ascii')
         mocked_builder.reset_mock()
         request = self._post_measurement_request(
@@ -328,7 +351,7 @@ class HistoricalAPITest(CommonMeasurementAPITest):
         )
         response = view(request)
         self.assertEqual(response.status_code, 200)
-        mocked_builder.build.assert_called_once()
+        mocked_builder.assert_called_once()
         self.assertEqual(response['content-type'], 'application/x-netcdf')
         # invalid output_type
         request = self._post_measurement_request(
@@ -343,7 +366,6 @@ class HistoricalAPITest(CommonMeasurementAPITest):
     def test_validate_dataset_attributes(self, mocked_builder):
         """Test validate dataset attributes ensembles."""
         view = MeasurementAPI.as_view()
-        mocked_builder.build.return_value = MockDatasetReader
         dataset = Dataset.objects.get(name='Salient Seasonal Forecast')
         attribute1 = DatasetAttribute.objects.filter(
             dataset=dataset,
@@ -357,6 +379,12 @@ class HistoricalAPITest(CommonMeasurementAPITest):
             attribute1.attribute.variable_name,
             attribute2.attribute.variable_name
         ]
+        mocked_builder.return_value = MockBaseReaderBuilder(
+            dataset, [attribute1, attribute2],
+            DatasetReaderInput.from_point(Point(x=29.125, y=-2.215)),
+            datetime.fromisoformat('2024-04-01'),
+            datetime.fromisoformat('2024-04-04'),
+        )
         request = self._get_measurement_request_point(
             attributes=','.join(attribs),
             product='salient_seasonal_forecast',
@@ -430,7 +458,6 @@ class HistoricalAPITest(CommonMeasurementAPITest):
     def test_access_validation(self, mocked_builder):
         """Test invalid access API."""
         view = MeasurementAPI.as_view()
-        mocked_builder.build.return_value = MockDatasetReader
         dataset = Dataset.objects.get(name='CBAM Climate Reanalysis')
         attribute1 = DatasetAttribute.objects.filter(
             dataset=dataset,
@@ -444,6 +471,12 @@ class HistoricalAPITest(CommonMeasurementAPITest):
             attribute1.attribute.variable_name,
             attribute2.attribute.variable_name
         ]
+        mocked_builder.return_value = MockBaseReaderBuilder(
+            dataset, [attribute1, attribute2],
+            DatasetReaderInput.from_point(Point(x=29.125, y=-2.215)),
+            datetime.fromisoformat('2024-04-01'),
+            datetime.fromisoformat('2024-04-04'),
+        )
         request = self._get_measurement_request_point(
             attributes=','.join(attribs)
         )
@@ -455,7 +488,7 @@ class HistoricalAPITest(CommonMeasurementAPITest):
             dataset.type.variable_name,
             response.data['Missing Permission']
         )
-        mocked_builder.build.assert_not_called()
+        mocked_builder.assert_not_called()
 
         # add permission to user
         assign_perm(
@@ -470,7 +503,7 @@ class HistoricalAPITest(CommonMeasurementAPITest):
         response = view(request)
         print(response.data)
         self.assertEqual(response.status_code, 200)
-        mocked_builder.build.assert_called_once()
+        mocked_builder.assert_called_once()
         self.assertIn('metadata', response.data)
         self.assertIn('results', response.data)
         results = response.data['results']

@@ -16,6 +16,7 @@ from django.contrib.gis.geos import Point
 
 from core.utils.s3 import remove_s3_folder
 from gap.models import DatasetAttribute, Dataset, Preferences
+from gap.providers.base import BaseReaderBuilder
 from gap_api.models import UserFile
 from gap_api.tasks.cleanup import cleanup_user_files
 from gap.utils.reader import (
@@ -92,6 +93,29 @@ class MockXArray1DimDatasetReader(BaseDatasetReader):
         )
 
 
+class MockBaseReaderBuilder(BaseReaderBuilder):
+    """Class to mock a dataset reader builder."""
+
+    def __init__(
+        self, dataset, attributes, location_input, start_date,
+        end_date, cls_reader
+    ):
+        """Initialize MockBaseReaderBuilder class."""
+        super().__init__(
+            dataset, attributes, location_input,
+            start_date, end_date
+        )
+        self.cls_reader = cls_reader
+
+    def build(self) -> BaseDatasetReader:
+        """Override build method with a mock object."""
+        return self.cls_reader(
+            self.dataset, self.attributes,
+            self.location_input, self.start_date,
+            self.end_date
+        )
+
+
 class TestUserFileAPI(CommonMeasurementAPITest):
     """Test UserFile in the API."""
 
@@ -149,7 +173,6 @@ class TestUserFileAPI(CommonMeasurementAPITest):
     def test_api_netcdf_request(self, mocked_builder):
         """Test generate to netcdf."""
         view = MeasurementAPI.as_view()
-        mocked_builder.build.return_value = MockXArrayDatasetReader
         dataset = Dataset.objects.get(
             type__variable_name='cbam_historical_analysis_bias_adjust'
         )
@@ -159,6 +182,13 @@ class TestUserFileAPI(CommonMeasurementAPITest):
         ).first()
         attribs = [attribute1.attribute.variable_name]
         point = Point(x=26.9665, y=-12.5969)
+        mocked_builder.return_value = MockBaseReaderBuilder(
+            dataset, [attribute1],
+            DatasetReaderInput.from_point(point),
+            datetime.fromisoformat('2024-04-01'),
+            datetime.fromisoformat('2024-04-04'),
+            MockXArrayDatasetReader
+        )
         request = self._get_measurement_request_point(
             product='cbam_historical_analysis_bias_adjust',
             attributes=','.join(attribs),
@@ -185,7 +215,6 @@ class TestUserFileAPI(CommonMeasurementAPITest):
     def test_api_netcdf_request_with1Dim(self, mocked_builder):
         """Test generate to netcdf."""
         view = MeasurementAPI.as_view()
-        mocked_builder.build.return_value = MockXArray1DimDatasetReader
         dataset = Dataset.objects.get(
             type__variable_name='cbam_historical_analysis_bias_adjust'
         )
@@ -195,6 +224,13 @@ class TestUserFileAPI(CommonMeasurementAPITest):
         ).first()
         attribs = [attribute1.attribute.variable_name]
         point = Point(x=26.9665, y=-12.5969)
+        mocked_builder.return_value = MockBaseReaderBuilder(
+            dataset, [attribute1],
+            DatasetReaderInput.from_point(point),
+            datetime.fromisoformat('2024-04-01'),
+            datetime.fromisoformat('2024-04-04'),
+            MockXArray1DimDatasetReader
+        )
         request = self._get_measurement_request_point(
             product='cbam_historical_analysis_bias_adjust',
             attributes=','.join(attribs),
@@ -212,7 +248,6 @@ class TestUserFileAPI(CommonMeasurementAPITest):
     def test_api_csv_request(self, mocked_builder):
         """Test generate to csv."""
         view = MeasurementAPI.as_view()
-        mocked_builder.build.return_value = MockXArrayDatasetReader
         dataset = Dataset.objects.get(
             type__variable_name='cbam_historical_analysis_bias_adjust'
         )
@@ -222,6 +257,13 @@ class TestUserFileAPI(CommonMeasurementAPITest):
         ).first()
         attribs = [attribute1.attribute.variable_name]
         point = Point(x=26.9665, y=-12.5969)
+        mocked_builder.return_value = MockBaseReaderBuilder(
+            dataset, [attribute1],
+            DatasetReaderInput.from_point(point),
+            datetime.fromisoformat('2024-04-01'),
+            datetime.fromisoformat('2024-04-04'),
+            MockXArrayDatasetReader
+        )
         request = self._get_measurement_request_point(
             product='cbam_historical_analysis_bias_adjust',
             attributes=','.join(attribs),
@@ -248,7 +290,6 @@ class TestUserFileAPI(CommonMeasurementAPITest):
     def test_api_csv_request_with1Dim(self, mocked_builder):
         """Test generate to csv."""
         view = MeasurementAPI.as_view()
-        mocked_builder.build.return_value = MockXArray1DimDatasetReader
         dataset = Dataset.objects.get(
             type__variable_name='cbam_historical_analysis_bias_adjust'
         )
@@ -258,6 +299,13 @@ class TestUserFileAPI(CommonMeasurementAPITest):
         ).first()
         attribs = [attribute1.attribute.variable_name]
         point = Point(x=26.9665, y=-12.5969)
+        mocked_builder.return_value = MockBaseReaderBuilder(
+            dataset, [attribute1],
+            DatasetReaderInput.from_point(point),
+            datetime.fromisoformat('2024-04-01'),
+            datetime.fromisoformat('2024-04-04'),
+            MockXArray1DimDatasetReader
+        )
         request = self._get_measurement_request_point(
             product='cbam_historical_analysis_bias_adjust',
             attributes=','.join(attribs),
@@ -277,7 +325,6 @@ class TestUserFileAPI(CommonMeasurementAPITest):
         f2 = UserFileFactory.create()
 
         view = MeasurementAPI.as_view()
-        mocked_builder.build.return_value = MockXArrayDatasetReader
         dataset = Dataset.objects.get(
             type__variable_name='cbam_historical_analysis_bias_adjust'
         )
@@ -286,6 +333,13 @@ class TestUserFileAPI(CommonMeasurementAPITest):
             attribute__variable_name='max_temperature'
         ).first()
         attribs = [attribute1.attribute.variable_name]
+        mocked_builder.return_value = MockBaseReaderBuilder(
+            dataset, [attribute1],
+            DatasetReaderInput.from_point(Point(x=26.9665, y=-12.5969)),
+            datetime.fromisoformat('2024-04-01'),
+            datetime.fromisoformat('2024-04-04'),
+            MockXArray1DimDatasetReader
+        )
         request = self._get_measurement_request_point(
             product='cbam_historical_analysis_bias_adjust',
             attributes=','.join(attribs),

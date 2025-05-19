@@ -891,4 +891,3 @@ class TioReaderBuilder(BaseReaderBuilder):
             self.dataset, self.attributes, self.location_input,
             self.start_date, self.end_date
         )
-

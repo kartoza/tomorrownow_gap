@@ -32,15 +32,10 @@ from gap.utils.netcdf import (
 )
 from gap.providers import (
     CBAMNetCDFReader,
-    SalientZarrReader,
-    CBAMZarrReader,
     get_reader_builder,
-    ObservationParquetReader,
-    ObservationAirborneParquetReader,
     CBAMReaderBuilder,
     SalientReaderBuilder,
     ObservationReaderBuilder,
-    TioReaderBuilder,
     ObservationAirborneReaderBuilder
 )
 from gap.factories import (
