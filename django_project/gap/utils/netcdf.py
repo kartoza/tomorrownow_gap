@@ -8,7 +8,7 @@ Tomorrow Now GAP.
 import os
 import logging
 import traceback
-from typing import List, Tuple
+from typing import List
 from math import ceil
 from datetime import datetime, timedelta
 from django.contrib.gis.geos import Point
@@ -182,8 +182,7 @@ class BaseNetCDFReader(BaseDatasetReader):
     def __init__(
             self, dataset: Dataset, attributes: List[DatasetAttribute],
             location_input: DatasetReaderInput,
-            start_date: datetime, end_date: datetime,
-            altitudes: Tuple[float, float] = None
+            start_date: datetime, end_date: datetime
     ) -> None:
         """Initialize BaseNetCDFReader class.
 
@@ -197,12 +196,9 @@ class BaseNetCDFReader(BaseDatasetReader):
         :type start_date: datetime
         :param end_date: End date time filter
         :type end_date: datetime
-        :param altitudes: Altitudes for the reader
-        :type altitudes: (float, float)
         """
         super().__init__(
-            dataset, attributes, location_input, start_date, end_date,
-            altitudes=altitudes
+            dataset, attributes, location_input, start_date, end_date
         )
         self.xrDatasets = []
 

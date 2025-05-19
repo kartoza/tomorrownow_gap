@@ -9,7 +9,7 @@ import json
 import logging
 import os
 from datetime import datetime, timedelta
-from typing import List, Tuple
+from typing import List
 
 import pytz
 import requests
@@ -133,13 +133,11 @@ class TomorrowIODatasetReader(BaseDatasetReader):
     def __init__(
             self, dataset: Dataset, attributes: List[DatasetAttribute],
             location_input: DatasetReaderInput, start_date: datetime,
-            end_date: datetime, verbose = False,
-            altitudes: Tuple[float, float] = None
+            end_date: datetime, verbose = False
     ) -> None:
         """Initialize Dataset Reader."""
         super().__init__(
-            dataset, attributes, location_input, start_date, end_date,
-            altitudes=altitudes
+            dataset, attributes, location_input, start_date, end_date
         )
         self.errors = None
         self.warnings = None
@@ -589,13 +587,11 @@ class TioZarrReader(BaseZarrReader):
     def __init__(
             self, dataset: Dataset, attributes: List[DatasetAttribute],
             location_input: DatasetReaderInput, start_date: datetime,
-            end_date: datetime,
-            altitudes: Tuple[float, float] = None
+            end_date: datetime
     ) -> None:
         """Initialize TioZarrReader class."""
         super().__init__(
-            dataset, attributes, location_input, start_date, end_date,
-            altitudes=altitudes
+            dataset, attributes, location_input, start_date, end_date
         )
         self.latest_forecast_date = None
 

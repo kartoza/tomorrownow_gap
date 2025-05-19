@@ -6,7 +6,7 @@ Tomorrow Now GAP.
 """
 
 import json
-from typing import List, Tuple
+from typing import List
 from datetime import datetime
 import numpy as np
 import xarray as xr
@@ -92,8 +92,7 @@ class CBAMNetCDFReader(BaseNetCDFReader):
     def __init__(
             self, dataset: Dataset, attributes: List[DatasetAttribute],
             location_input: DatasetReaderInput, start_date: datetime,
-            end_date: datetime,
-            altitudes: Tuple[float, float] = None
+            end_date: datetime
     ) -> None:
         """Initialize CBAMNetCDFReader class.
 
@@ -107,12 +106,9 @@ class CBAMNetCDFReader(BaseNetCDFReader):
         :type start_date: datetime
         :param end_date: End date time filter
         :type end_date: datetime
-        :param altitudes: Altitudes for the reader
-        :type altitudes: (float, float)
         """
         super().__init__(
-            dataset, attributes, location_input, start_date, end_date,
-            altitudes=altitudes
+            dataset, attributes, location_input, start_date, end_date
         )
 
     def read_historical_data(self, start_date: datetime, end_date: datetime):
@@ -220,13 +216,11 @@ class CBAMZarrReader(BaseZarrReader, CBAMNetCDFReader):
     def __init__(
             self, dataset: Dataset, attributes: List[DatasetAttribute],
             location_input: DatasetReaderInput, start_date: datetime,
-            end_date: datetime,
-            altitudes: Tuple[float, float] = None
+            end_date: datetime
     ) -> None:
         """Initialize CBAMZarrReader class."""
         super().__init__(
-            dataset, attributes, location_input, start_date, end_date,
-            altitudes=altitudes
+            dataset, attributes, location_input, start_date, end_date
         )
 
     def _read_variables_by_point(

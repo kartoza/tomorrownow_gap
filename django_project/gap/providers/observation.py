@@ -19,7 +19,7 @@ from django.db.models import Exists, OuterRef, F, QuerySet
 from django.db.models.functions.datetime import TruncDate, TruncTime
 from django.contrib.gis.geos import Polygon, Point
 from django.contrib.gis.db.models.functions import Distance
-from typing import List, Tuple, Union
+from typing import List, Union
 from django.core.files.storage import storages
 from storages.backends.s3boto3 import S3Boto3Storage
 from django.conf import settings
@@ -368,8 +368,7 @@ class ObservationDatasetReader(BaseDatasetReader):
     def __init__(
             self, dataset: Dataset, attributes: List[DatasetAttribute],
             location_input: DatasetReaderInput, start_date: datetime,
-            end_date: datetime,
-            altitudes: Tuple[float, float] = None
+            end_date: datetime
     ) -> None:
         """Initialize ObservationDatasetReader class.
 
@@ -385,8 +384,7 @@ class ObservationDatasetReader(BaseDatasetReader):
         :type end_date: datetime
         """
         super().__init__(
-            dataset, attributes, location_input, start_date, end_date,
-            altitudes=altitudes
+            dataset, attributes, location_input, start_date, end_date
         )
         self.results: QuerySet = QuerySet.none
         self.result_count = 0
@@ -403,20 +401,6 @@ class ObservationDatasetReader(BaseDatasetReader):
         if isinstance(values, (list, dict_values,)):
             return len(values)
         return values.count()
-
-    def query_by_altitude(self, qs):
-        """Query by altitude."""
-        altitudes = self.altitudes
-        try:
-            if altitudes[0] is not None and altitudes[1] is not None:
-                qs = qs.filter(
-                    altitude__gte=altitudes[0]
-                ).filter(
-                    altitude__lte=altitudes[1]
-                )
-        except (IndexError, TypeError):
-            pass
-        return qs
 
     def _find_nearest_station_by_point(self, point: Point = None):
         p = point
@@ -757,8 +741,7 @@ class ObservationParquetReader(ObservationDatasetReader):
     def __init__(
             self, dataset: Dataset, attributes: List[DatasetAttribute],
             location_input: DatasetReaderInput, start_date: datetime,
-            end_date: datetime,
-            altitudes: Tuple[float, float] = None
+            end_date: datetime
     ) -> None:
         """Initialize ObservationParquetReader class.
 
@@ -774,8 +757,7 @@ class ObservationParquetReader(ObservationDatasetReader):
         :type end_date: datetime
         """
         super().__init__(
-            dataset, attributes, location_input, start_date, end_date,
-            altitudes=altitudes
+            dataset, attributes, location_input, start_date, end_date
         )
         self.s3 = self._get_s3_variables()
 

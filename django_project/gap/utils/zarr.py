@@ -10,7 +10,7 @@ import logging
 import s3fs
 import fsspec
 import shutil
-from typing import List, Tuple
+from typing import List
 from datetime import datetime
 import xarray as xr
 from xarray.core.dataset import Dataset as xrDataset
@@ -38,8 +38,7 @@ class BaseZarrReader(BaseNetCDFReader):
     def __init__(
             self, dataset: Dataset, attributes: List[DatasetAttribute],
             location_input: DatasetReaderInput,
-            start_date: datetime, end_date: datetime,
-            altitudes: Tuple[float, float] = None
+            start_date: datetime, end_date: datetime
     ) -> None:
         """Initialize BaseZarrReader class.
 
@@ -55,8 +54,7 @@ class BaseZarrReader(BaseNetCDFReader):
         :type end_date: datetime
         """
         super().__init__(
-            dataset, attributes, location_input, start_date, end_date,
-            altitudes=altitudes
+            dataset, attributes, location_input, start_date, end_date
         )
 
     @classmethod

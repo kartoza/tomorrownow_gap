@@ -27,6 +27,31 @@ from gap.utils.reader import DatasetReaderInput
 class ObservationAirborneDatasetReader(ObservationDatasetReader):
     """Class to read observation airborne observation data."""
 
+    def __init__(
+        self, dataset, attributes, location_input,
+        start_date, end_date, altitudes = None
+    ):
+        """Initialize ObservationAirborneDatasetReader class."""
+        super().__init__(
+            dataset, attributes, location_input,
+            start_date, end_date
+        )
+        self.altitudes = altitudes
+
+    def query_by_altitude(self, qs):
+        """Query by altitude."""
+        altitudes = self.altitudes
+        try:
+            if altitudes[0] is not None and altitudes[1] is not None:
+                qs = qs.filter(
+                    altitude__gte=altitudes[0]
+                ).filter(
+                    altitude__lte=altitudes[1]
+                )
+        except (IndexError, TypeError):
+            pass
+        return qs
+
     def _find_nearest_station_by_point(self, point: Point = None):
         p = point
         if p is None:
@@ -119,6 +144,17 @@ class ObservationAirborneParquetReader(
     has_altitudes = True
     station_id_key = 'st_hist_id'
 
+    def __init__(
+        self, dataset, attributes, location_input,
+        start_date, end_date, altitudes = None
+    ):
+        """Initialize ObservationAirborneDatasetReader class."""
+        super().__init__(
+            dataset, attributes, location_input,
+            start_date, end_date
+        )
+        self.altitudes = altitudes
+
 
 class ObservationAirborneReaderBuilder(BaseReaderBuilder):
     """Class to build airborne observation reader."""
@@ -129,7 +165,23 @@ class ObservationAirborneReaderBuilder(BaseReaderBuilder):
         start_date: datetime, end_date: datetime,
         altitudes: Tuple[float, float] = None, use_parquet=False
     ):
-        """Initialize ObservationAirborneReaderBuilder class."""
+        """Initialize ObservationAirborneReaderBuilder class.
+
+        :param dataset: Dataset for reading
+        :type dataset: Dataset
+        :param attributes: List of attributes to be queried
+        :type attributes: List[DatasetAttribute]
+        :param location_input: Location to be queried
+        :type location_input: DatasetReaderInput
+        :param start_date: Start date time filter
+        :type start_date: datetime
+        :param end_date: End date time filter
+        :type end_date: datetime
+        :param output_type: Output type
+        :type output_type: str
+        :param altitudes: Altitudes for the reader
+        :type altitudes: (float, float)
+        """
         super().__init__(
             dataset, attributes, location_input, start_date, end_date
         )

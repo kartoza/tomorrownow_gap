@@ -775,8 +775,7 @@ class BaseDatasetReader:
             self, dataset: Dataset, attributes: List[DatasetAttribute],
             location_input: DatasetReaderInput,
             start_date: datetime, end_date: datetime,
-            output_type=DatasetReaderOutputType.JSON,
-            altitudes: Tuple[float, float] = None
+            output_type=DatasetReaderOutputType.JSON
     ) -> None:
         """Initialize BaseDatasetReader class.
 
@@ -792,8 +791,6 @@ class BaseDatasetReader:
         :type end_date: datetime
         :param output_type: Output type
         :type output_type: str
-        :param altitudes: Altitudes for the reader
-        :type altitudes: (float, float)
         """
         self.dataset = dataset
         self.attributes = attributes
@@ -801,7 +798,6 @@ class BaseDatasetReader:
         self.start_date = start_date
         self.end_date = end_date
         self.output_type = output_type
-        self.altitudes = altitudes
 
     def add_attribute(self, attribute: DatasetAttribute):
         """Add a new attribuute to be read.

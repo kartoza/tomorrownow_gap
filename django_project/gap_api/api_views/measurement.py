@@ -686,6 +686,17 @@ class MeasurementAPI(GAPAPILoggingMixin, APIView):
                         exc_info=True
                     )
 
+        # validate dataset_dict
+        if len(dataset_dict) == 0:
+            return Response(
+                status=400,
+                data={
+                    'Invalid Request Parameter': (
+                        'No matching dataset found!'
+                    )
+                }
+            )
+
         # Check UserFile cache if x_accel_redirect is enabled
         user_file: UserFile = None
         if self._preferences.api_use_x_accel_redirect:
