@@ -34,7 +34,7 @@ from gap.models import (
     DatasetType,
     Preferences
 )
-from gap.providers import get_reader_from_dataset
+from gap.providers import get_reader_builder
 from gap.utils.reader import (
     LocationInputType,
     DatasetReaderInput,
@@ -147,6 +147,14 @@ class MeasurementAPI(GAPAPILoggingMixin, APIView):
             type=openapi.TYPE_STRING
         ),
         openapi.Parameter(
+            'forecast_date', openapi.IN_QUERY,
+            description=(
+                'Forecast Date for Historical '
+                'Salient Downscale, available from 2020 (YYYY-MM-DD)'
+            ),
+            type=openapi.TYPE_STRING
+        ),
+        openapi.Parameter(
             'output_type', openapi.IN_QUERY,
             required=True,
             description='Returned format',
@@ -196,7 +204,7 @@ class MeasurementAPI(GAPAPILoggingMixin, APIView):
         attributes_str = [a.strip() for a in attributes_str.split(',')]
         return Attribute.objects.filter(variable_name__in=attributes_str)
 
-    def _get_date_filter(self, attr_name):
+    def _get_date_filter(self, attr_name, default=None):
         """Get date object from filter (start_date/end_date).
 
         :param attr_name: request parameter name
@@ -206,7 +214,7 @@ class MeasurementAPI(GAPAPILoggingMixin, APIView):
         """
         date_str = self.request.GET.get(attr_name, None)
         return (
-            date.today() if date_str is None else
+            default if date_str is None else
             datetime.strptime(date_str, self.date_format).date()
         )
 
@@ -559,8 +567,8 @@ class MeasurementAPI(GAPAPILoggingMixin, APIView):
             if ensemble_count > 0 and non_ensemble_count > 0:
                 raise ValidationError({
                     'Invalid Request Parameter': (
-                        'Attribute with ensemble cannot be mixed '
-                        'with non-ensemble'
+                        'CSV: Attribute with ensemble cannot be mixed '
+                        'with non-ensemble, please use NetCDF format!'
                     )
                 })
 
@@ -606,11 +614,11 @@ class MeasurementAPI(GAPAPILoggingMixin, APIView):
         location = self._get_location_filter()
         min_altitudes, max_altitudes = self._get_altitudes_filter()
         start_dt = datetime.combine(
-            self._get_date_filter('start_date'),
+            self._get_date_filter('start_date', date.today()),
             self._get_time_filter('start_time', time.min), tzinfo=pytz.UTC
         )
         end_dt = datetime.combine(
-            self._get_date_filter('end_date'),
+            self._get_date_filter('end_date', date.today()),
             self._get_time_filter('end_time', time.max), tzinfo=pytz.UTC
         )
         output_format = self._get_format_filter()
@@ -659,14 +667,15 @@ class MeasurementAPI(GAPAPILoggingMixin, APIView):
                 dataset_dict[da.dataset.id].add_attribute(da)
             else:
                 try:
-                    reader = get_reader_from_dataset(
-                        da.dataset,
-                        self._preferences.api_use_parquet
-                    )
-                    dataset_dict[da.dataset.id] = reader(
+                    reader = get_reader_builder(
                         da.dataset, [da], location, start_dt, end_dt,
                         altitudes=(min_altitudes, max_altitudes),
+                        use_parquet=self._preferences.api_use_parquet,
+                        forecast_date=self._get_date_filter(
+                            'forecast_date', None
+                        )
                     )
+                    dataset_dict[da.dataset.id] = reader.build()
                 except TypeError as e:
                     print(e)
                     pass

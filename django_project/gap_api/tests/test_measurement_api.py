@@ -238,11 +238,11 @@ class HistoricalAPITest(CommonMeasurementAPITest):
         response = view(request)
         self.assertEqual(response.status_code, 404)
 
-    @patch('gap_api.api_views.measurement.get_reader_from_dataset')
-    def test_read_historical_data(self, mocked_reader):
+    @patch('gap_api.api_views.measurement.get_reader_builder')
+    def test_read_historical_data(self, mocked_builder):
         """Test read historical data."""
         view = MeasurementAPI.as_view()
-        mocked_reader.return_value = MockDatasetReader
+        mocked_builder.build.return_value = MockDatasetReader
         dataset = Dataset.objects.get(name='CBAM Climate Reanalysis')
         attribute1 = DatasetAttribute.objects.filter(
             dataset=dataset,
@@ -261,7 +261,7 @@ class HistoricalAPITest(CommonMeasurementAPITest):
         )
         response = view(request)
         self.assertEqual(response.status_code, 200)
-        mocked_reader.assert_called_once_with(attribute1.dataset, False)
+        mocked_builder.build.assert_called_once()
         self.assertIn('metadata', response.data)
         self.assertIn('results', response.data)
         results = response.data['results']
@@ -279,11 +279,11 @@ class HistoricalAPITest(CommonMeasurementAPITest):
         self.assertEqual(response.status_code, 400)
         self.assertIn('Invalid Request Parameter', response.data)
 
-    @patch('gap_api.api_views.measurement.get_reader_from_dataset')
-    def test_read_historical_data_by_polygon(self, mocked_reader):
+    @patch('gap_api.api_views.measurement.get_reader_builder')
+    def test_read_historical_data_by_polygon(self, mocked_builder):
         """Test read historical data."""
         view = MeasurementAPI.as_view()
-        mocked_reader.return_value = MockDatasetReader
+        mocked_builder.build.return_value = MockDatasetReader
         dataset = Dataset.objects.get(name='CBAM Climate Reanalysis')
         attribute1 = DatasetAttribute.objects.filter(
             dataset=dataset,
@@ -310,25 +310,25 @@ class HistoricalAPITest(CommonMeasurementAPITest):
         )
         response = view(request)
         self.assertEqual(response.status_code, 200)
-        mocked_reader.assert_called_once_with(attribute1.dataset, False)
+        mocked_builder.build.assert_called_once()
         self.assertEqual(response['content-type'], 'text/csv')
-        mocked_reader.reset_mock()
+        mocked_builder.reset_mock()
         request = self._post_measurement_request(
             attributes=','.join(attribs),
             output_type='ascii'
         )
         response = view(request)
         self.assertEqual(response.status_code, 200)
-        mocked_reader.assert_called_once_with(attribute1.dataset, False)
+        mocked_builder.build.assert_called_once()
         self.assertEqual(response['content-type'], 'text/ascii')
-        mocked_reader.reset_mock()
+        mocked_builder.reset_mock()
         request = self._post_measurement_request(
             attributes=','.join(attribs),
             output_type='netcdf'
         )
         response = view(request)
         self.assertEqual(response.status_code, 200)
-        mocked_reader.assert_called_once_with(attribute1.dataset, False)
+        mocked_builder.build.assert_called_once()
         self.assertEqual(response['content-type'], 'application/x-netcdf')
         # invalid output_type
         request = self._post_measurement_request(
@@ -339,11 +339,11 @@ class HistoricalAPITest(CommonMeasurementAPITest):
         self.assertEqual(response.status_code, 400)
         self.assertIn('Invalid Request Parameter', response.data)
 
-    @patch('gap_api.api_views.measurement.get_reader_from_dataset')
-    def test_validate_dataset_attributes(self, mocked_reader):
+    @patch('gap_api.api_views.measurement.get_reader_builder')
+    def test_validate_dataset_attributes(self, mocked_builder):
         """Test validate dataset attributes ensembles."""
         view = MeasurementAPI.as_view()
-        mocked_reader.return_value = MockDatasetReader
+        mocked_builder.build.return_value = MockDatasetReader
         dataset = Dataset.objects.get(name='Salient Seasonal Forecast')
         attribute1 = DatasetAttribute.objects.filter(
             dataset=dataset,
@@ -426,11 +426,11 @@ class HistoricalAPITest(CommonMeasurementAPITest):
             datetime(2024, 10, 30, 0, 0, 0)
         )
 
-    @patch('gap_api.api_views.measurement.get_reader_from_dataset')
-    def test_access_validation(self, mocked_reader):
+    @patch('gap_api.api_views.measurement.get_reader_builder')
+    def test_access_validation(self, mocked_builder):
         """Test invalid access API."""
         view = MeasurementAPI.as_view()
-        mocked_reader.return_value = MockDatasetReader
+        mocked_builder.build.return_value = MockDatasetReader
         dataset = Dataset.objects.get(name='CBAM Climate Reanalysis')
         attribute1 = DatasetAttribute.objects.filter(
             dataset=dataset,
@@ -455,7 +455,7 @@ class HistoricalAPITest(CommonMeasurementAPITest):
             dataset.type.variable_name,
             response.data['Missing Permission']
         )
-        mocked_reader.assert_not_called()
+        mocked_builder.build.assert_not_called()
 
         # add permission to user
         assign_perm(
@@ -468,8 +468,9 @@ class HistoricalAPITest(CommonMeasurementAPITest):
         )
         request.user = self.user_1
         response = view(request)
+        print(response.data)
         self.assertEqual(response.status_code, 200)
-        mocked_reader.assert_called_once_with(attribute1.dataset, False)
+        mocked_builder.build.assert_called_once()
         self.assertIn('metadata', response.data)
         self.assertIn('results', response.data)
         results = response.data['results']

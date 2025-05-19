@@ -30,6 +30,7 @@ from gap.models import (
     DatasetStore,
     DataSourceFile
 )
+from gap.providers.base import BaseReaderBuilder
 from gap.utils.reader import (
     LocationInputType,
     DatasetVariable,
@@ -874,3 +875,20 @@ class TioZarrReader(BaseZarrReader):
             mask_da,
             drop=True
         )
+
+
+class TioReaderBuilder(BaseReaderBuilder):
+    """Class to build Tomorrow.io reader."""
+
+    def build(self) -> BaseDatasetReader:
+        """Build a new Dataset Reader."""
+        if self.dataset.store_type == DatasetStore.EXT_API:
+            return TomorrowIODatasetReader(
+                self.dataset, self.attributes, self.location_input,
+                self.start_date, self.end_date
+            )
+        return TioZarrReader(
+            self.dataset, self.attributes, self.location_input,
+            self.start_date, self.end_date
+        )
+

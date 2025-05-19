@@ -6,7 +6,7 @@ Tomorrow Now GAP.
 """
 
 import json
-from typing import List
+from typing import List, Tuple
 from datetime import datetime
 import numpy as np
 import xarray as xr
@@ -20,6 +20,7 @@ from gap.models import (
     DataSourceFile,
     DatasetStore
 )
+from gap.providers.base import BaseReaderBuilder
 from gap.utils.reader import (
     DatasetReaderInput,
     DatasetTimelineValue,
@@ -92,7 +93,7 @@ class CBAMNetCDFReader(BaseNetCDFReader):
             self, dataset: Dataset, attributes: List[DatasetAttribute],
             location_input: DatasetReaderInput, start_date: datetime,
             end_date: datetime,
-            altitudes: (float, float) = None
+            altitudes: Tuple[float, float] = None
     ) -> None:
         """Initialize CBAMNetCDFReader class.
 
@@ -220,7 +221,7 @@ class CBAMZarrReader(BaseZarrReader, CBAMNetCDFReader):
             self, dataset: Dataset, attributes: List[DatasetAttribute],
             location_input: DatasetReaderInput, start_date: datetime,
             end_date: datetime,
-            altitudes: (float, float) = None
+            altitudes: Tuple[float, float] = None
     ) -> None:
         """Initialize CBAMZarrReader class."""
         super().__init__(
@@ -384,3 +385,18 @@ class CBAMZarrReader(BaseZarrReader, CBAMNetCDFReader):
         if len(self.xrDatasets) > 0:
             val = self.xrDatasets[0]
         return CBAMReaderValue(val, self.location_input, self.attributes)
+
+
+class CBAMReaderBuilder(BaseReaderBuilder):
+    """CBAM Reader Builder."""
+
+    def build(self) -> CBAMZarrReader:
+        """Build a new reader from given dataset.
+
+        :return: Reader Class Type
+        :rtype: CBAMZarrReader
+        """
+        return CBAMZarrReader(
+            self.dataset, self.attributes, self.location_input,
+            self.start_date, self.end_date
+        )

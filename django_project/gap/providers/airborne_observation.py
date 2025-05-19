@@ -7,16 +7,21 @@ Tomorrow Now GAP.
 """
 
 from datetime import datetime
+from typing import List, Tuple
 
 from django.db.models import F, QuerySet
 from django.contrib.gis.db.models.functions import Distance
 from django.contrib.gis.geos import Polygon, Point
 
-from gap.models import Measurement, StationHistory
+from gap.models import (
+    Measurement, StationHistory, Dataset, DatasetAttribute
+)
+from gap.providers.base import BaseReaderBuilder
 from gap.providers.observation import (
     ObservationDatasetReader,
     ObservationParquetReader
 )
+from gap.utils.reader import DatasetReaderInput
 
 
 class ObservationAirborneDatasetReader(ObservationDatasetReader):
@@ -113,3 +118,35 @@ class ObservationAirborneParquetReader(
     has_month_partition = True
     has_altitudes = True
     station_id_key = 'st_hist_id'
+
+
+class ObservationAirborneReaderBuilder(BaseReaderBuilder):
+    """Class to build airborne observation reader."""
+
+    def __init__(
+        self, dataset: Dataset, attributes: List[DatasetAttribute],
+        location_input: DatasetReaderInput,
+        start_date: datetime, end_date: datetime,
+        altitudes: Tuple[float, float] = None, use_parquet=False
+    ):
+        """Initialize ObservationAirborneReaderBuilder class."""
+        super().__init__(
+            dataset, attributes, location_input, start_date, end_date
+        )
+        self.altitudes = altitudes
+        self.use_parquet = use_parquet
+
+    def build(self) -> ObservationAirborneDatasetReader:
+        """Build a new Dataset Reader."""
+        if self.use_parquet:
+            return ObservationAirborneParquetReader(
+                self.dataset, self.attributes,
+                self.location_input, self.start_date,
+                self.end_date, altitudes=self.altitudes
+            )
+
+        return ObservationAirborneDatasetReader(
+            self.dataset, self.attributes,
+            self.location_input, self.start_date,
+            self.end_date, altitudes=self.altitudes
+        )

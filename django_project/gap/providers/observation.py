@@ -33,6 +33,7 @@ from gap.models import (
     Measurement,
     Preferences
 )
+from gap.providers.base import BaseReaderBuilder
 from gap.utils.reader import (
     LocationInputType,
     DatasetReaderInput,
@@ -974,4 +975,44 @@ class ObservationParquetReader(ObservationDatasetReader):
         return ObservationParquetReaderValue(
             self._get_connection(), self.location_input, self.attributes,
             self.start_date, self.end_date, self.query
+        )
+
+
+class ObservationReaderBuilder(BaseReaderBuilder):
+    """Class to build Observation Reader."""
+
+    def __init__(
+            self, dataset: Dataset, attributes: List[DatasetAttribute],
+            location_input: DatasetReaderInput,
+            start_date: datetime, end_date: datetime,
+            use_parquet=False
+    ) -> None:
+        """Initialize ObservationReaderBuilder class.
+
+        :param dataset: Dataset from observation provider
+        :type dataset: Dataset
+        :param attributes: List of attributes to be queried
+        :type attributes: List[DatasetAttribute]
+        :param location_input: Location to be queried
+        :type location_input: DatasetReaderInput
+        :param start_date: Start date time filter
+        :type start_date: datetime
+        :param end_date: End date time filter
+        :type end_date: datetime
+        """
+        super().__init__(
+            dataset, attributes, location_input, start_date, end_date
+        )
+        self.use_parquet = use_parquet
+
+    def build(self) -> BaseDatasetReader:
+        """Build a new Dataset Reader."""
+        if self.use_parquet:
+            return ObservationParquetReader(
+                self.dataset, self.attributes, self.location_input,
+                self.start_date, self.end_date
+            )
+        return ObservationDatasetReader(
+            self.dataset, self.attributes, self.location_input,
+            self.start_date, self.end_date
         )
