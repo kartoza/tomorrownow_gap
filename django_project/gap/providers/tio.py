@@ -506,17 +506,6 @@ class TioZarrReaderValue(DatasetReaderValue):
         self.start_datetime = start_datetime
         self.end_datetime = end_datetime
 
-    def _post_init(self):
-        if self.is_empty():
-            return
-        if not self._is_xr_dataset:
-            return
-
-        renamed_dict = {}
-        for attr in self.attributes:
-            renamed_dict[attr.source] = attr.attribute.variable_name
-        self._val = self._val.rename(renamed_dict)
-
     def _filter_df(self, df: pd.DataFrame) -> pd.DataFrame:
         if not self.has_time_column:
             return df
