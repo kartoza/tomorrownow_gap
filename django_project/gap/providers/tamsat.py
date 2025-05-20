@@ -211,7 +211,7 @@ class TamsatZarrReader(BaseZarrReader):
             start_dt: np.datetime64,
             end_dt: np.datetime64) -> xrDataset:
         # use the 0 index for it's date variable
-        mask = np.zeros_like(dataset[variables[0]][0][0], dtype=bool)
+        mask = np.zeros_like(dataset[variables[0]][0], dtype=bool)
 
         # Iterate through the points and update the mask
         for lon, lat in self.location_input.points:

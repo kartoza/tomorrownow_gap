@@ -2,7 +2,7 @@
 """
 Tomorrow Now GAP.
 
-.. note:: Unit tests for Salient Reader.
+.. note:: Unit tests for Tio Zarr Reader.
 """
 
 from django.test import TestCase
