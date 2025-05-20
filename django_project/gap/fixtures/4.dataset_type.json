@@ -108,5 +108,15 @@
       "type": "forecast",
       "variable_name": "cbam_shortterm_hourly_forecast"
     }
+  },
+  {
+    "model": "gap.datasettype",
+    "pk": 12,
+    "fields": {
+      "name": "Tamsat Long Term Normals (10 years)",
+      "description": "",
+      "type": "historical",
+      "variable_name": "tamsat_ltn"
+    }
   }
 ]
