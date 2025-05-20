@@ -178,6 +178,7 @@ class BaseNetCDFReader(BaseDatasetReader):
     """Base class for NetCDF File Reader."""
 
     date_variable = 'date'
+    datetime_precision = 'ns'
 
     def __init__(
             self, dataset: Dataset, attributes: List[DatasetAttribute],
@@ -268,8 +269,8 @@ class BaseNetCDFReader(BaseDatasetReader):
         :return: filtered xArray Dataset object
         :rtype: xrDataset
         """
-        start_dt = np.datetime64(start_date, 'ns')
-        end_dt = np.datetime64(end_date, 'ns')
+        start_dt = np.datetime64(start_date, self.datetime_precision)
+        end_dt = np.datetime64(end_date, self.datetime_precision)
         variables = [a.source for a in self.attributes]
         variables.append(self.date_variable)
         if self._has_ensembles():

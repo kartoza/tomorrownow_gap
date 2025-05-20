@@ -528,45 +528,6 @@ class TioZarrReaderValue(DatasetReaderValue):
 
         return df_reset.set_index(['date', 'time'])
 
-    def _xr_dataset_to_dict(self) -> dict:
-        """Convert xArray Dataset to dictionary.
-
-        Implementation depends on provider.
-        :return: data dictionary
-        :rtype: dict
-        """
-        if self.is_empty():
-            return {
-                'geometry': json.loads(self.location_input.point.json),
-                'data': []
-            }
-        ds, dim_order, reordered_cols = self._get_dataset_for_csv()
-        df = ds.to_dataframe(dim_order=dim_order)
-        df = df[reordered_cols]
-        df = df.drop(columns=['lat', 'lon'])
-        df = df.reset_index()
-        # Replace NaN with None
-        df = df.astype(object).where(pd.notnull(df), None)
-
-        # add datetime column
-        if self.has_time_column:
-            df['datetime'] = pd.to_datetime(
-                df[self.date_variable].astype(str) + ' ' +
-                df['time'].astype(str)
-            )
-            df = df.drop(columns=['time', self.date_variable])
-        else:
-            df['datetime'] = pd.to_datetime(
-                df[self.date_variable].astype(str)
-            )
-            df = df.drop(columns=[self.date_variable])
-
-        df = self._filter_df(df)
-        return {
-            'geometry': json.loads(self.location_input.point.json),
-            'data': df.to_dict(orient='records')
-        }
-
 
 class TioZarrReader(BaseZarrReader):
     """Tio Zarr Reader."""

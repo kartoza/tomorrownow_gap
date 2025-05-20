@@ -43,6 +43,7 @@ from gap.utils.reader import (
     BaseDatasetReader,
     DatasetReaderOutputType
 )
+from core.utils.date import closest_leap_year
 from gap_api.models import DatasetTypeAPIConfig, Location, UserFile
 from gap_api.serializers.common import APIErrorSerializer
 from gap_api.utils.helper import ApiTag
@@ -131,7 +132,7 @@ class MeasurementAPI(GAPAPILoggingMixin, APIView):
         openapi.Parameter(
             'start_date', openapi.IN_QUERY,
             required=True,
-            description='Start Date (YYYY-MM-DD)',
+            description='Start Date (YYYY-MM-DD or MM-DD for LTN)',
             type=openapi.TYPE_STRING
         ),
         openapi.Parameter(
@@ -142,7 +143,7 @@ class MeasurementAPI(GAPAPILoggingMixin, APIView):
         openapi.Parameter(
             'end_date', openapi.IN_QUERY,
             required=True,
-            description='End Date (YYYY-MM-DD)',
+            description='End Date (YYYY-MM-DD or MM-DD for LTN)',
             type=openapi.TYPE_STRING
         ),
         openapi.Parameter(
@@ -217,8 +218,14 @@ class MeasurementAPI(GAPAPILoggingMixin, APIView):
         :rtype: date
         """
         date_str = self.request.GET.get(attr_name, None)
+        if date_str is None:
+            return default
+        # check if date_str is in LTN format
+        if date_str.count('-') == 1:
+            today = date.today()
+            # for LTN, use leap year
+            date_str = f"{closest_leap_year(today.year)}-{date_str}"
         return (
-            default if date_str is None else
             datetime.strptime(date_str, self.date_format).date()
         )
 
