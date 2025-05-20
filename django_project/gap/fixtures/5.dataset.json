@@ -180,5 +180,19 @@
       "is_internal_use": true,
       "observation_type": "NOT_SPECIFIED"
     }
+  },
+  {
+    "model": "gap.dataset",
+    "pk": 14,
+    "fields": {
+      "name": "Tamsat Long Term Normals (10 years)",
+      "description": "",
+      "provider": 7,
+      "type": 12,
+      "time_step": "DAILY",
+      "store_type": "ZARR",
+      "is_internal_use": false,
+      "observation_type": "NOT_SPECIFIED"
+    }
   }
 ]
