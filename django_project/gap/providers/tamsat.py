@@ -7,12 +7,10 @@ Tomorrow Now GAP.
 
 import json
 import logging
-import os
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import List
 
 import pytz
-import requests
 import numpy as np
 import pandas as pd
 import regionmask
@@ -21,19 +19,13 @@ from shapely.geometry import shape
 from xarray.core.dataset import Dataset as xrDataset
 
 from gap.models import (
-    Provider,
-    CastType,
-    DatasetType,
     Dataset,
     DatasetAttribute,
-    DatasetTimeStep,
     DatasetStore,
     DataSourceFile
 )
 from gap.providers.base import BaseReaderBuilder
 from gap.utils.reader import (
-    LocationInputType,
-    DatasetVariable,
     DatasetReaderInput,
     DatasetTimelineValue,
     DatasetReaderValue,
@@ -95,6 +87,7 @@ class TamsatReaderValue(DatasetReaderValue):
         """Process datetime for df from xarray dataset."""
         # do nothing
         return df
+
 
 class TamsatZarrReader(BaseZarrReader):
     """Tamsat Zarr Reader."""
