@@ -6,7 +6,7 @@ Tomorrow Now GAP.
 """
 
 from datetime import timedelta, datetime
-from typing import List, Tuple
+from typing import List
 from unittest.mock import patch
 from django.utils import timezone
 from django.core.files.base import ContentFile
@@ -16,6 +16,7 @@ from django.contrib.gis.geos import Point
 
 from core.utils.s3 import remove_s3_folder
 from gap.models import DatasetAttribute, Dataset, Preferences
+from gap.providers.base import BaseReaderBuilder
 from gap_api.models import UserFile
 from gap_api.tasks.cleanup import cleanup_user_files
 from gap.utils.reader import (
@@ -38,8 +39,7 @@ class MockXArrayDatasetReader(BaseDatasetReader):
             self, dataset, attributes: List[DatasetAttribute],
             location_input: DatasetReaderInput, start_date: datetime,
             end_date: datetime,
-            output_type=DatasetReaderOutputType.JSON,
-            altitudes: Tuple[float, float] = None
+            output_type=DatasetReaderOutputType.JSON
     ) -> None:
         """Initialize MockDatasetReader class."""
         super().__init__(
@@ -66,8 +66,7 @@ class MockXArray1DimDatasetReader(BaseDatasetReader):
             self, dataset, attributes: List[DatasetAttribute],
             location_input: DatasetReaderInput, start_date: datetime,
             end_date: datetime,
-            output_type=DatasetReaderOutputType.JSON,
-            altitudes: Tuple[float, float] = None
+            output_type=DatasetReaderOutputType.JSON
     ) -> None:
         """Initialize MockDatasetReader class."""
         super().__init__(
@@ -89,6 +88,29 @@ class MockXArray1DimDatasetReader(BaseDatasetReader):
             ds,
             DatasetReaderInput.from_point(p),
             self.attributes
+        )
+
+
+class MockBaseReaderBuilder(BaseReaderBuilder):
+    """Class to mock a dataset reader builder."""
+
+    def __init__(
+        self, dataset, attributes, location_input, start_date,
+        end_date, cls_reader
+    ):
+        """Initialize MockBaseReaderBuilder class."""
+        super().__init__(
+            dataset, attributes, location_input,
+            start_date, end_date
+        )
+        self.cls_reader = cls_reader
+
+    def build(self) -> BaseDatasetReader:
+        """Override build method with a mock object."""
+        return self.cls_reader(
+            self.dataset, self.attributes,
+            self.location_input, self.start_date,
+            self.end_date
         )
 
 
@@ -145,11 +167,10 @@ class TestUserFileAPI(CommonMeasurementAPITest):
         self.assertTrue(self.s3_storage.exists(f1.name))
         self.assertFalse(self.s3_storage.exists(f2.name))
 
-    @patch('gap_api.api_views.measurement.get_reader_from_dataset')
-    def test_api_netcdf_request(self, mocked_reader):
+    @patch('gap_api.api_views.measurement.get_reader_builder')
+    def test_api_netcdf_request(self, mocked_builder):
         """Test generate to netcdf."""
         view = MeasurementAPI.as_view()
-        mocked_reader.return_value = MockXArrayDatasetReader
         dataset = Dataset.objects.get(
             type__variable_name='cbam_historical_analysis_bias_adjust'
         )
@@ -159,6 +180,13 @@ class TestUserFileAPI(CommonMeasurementAPITest):
         ).first()
         attribs = [attribute1.attribute.variable_name]
         point = Point(x=26.9665, y=-12.5969)
+        mocked_builder.return_value = MockBaseReaderBuilder(
+            dataset, [attribute1],
+            DatasetReaderInput.from_point(point),
+            datetime.fromisoformat('2024-04-01'),
+            datetime.fromisoformat('2024-04-04'),
+            MockXArrayDatasetReader
+        )
         request = self._get_measurement_request_point(
             product='cbam_historical_analysis_bias_adjust',
             attributes=','.join(attribs),
@@ -169,7 +197,7 @@ class TestUserFileAPI(CommonMeasurementAPITest):
         )
         response = view(request)
         self.assertEqual(response.status_code, 200)
-        mocked_reader.assert_called_once_with(attribute1.dataset, False)
+        mocked_builder.assert_called_once()
         self.assertIn('X-Accel-Redirect', response.headers)
         self.assertTrue(UserFile.objects.filter(
             user=self.superuser,
@@ -181,11 +209,10 @@ class TestUserFileAPI(CommonMeasurementAPITest):
             query_params__end_date='2023-01-01'
         ).exists())
 
-    @patch('gap_api.api_views.measurement.get_reader_from_dataset')
-    def test_api_netcdf_request_with1Dim(self, mocked_reader):
+    @patch('gap_api.api_views.measurement.get_reader_builder')
+    def test_api_netcdf_request_with1Dim(self, mocked_builder):
         """Test generate to netcdf."""
         view = MeasurementAPI.as_view()
-        mocked_reader.return_value = MockXArray1DimDatasetReader
         dataset = Dataset.objects.get(
             type__variable_name='cbam_historical_analysis_bias_adjust'
         )
@@ -195,6 +222,13 @@ class TestUserFileAPI(CommonMeasurementAPITest):
         ).first()
         attribs = [attribute1.attribute.variable_name]
         point = Point(x=26.9665, y=-12.5969)
+        mocked_builder.return_value = MockBaseReaderBuilder(
+            dataset, [attribute1],
+            DatasetReaderInput.from_point(point),
+            datetime.fromisoformat('2024-04-01'),
+            datetime.fromisoformat('2024-04-04'),
+            MockXArray1DimDatasetReader
+        )
         request = self._get_measurement_request_point(
             product='cbam_historical_analysis_bias_adjust',
             attributes=','.join(attribs),
@@ -205,14 +239,13 @@ class TestUserFileAPI(CommonMeasurementAPITest):
         )
         response = view(request)
         self.assertEqual(response.status_code, 200)
-        mocked_reader.assert_called_once_with(attribute1.dataset, False)
+        mocked_builder.assert_called_once()
         self.assertIn('X-Accel-Redirect', response.headers)
 
-    @patch('gap_api.api_views.measurement.get_reader_from_dataset')
-    def test_api_csv_request(self, mocked_reader):
+    @patch('gap_api.api_views.measurement.get_reader_builder')
+    def test_api_csv_request(self, mocked_builder):
         """Test generate to csv."""
         view = MeasurementAPI.as_view()
-        mocked_reader.return_value = MockXArrayDatasetReader
         dataset = Dataset.objects.get(
             type__variable_name='cbam_historical_analysis_bias_adjust'
         )
@@ -222,6 +255,13 @@ class TestUserFileAPI(CommonMeasurementAPITest):
         ).first()
         attribs = [attribute1.attribute.variable_name]
         point = Point(x=26.9665, y=-12.5969)
+        mocked_builder.return_value = MockBaseReaderBuilder(
+            dataset, [attribute1],
+            DatasetReaderInput.from_point(point),
+            datetime.fromisoformat('2024-04-01'),
+            datetime.fromisoformat('2024-04-04'),
+            MockXArrayDatasetReader
+        )
         request = self._get_measurement_request_point(
             product='cbam_historical_analysis_bias_adjust',
             attributes=','.join(attribs),
@@ -232,7 +272,7 @@ class TestUserFileAPI(CommonMeasurementAPITest):
         )
         response = view(request)
         self.assertEqual(response.status_code, 200)
-        mocked_reader.assert_called_once_with(attribute1.dataset, False)
+        mocked_builder.assert_called_once()
         self.assertIn('X-Accel-Redirect', response.headers)
         self.assertTrue(UserFile.objects.filter(
             user=self.superuser,
@@ -244,11 +284,10 @@ class TestUserFileAPI(CommonMeasurementAPITest):
             query_params__end_date='2023-01-01'
         ).exists())
 
-    @patch('gap_api.api_views.measurement.get_reader_from_dataset')
-    def test_api_csv_request_with1Dim(self, mocked_reader):
+    @patch('gap_api.api_views.measurement.get_reader_builder')
+    def test_api_csv_request_with1Dim(self, mocked_builder):
         """Test generate to csv."""
         view = MeasurementAPI.as_view()
-        mocked_reader.return_value = MockXArray1DimDatasetReader
         dataset = Dataset.objects.get(
             type__variable_name='cbam_historical_analysis_bias_adjust'
         )
@@ -258,6 +297,13 @@ class TestUserFileAPI(CommonMeasurementAPITest):
         ).first()
         attribs = [attribute1.attribute.variable_name]
         point = Point(x=26.9665, y=-12.5969)
+        mocked_builder.return_value = MockBaseReaderBuilder(
+            dataset, [attribute1],
+            DatasetReaderInput.from_point(point),
+            datetime.fromisoformat('2024-04-01'),
+            datetime.fromisoformat('2024-04-04'),
+            MockXArray1DimDatasetReader
+        )
         request = self._get_measurement_request_point(
             product='cbam_historical_analysis_bias_adjust',
             attributes=','.join(attribs),
@@ -268,16 +314,15 @@ class TestUserFileAPI(CommonMeasurementAPITest):
         )
         response = view(request)
         self.assertEqual(response.status_code, 200)
-        mocked_reader.assert_called_once_with(attribute1.dataset, False)
+        mocked_builder.assert_called_once()
         self.assertIn('X-Accel-Redirect', response.headers)
 
-    @patch('gap_api.api_views.measurement.get_reader_from_dataset')
-    def test_api_cached_request(self, mocked_reader):
+    @patch('gap_api.api_views.measurement.get_reader_builder')
+    def test_api_cached_request(self, mocked_builder):
         """Test cached UserFile."""
         f2 = UserFileFactory.create()
 
         view = MeasurementAPI.as_view()
-        mocked_reader.return_value = MockXArrayDatasetReader
         dataset = Dataset.objects.get(
             type__variable_name='cbam_historical_analysis_bias_adjust'
         )
@@ -286,6 +331,13 @@ class TestUserFileAPI(CommonMeasurementAPITest):
             attribute__variable_name='max_temperature'
         ).first()
         attribs = [attribute1.attribute.variable_name]
+        mocked_builder.return_value = MockBaseReaderBuilder(
+            dataset, [attribute1],
+            DatasetReaderInput.from_point(Point(x=26.9665, y=-12.5969)),
+            datetime.fromisoformat('2024-04-01'),
+            datetime.fromisoformat('2024-04-04'),
+            MockXArray1DimDatasetReader
+        )
         request = self._get_measurement_request_point(
             product='cbam_historical_analysis_bias_adjust',
             attributes=','.join(attribs),
@@ -296,7 +348,7 @@ class TestUserFileAPI(CommonMeasurementAPITest):
         )
         response = view(request)
         self.assertEqual(response.status_code, 200)
-        mocked_reader.assert_called_once_with(attribute1.dataset, False)
+        mocked_builder.assert_called_once()
         self.assertIn('X-Accel-Redirect', response.headers)
         self.assertIn(f2.name, response.headers['X-Accel-Redirect'])
 

@@ -46,5 +46,13 @@
       "name": "WindBorne Systems",
       "description": "https://windbornesystems.com/"
     }
+  },
+  {
+    "model": "gap.provider",
+    "pk": 7,
+    "fields": {
+      "name": "Tamsat",
+      "description": null
+    }
   }
 ]

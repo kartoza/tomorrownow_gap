@@ -6,6 +6,7 @@ Tomorrow Now GAP.
 """
 
 import os
+import logging
 from datetime import date, datetime, time
 from typing import Dict
 
@@ -34,7 +35,7 @@ from gap.models import (
     DatasetType,
     Preferences
 )
-from gap.providers import get_reader_from_dataset
+from gap.providers import get_reader_builder
 from gap.utils.reader import (
     LocationInputType,
     DatasetReaderInput,
@@ -42,11 +43,15 @@ from gap.utils.reader import (
     BaseDatasetReader,
     DatasetReaderOutputType
 )
+from core.utils.date import closest_leap_year
 from gap_api.models import DatasetTypeAPIConfig, Location, UserFile
 from gap_api.serializers.common import APIErrorSerializer
 from gap_api.utils.helper import ApiTag
 from gap_api.mixins import GAPAPILoggingMixin, CounterSlidingWindowThrottle
 from permission.models import PermissionType
+
+
+logger = logging.getLogger(__name__)
 
 
 def product_type_list():
@@ -127,7 +132,7 @@ class MeasurementAPI(GAPAPILoggingMixin, APIView):
         openapi.Parameter(
             'start_date', openapi.IN_QUERY,
             required=True,
-            description='Start Date (YYYY-MM-DD)',
+            description='Start Date (YYYY-MM-DD or MM-DD for LTN)',
             type=openapi.TYPE_STRING
         ),
         openapi.Parameter(
@@ -138,12 +143,20 @@ class MeasurementAPI(GAPAPILoggingMixin, APIView):
         openapi.Parameter(
             'end_date', openapi.IN_QUERY,
             required=True,
-            description='End Date (YYYY-MM-DD)',
+            description='End Date (YYYY-MM-DD or MM-DD for LTN)',
             type=openapi.TYPE_STRING
         ),
         openapi.Parameter(
             'end_time', openapi.IN_QUERY,
             description='End Time - UTC (HH:MM:SS)',
+            type=openapi.TYPE_STRING
+        ),
+        openapi.Parameter(
+            'forecast_date', openapi.IN_QUERY,
+            description=(
+                'Forecast Date for Historical '
+                'Salient Downscale, available from 2020 (YYYY-MM-DD)'
+            ),
             type=openapi.TYPE_STRING
         ),
         openapi.Parameter(
@@ -196,7 +209,7 @@ class MeasurementAPI(GAPAPILoggingMixin, APIView):
         attributes_str = [a.strip() for a in attributes_str.split(',')]
         return Attribute.objects.filter(variable_name__in=attributes_str)
 
-    def _get_date_filter(self, attr_name):
+    def _get_date_filter(self, attr_name, default=None):
         """Get date object from filter (start_date/end_date).
 
         :param attr_name: request parameter name
@@ -205,8 +218,14 @@ class MeasurementAPI(GAPAPILoggingMixin, APIView):
         :rtype: date
         """
         date_str = self.request.GET.get(attr_name, None)
+        if date_str is None:
+            return default
+        # check if date_str is in LTN format
+        if date_str.count('-') == 1:
+            today = date.today()
+            # for LTN, use leap year
+            date_str = f"{closest_leap_year(today.year)}-{date_str}"
         return (
-            date.today() if date_str is None else
             datetime.strptime(date_str, self.date_format).date()
         )
 
@@ -559,8 +578,8 @@ class MeasurementAPI(GAPAPILoggingMixin, APIView):
             if ensemble_count > 0 and non_ensemble_count > 0:
                 raise ValidationError({
                     'Invalid Request Parameter': (
-                        'Attribute with ensemble cannot be mixed '
-                        'with non-ensemble'
+                        'CSV: Attribute with ensemble cannot be mixed '
+                        'with non-ensemble, please use NetCDF format!'
                     )
                 })
 
@@ -606,11 +625,11 @@ class MeasurementAPI(GAPAPILoggingMixin, APIView):
         location = self._get_location_filter()
         min_altitudes, max_altitudes = self._get_altitudes_filter()
         start_dt = datetime.combine(
-            self._get_date_filter('start_date'),
+            self._get_date_filter('start_date', date.today()),
             self._get_time_filter('start_time', time.min), tzinfo=pytz.UTC
         )
         end_dt = datetime.combine(
-            self._get_date_filter('end_date'),
+            self._get_date_filter('end_date', date.today()),
             self._get_time_filter('end_time', time.max), tzinfo=pytz.UTC
         )
         output_format = self._get_format_filter()
@@ -659,17 +678,31 @@ class MeasurementAPI(GAPAPILoggingMixin, APIView):
                 dataset_dict[da.dataset.id].add_attribute(da)
             else:
                 try:
-                    reader = get_reader_from_dataset(
-                        da.dataset,
-                        self._preferences.api_use_parquet
-                    )
-                    dataset_dict[da.dataset.id] = reader(
+                    reader = get_reader_builder(
                         da.dataset, [da], location, start_dt, end_dt,
                         altitudes=(min_altitudes, max_altitudes),
+                        use_parquet=self._preferences.api_use_parquet,
+                        forecast_date=self._get_date_filter(
+                            'forecast_date', None
+                        )
                     )
+                    dataset_dict[da.dataset.id] = reader.build()
                 except TypeError as e:
-                    print(e)
-                    pass
+                    logger.error(
+                        f"Error in building dataset reader: {e}",
+                        exc_info=True
+                    )
+
+        # validate dataset_dict
+        if len(dataset_dict) == 0:
+            return Response(
+                status=400,
+                data={
+                    'Invalid Request Parameter': (
+                        'No matching dataset found!'
+                    )
+                }
+            )
 
         # Check UserFile cache if x_accel_redirect is enabled
         user_file: UserFile = None

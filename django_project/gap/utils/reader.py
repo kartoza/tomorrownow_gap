@@ -10,6 +10,7 @@ import json
 import tempfile
 import dask
 import uuid
+import pandas as pd
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
 from typing import Union, List, Tuple
@@ -344,8 +345,10 @@ class DatasetReaderValue:
         if self._is_xr_dataset:
             # estimate size of dataset
             return self._val.nbytes
-        # for list of dataset timeline value
-        return len(self.values)
+        if isinstance(self._val, list):
+            # for list of dataset timeline value
+            return len(self._val)
+        return 0
 
     @property
     def xr_dataset(self) -> xrDataset:
@@ -437,6 +440,22 @@ class DatasetReaderValue:
         output['data'] = [result.to_dict() for result in self.values]
         return output
 
+    def _xr_dataset_process_datetime(self, df):
+        """Process datetime for df from xarray dataset."""
+        # add datetime column
+        if self.has_time_column:
+            df['datetime'] = pd.to_datetime(
+                df[self.date_variable].astype(str) + ' ' +
+                df['time'].astype(str)
+            )
+            df = df.drop(columns=['time', self.date_variable])
+        else:
+            df['datetime'] = pd.to_datetime(
+                df[self.date_variable].astype(str)
+            )
+            df = df.drop(columns=[self.date_variable])
+        return df
+
     def _xr_dataset_to_dict(self) -> dict:
         """Convert xArray Dataset to dictionary.
 
@@ -444,7 +463,27 @@ class DatasetReaderValue:
         :return: data dictionary
         :rtype: dict
         """
-        return {}
+        if self.is_empty():
+            return {
+                'geometry': json.loads(self.location_input.point.json),
+                'data': []
+            }
+        ds, dim_order, reordered_cols = self._get_dataset_for_csv()
+        df = ds.to_dataframe(dim_order=dim_order)
+        df = df[reordered_cols]
+        df = df.drop(columns=['lat', 'lon'])
+        df = df.reset_index()
+        # Replace NaN with None
+        df = df.astype(object).where(pd.notnull(df), None)
+
+        # add datetime column
+        df = self._xr_dataset_process_datetime(df)
+
+        df = self._filter_df(df)
+        return {
+            'geometry': json.loads(self.location_input.point.json),
+            'data': df.to_dict(orient='records')
+        }
 
     def to_json(self) -> dict:
         """Convert result to json.
@@ -544,6 +583,10 @@ class DatasetReaderValue:
 
     def _get_dataset_for_csv(self):
         dim_order = [self.date_variable]
+
+        if self.has_time_column:
+            dim_order.append('time')
+
         reordered_cols = [
             attribute.attribute.variable_name for attribute in self.attributes
         ]
@@ -556,10 +599,20 @@ class DatasetReaderValue:
             dim_order.append('lon')
             rechunk['lat'] = 300
             rechunk['lon'] = 300
+            if self.has_time_column:
+                # slightly reducing chunk size for lat/lon
+                rechunk['lat'] = 100
+                rechunk['lon'] = 100
+                rechunk['time'] = 24
         else:
             reordered_cols.insert(0, 'lon')
             reordered_cols.insert(0, 'lat')
             rechunk[self.date_variable] = 300
+            if self.has_time_column:
+                # slightly reducing chunk size for lat/lon
+                rechunk[self.date_variable] = 100
+                rechunk['time'] = 24
+
         if 'ensemble' in self.xr_dataset.dims:
             dim_order.append('ensemble')
             rechunk['ensemble'] = 50
@@ -567,7 +620,22 @@ class DatasetReaderValue:
         # rechunk dataset
         ds = self.xr_dataset.chunk(rechunk)
 
+        if self.has_time_column:
+            time_delta = ds['time'].dt.total_seconds().values
+            time_str = [
+                f"{int(x // 3600):02}:{int((x % 3600) // 60):02}"
+                f":{int(x % 60):02}"
+                for x in time_delta
+            ]
+            ds = ds.assign_coords(
+                **{'time': ('time', time_str)}
+            )
+
         return ds, dim_order, reordered_cols
+
+    def _filter_df(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Filter dataframe."""
+        return df
 
     def to_csv_stream(self, suffix='.csv', separator=','):
         """Generate csv bytes stream.
@@ -608,9 +676,16 @@ class DatasetReaderValue:
                             chunk = ds.isel(**slice_dict)
                             chunk_df = chunk.to_dataframe(dim_order=dim_order)
                             chunk_df = chunk_df[reordered_cols]
+                            chunk_df = self._filter_df(chunk_df)
 
                             if write_headers:
-                                headers = dim_order + list(chunk_df.columns)
+                                _columns = list(chunk_df.columns)
+                                # remote lat lon if exists in _columns
+                                if 'lat' in _columns:
+                                    _columns.remove('lat')
+                                if 'lon' in _columns:
+                                    _columns.remove('lon')
+                                headers = dim_order + _columns
                                 yield bytes(
                                     separator.join(headers) + '\n',
                                     'utf-8'
@@ -631,6 +706,7 @@ class DatasetReaderValue:
                     chunk = ds.isel(**slice_dict)
                     chunk_df = chunk.to_dataframe(dim_order=dim_order)
                     chunk_df = chunk_df[reordered_cols]
+                    chunk_df = self._filter_df(chunk_df)
 
                     if write_headers:
                         headers = dim_order + list(chunk_df.columns)
@@ -689,6 +765,7 @@ class DatasetReaderValue:
                                     dim_order=dim_order
                                 )
                                 chunk_df = chunk_df[reordered_cols]
+                                chunk_df = self._filter_df(chunk_df)
 
                                 chunk_df.to_csv(
                                     tmp_file.name, index=True, mode='a',
@@ -708,6 +785,7 @@ class DatasetReaderValue:
                         chunk = ds.isel(**slice_dict)
                         chunk_df = chunk.to_dataframe(dim_order=dim_order)
                         chunk_df = chunk_df[reordered_cols]
+                        chunk_df = self._filter_df(chunk_df)
 
                         chunk_df.to_csv(
                             tmp_file.name, index=True, mode='a',
@@ -733,8 +811,7 @@ class BaseDatasetReader:
             self, dataset: Dataset, attributes: List[DatasetAttribute],
             location_input: DatasetReaderInput,
             start_date: datetime, end_date: datetime,
-            output_type=DatasetReaderOutputType.JSON,
-            altitudes: Tuple[float, float] = None
+            output_type=DatasetReaderOutputType.JSON
     ) -> None:
         """Initialize BaseDatasetReader class.
 
@@ -750,8 +827,6 @@ class BaseDatasetReader:
         :type end_date: datetime
         :param output_type: Output type
         :type output_type: str
-        :param altitudes: Altitudes for the reader
-        :type altitudes: (float, float)
         """
         self.dataset = dataset
         self.attributes = attributes
@@ -759,7 +834,6 @@ class BaseDatasetReader:
         self.start_date = start_date
         self.end_date = end_date
         self.output_type = output_type
-        self.altitudes = altitudes
 
     def add_attribute(self, attribute: DatasetAttribute):
         """Add a new attribuute to be read.
@@ -843,3 +917,15 @@ class BaseDatasetReader:
                 'past': (start_date, now - timedelta(days=1)),
                 'future': (now, end_date)
             }
+
+    @property
+    def has_time_column(self) -> bool:
+        """Check if the output has time column.
+
+        :return: True if time column should exist
+        :rtype: bool
+        """
+        return (
+            self.dataset.time_step != DatasetTimeStep.DAILY if
+            self.dataset else False
+        )

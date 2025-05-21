@@ -20,6 +20,7 @@ from gap.models import (
     DataSourceFile,
     DatasetStore
 )
+from gap.providers.base import BaseReaderBuilder
 from gap.utils.reader import (
     DatasetReaderInput,
     DatasetTimelineValue,
@@ -52,38 +53,6 @@ class CBAMReaderValue(DatasetReaderValue):
         """
         super().__init__(val, location_input, attributes)
 
-    def _xr_dataset_to_dict(self) -> dict:
-        """Convert xArray Dataset to dictionary.
-
-        Implementation depends on provider.
-        :return: data dictionary
-        :rtype: dict
-        """
-        if self.is_empty():
-            return {
-                'geometry': json.loads(self.location_input.point.json),
-                'data': []
-            }
-        results: List[DatasetTimelineValue] = []
-        for dt_idx, dt in enumerate(
-            self.xr_dataset[self.date_variable].values):
-            value_data = {}
-            for attribute in self.attributes:
-                var_name = attribute.attribute.variable_name
-                v = self.xr_dataset[var_name].values[dt_idx]
-                value_data[var_name] = (
-                    v if not np.isnan(v) else None
-                )
-            results.append(DatasetTimelineValue(
-                dt,
-                value_data,
-                self.location_input.point
-            ))
-        return {
-            'geometry': json.loads(self.location_input.point.json),
-            'data': [result.to_dict() for result in results]
-        }
-
 
 class CBAMNetCDFReader(BaseNetCDFReader):
     """Class to read NetCDF file from CBAM provider."""
@@ -91,8 +60,7 @@ class CBAMNetCDFReader(BaseNetCDFReader):
     def __init__(
             self, dataset: Dataset, attributes: List[DatasetAttribute],
             location_input: DatasetReaderInput, start_date: datetime,
-            end_date: datetime,
-            altitudes: (float, float) = None
+            end_date: datetime
     ) -> None:
         """Initialize CBAMNetCDFReader class.
 
@@ -106,12 +74,9 @@ class CBAMNetCDFReader(BaseNetCDFReader):
         :type start_date: datetime
         :param end_date: End date time filter
         :type end_date: datetime
-        :param altitudes: Altitudes for the reader
-        :type altitudes: (float, float)
         """
         super().__init__(
-            dataset, attributes, location_input, start_date, end_date,
-            altitudes=altitudes
+            dataset, attributes, location_input, start_date, end_date
         )
 
     def read_historical_data(self, start_date: datetime, end_date: datetime):
@@ -219,13 +184,11 @@ class CBAMZarrReader(BaseZarrReader, CBAMNetCDFReader):
     def __init__(
             self, dataset: Dataset, attributes: List[DatasetAttribute],
             location_input: DatasetReaderInput, start_date: datetime,
-            end_date: datetime,
-            altitudes: (float, float) = None
+            end_date: datetime
     ) -> None:
         """Initialize CBAMZarrReader class."""
         super().__init__(
-            dataset, attributes, location_input, start_date, end_date,
-            altitudes=altitudes
+            dataset, attributes, location_input, start_date, end_date
         )
 
     def _read_variables_by_point(
@@ -384,3 +347,18 @@ class CBAMZarrReader(BaseZarrReader, CBAMNetCDFReader):
         if len(self.xrDatasets) > 0:
             val = self.xrDatasets[0]
         return CBAMReaderValue(val, self.location_input, self.attributes)
+
+
+class CBAMReaderBuilder(BaseReaderBuilder):
+    """CBAM Reader Builder."""
+
+    def build(self) -> CBAMZarrReader:
+        """Build a new reader from given dataset.
+
+        :return: Reader Class Type
+        :rtype: CBAMZarrReader
+        """
+        return CBAMZarrReader(
+            self.dataset, self.attributes, self.location_input,
+            self.start_date, self.end_date
+        )

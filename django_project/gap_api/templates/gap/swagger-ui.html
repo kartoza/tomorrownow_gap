@@ -83,7 +83,7 @@
                                 // apend hr after attributes row
                                 $($tableSelect + ' tr[data-param-name="attributes"]').after(newRow);
                                 // apend hr after end_time row
-                                $($tableSelect + ' tr[data-param-name="end_time"]').after(newRow);
+                                $($tableSelect + ' tr[data-param-name="forecast_date"]').after(newRow);
                                 // apend hr after output_type row
                                 $($tableSelect + ' tr[data-param-name="output_type"]').after(newRow);
 
@@ -116,9 +116,11 @@
                                     $('#get_measurement__responses').hide();
                                     $('<style>')
                                     .prop('type', 'text/css')
-                                    .html('.response-col_description div:nth-of-type(2) { display: none; } .curl-command { display: none; } div.responses-inner > div > h4 { display: none; }')
+                                    .html(' .curl-command { display: none; } div.responses-inner > div > h4 { display: none; }')
                                     .appendTo('head');
                                 }
+                                // class to hide the response example but error response also got hidden
+                                // .response-col_description div:nth-of-type(2) { display: none; }
                                 var startDateSelector = '#operations-Weather_\\\\\\&_Climate_Data-get-measurement > div.no-margin > div > div.opblock-section > div.parameters-container > div > table > tbody > tr[data-param-name="start_date"] > td.parameters-col_description > div:nth-child(1)';
                                 $(startDateSelector).after('<div class="markdown"><p><i>Example</i>: 2020-01-01</p></div>');
                                 var endDateSelector = '#operations-Weather_\\\\\\&_Climate_Data-get-measurement > div.no-margin > div > div.opblock-section > div.parameters-container > div > table > tbody > tr[data-param-name="end_date"] > td.parameters-col_description > div:nth-child(1)';

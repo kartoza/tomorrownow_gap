@@ -92,7 +92,7 @@ class TestCBAMNetCDFReader(TestCase):
             data_value = reader.get_data_values().to_json()
             self.assertEqual(len(data_value['data']), 1)
             self.assertAlmostEqual(
-                data_value['data'][0]['values']['max_temperature'],
+                data_value['data'][0]['max_temperature'],
                 33.371735, 6)
 
 

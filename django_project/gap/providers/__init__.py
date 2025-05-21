@@ -5,58 +5,94 @@ Tomorrow Now GAP.
 .. note:: Helper for reading NetCDF File
 """
 
+from typing import List
+from datetime import datetime
+
 from gap.ingestor.wind_borne_systems import PROVIDER as WINBORNE_PROVIDER
-from gap.models import Dataset, DatasetStore
+from gap.models import Dataset, DatasetStore, DatasetAttribute
+from gap.utils.reader import DatasetReaderInput
+from gap.providers.base import BaseReaderBuilder
 from gap.providers.airborne_observation import (
     ObservationAirborneDatasetReader,
-    ObservationAirborneParquetReader
-)
-from gap.providers.cbam import CBAMZarrReader, CBAMNetCDFReader  # noqa
+    ObservationAirborneParquetReader,
+    ObservationAirborneReaderBuilder
+)  # noqa
+from gap.providers.cbam import (
+    CBAMZarrReader, CBAMNetCDFReader,
+    CBAMReaderBuilder
+)  # noqa
 from gap.providers.observation import (
-    ObservationDatasetReader, ObservationParquetReader
-)
+    ObservationDatasetReader, ObservationParquetReader,
+    ObservationReaderBuilder
+)  # noqa
 from gap.providers.salient import (
-    SalientNetCDFReader, SalientZarrReader
+    SalientNetCDFReader, SalientZarrReader,
+    SalientReaderBuilder
 )  # noqa
 from gap.providers.tio import (
     TomorrowIODatasetReader,
     PROVIDER_NAME as TIO_PROVIDER,
-    TioZarrReader
-)
+    TioZarrReader,
+    TioReaderBuilder
+)  # noqa
+from gap.providers.tamsat import (
+    TamsatReaderBuilder,
+    TamsatZarrReader,
+    PROVIDER_NAME as TAMSAT_PROVIDER
+)  # noqa
 from gap.utils.netcdf import NetCDFProvider
 
 
-def get_reader_from_dataset(dataset: Dataset, use_parquet=False):
-    """Create a new Reader from given dataset.
+def get_reader_builder(
+    dataset: Dataset, attributes: List[DatasetAttribute],
+    location_input: DatasetReaderInput,
+    start_date: datetime, end_date: datetime, **kwargs
+) -> BaseReaderBuilder:
+    """Create a new Reader Builder from given dataset.
 
     :param dataset: Dataset to be read
     :type dataset: Dataset
-    :raises TypeError: if provider is neither CBAM or Salient
-    :return: Reader Class Type
-    :rtype: BaseDatasetReader
+    :raises TypeError: if provider is unsupported
+    :return: Reader Builder
+    :rtype: BaseReaderBuilder
     """
     if dataset.provider.name == NetCDFProvider.CBAM:
-        return CBAMZarrReader
+        return CBAMReaderBuilder(
+            dataset, attributes, location_input,
+            start_date, end_date
+        )
     elif dataset.provider.name == NetCDFProvider.SALIENT:
-        return SalientZarrReader
+        forecast_date = kwargs.get('forecast_date', None)
+        return SalientReaderBuilder(
+            dataset, attributes, location_input,
+            start_date, end_date,
+            forecast_date=forecast_date
+        )
     elif dataset.provider.name in ['Tahmo', 'Arable']:
-        if use_parquet:
-            return ObservationParquetReader
-        return ObservationDatasetReader
+        use_parquet = kwargs.get('use_parquet', False)
+        return ObservationReaderBuilder(
+            dataset, attributes, location_input,
+            start_date, end_date, use_parquet=use_parquet
+        )
     elif dataset.provider.name in [WINBORNE_PROVIDER]:
-        if use_parquet:
-            return ObservationAirborneParquetReader
-        return ObservationAirborneDatasetReader
-    elif (
-        dataset.provider.name == TIO_PROVIDER and
-        dataset.store_type == DatasetStore.EXT_API
-    ):
-        return TomorrowIODatasetReader
-    elif (
-        dataset.provider.name == TIO_PROVIDER and
-        dataset.store_type == DatasetStore.ZARR
-    ):
-        return TioZarrReader
+        use_parquet = kwargs.get('use_parquet', False)
+        altitudes = kwargs.get('altitudes', None)
+        return ObservationAirborneReaderBuilder(
+            dataset, attributes, location_input,
+            start_date, end_date,
+            altitudes=altitudes,
+            use_parquet=use_parquet
+        )
+    elif dataset.provider.name == TIO_PROVIDER:
+        return TioReaderBuilder(
+            dataset, attributes, location_input,
+            start_date, end_date
+        )
+    elif dataset.provider.name == TAMSAT_PROVIDER:
+        return TamsatReaderBuilder(
+            dataset, attributes, location_input,
+            start_date, end_date
+        )
     else:
         raise TypeError(
             f'Unsupported provider name: {dataset.provider.name}'

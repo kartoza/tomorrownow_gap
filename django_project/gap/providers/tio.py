@@ -9,7 +9,7 @@ import json
 import logging
 import os
 from datetime import datetime, timedelta
-from typing import List, Tuple
+from typing import List
 
 import pytz
 import requests
@@ -30,6 +30,7 @@ from gap.models import (
     DatasetStore,
     DataSourceFile
 )
+from gap.providers.base import BaseReaderBuilder
 from gap.utils.reader import (
     LocationInputType,
     DatasetVariable,
@@ -132,13 +133,11 @@ class TomorrowIODatasetReader(BaseDatasetReader):
     def __init__(
             self, dataset: Dataset, attributes: List[DatasetAttribute],
             location_input: DatasetReaderInput, start_date: datetime,
-            end_date: datetime, verbose = False,
-            altitudes: Tuple[float, float] = None
+            end_date: datetime, verbose = False
     ) -> None:
         """Initialize Dataset Reader."""
         super().__init__(
-            dataset, attributes, location_input, start_date, end_date,
-            altitudes=altitudes
+            dataset, attributes, location_input, start_date, end_date
         )
         self.errors = None
         self.warnings = None
@@ -490,7 +489,9 @@ class TioZarrReaderValue(DatasetReaderValue):
             self, val: xrDataset | List[DatasetTimelineValue],
             location_input: DatasetReaderInput,
             attributes: List[DatasetAttribute],
-            forecast_date: np.datetime64) -> None:
+            forecast_date: np.datetime64,
+            start_datetime: np.datetime64,
+            end_datetime: np.datetime64) -> None:
         """Initialize TioZarrReaderValue class.
 
         :param val: value that has been read
@@ -502,49 +503,30 @@ class TioZarrReaderValue(DatasetReaderValue):
         """
         self.forecast_date = forecast_date
         super().__init__(val, location_input, attributes)
+        self.start_datetime = start_datetime
+        self.end_datetime = end_datetime
 
-    def _post_init(self):
-        if self.is_empty():
-            return
-        if not self._is_xr_dataset:
-            return
+    def _filter_df(self, df: pd.DataFrame) -> pd.DataFrame:
+        if not self.has_time_column:
+            return df
 
-        renamed_dict = {}
-        for attr in self.attributes:
-            renamed_dict[attr.source] = attr.attribute.variable_name
-        self._val = self._val.rename(renamed_dict)
+        # filter the dataframe based on the start and end datetime
+        if 'datetime' in df.columns:
+            return df[
+                (df['datetime'] >= self.start_datetime) &
+                (df['datetime'] <= self.end_datetime)
+            ]
+        df_reset = df.reset_index()
+        df_reset['datetime'] = pd.to_datetime(
+            df_reset['date'].astype(str) + ' ' + df_reset['time'].astype(str)
+        )
+        df_reset = df_reset[
+            (df_reset['datetime'] >= self.start_datetime) &
+            (df_reset['datetime'] <= self.end_datetime)
+        ]
+        df_reset = df_reset.drop(columns=['datetime'])
 
-    def _xr_dataset_to_dict(self) -> dict:
-        """Convert xArray Dataset to dictionary.
-
-        Implementation depends on provider.
-        :return: data dictionary
-        :rtype: dict
-        """
-        if self.is_empty():
-            return {
-                'geometry': json.loads(self.location_input.point.json),
-                'data': []
-            }
-        results: List[DatasetTimelineValue] = []
-        for dt_idx, dt in enumerate(
-            self.xr_dataset[self.date_variable].values):
-            value_data = {}
-            for attribute in self.attributes:
-                var_name = attribute.attribute.variable_name
-                v = self.xr_dataset[var_name].values[dt_idx]
-                value_data[var_name] = (
-                    v if not np.isnan(v) else None
-                )
-            results.append(DatasetTimelineValue(
-                dt,
-                value_data,
-                self.location_input.point
-            ))
-        return {
-            'geometry': json.loads(self.location_input.point.json),
-            'data': [result.to_dict() for result in results]
-        }
+        return df_reset.set_index(['date', 'time'])
 
 
 class TioZarrReader(BaseZarrReader):
@@ -555,13 +537,11 @@ class TioZarrReader(BaseZarrReader):
     def __init__(
             self, dataset: Dataset, attributes: List[DatasetAttribute],
             location_input: DatasetReaderInput, start_date: datetime,
-            end_date: datetime,
-            altitudes: Tuple[float, float] = None
+            end_date: datetime
     ) -> None:
         """Initialize TioZarrReader class."""
         super().__init__(
-            dataset, attributes, location_input, start_date, end_date,
-            altitudes=altitudes
+            dataset, attributes, location_input, start_date, end_date
         )
         self.latest_forecast_date = None
 
@@ -636,9 +616,20 @@ class TioZarrReader(BaseZarrReader):
             val = xr.concat(self.xrDatasets, dim='date').sortby('date')
             val = val.chunk({'date': 30})
 
+        start_dt = np.datetime64(self.start_date, 'ns')
+        end_dt = np.datetime64(self.end_date, 'ns')
+
+        if self.has_time_column:
+            date_b, time_b = xr.broadcast(val['date'], val['time'])
+            full_datetime = date_b + time_b
+            mask = (full_datetime >= start_dt) & \
+                (full_datetime <= end_dt)
+            val = val.where(mask, drop=False)
+
         return TioZarrReaderValue(
             val, self.location_input, self.attributes,
-            self.latest_forecast_date)
+            self.latest_forecast_date, start_dt, end_dt
+        )
 
     def _get_forecast_day_idx(self, date: np.datetime64) -> int:
         return int(
@@ -829,4 +820,20 @@ class TioZarrReader(BaseZarrReader):
         ).where(
             mask_da,
             drop=True
+        )
+
+
+class TioReaderBuilder(BaseReaderBuilder):
+    """Class to build Tomorrow.io reader."""
+
+    def build(self) -> BaseDatasetReader:
+        """Build a new Dataset Reader."""
+        if self.dataset.store_type == DatasetStore.EXT_API:
+            return TomorrowIODatasetReader(
+                self.dataset, self.attributes, self.location_input,
+                self.start_date, self.end_date
+            )
+        return TioZarrReader(
+            self.dataset, self.attributes, self.location_input,
+            self.start_date, self.end_date
         )
