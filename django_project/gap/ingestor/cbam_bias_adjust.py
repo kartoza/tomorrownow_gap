@@ -47,13 +47,13 @@ class CBAMBiasAdjustCollector(BaseIngestor):
             name='CBAM Climate Reanalysis (Bias-Corrected)')
         self.s3 = BaseZarrReader.get_s3_variables()
         self.s3_options = {
-            'key': self.s3.get('AWS_ACCESS_KEY_ID'),
-            'secret': self.s3.get('AWS_SECRET_ACCESS_KEY'),
+            'key': self.s3.get('S3_ACCESS_KEY_ID'),
+            'secret': self.s3.get('S3_SECRET_ACCESS_KEY'),
             'client_kwargs': BaseZarrReader.get_s3_client_kwargs()
         }
         self.fs = s3fs.S3FileSystem(
-            key=self.s3.get('AWS_ACCESS_KEY_ID'),
-            secret=self.s3.get('AWS_SECRET_ACCESS_KEY'),
+            key=self.s3.get('S3_ACCESS_KEY_ID'),
+            secret=self.s3.get('S3_SECRET_ACCESS_KEY'),
             client_kwargs=BaseZarrReader.get_s3_client_kwargs()
         )
 
@@ -86,7 +86,7 @@ class CBAMBiasAdjustCollector(BaseIngestor):
         """
         logger.info(f'Check NETCDF Files by dataset {self.dataset.name}')
 
-        bucket_name = self.s3.get('AWS_BUCKET_NAME')
+        bucket_name = self.s3.get('S3_BUCKET_NAME')
         self.total_count = 0
         for dirpath, dirnames, filenames in \
             self.fs.walk(f's3://{bucket_name}/{self.dir_path}'):
@@ -341,8 +341,8 @@ class CBAMBiasAdjustIngestor(BaseZarrIngestor):
         :rtype: xrDataset
         """
         fs = s3fs.S3FileSystem(
-            key=self.s3.get('AWS_ACCESS_KEY_ID'),
-            secret=self.s3.get('AWS_SECRET_ACCESS_KEY'),
+            key=self.s3.get('S3_ACCESS_KEY_ID'),
+            secret=self.s3.get('S3_SECRET_ACCESS_KEY'),
             client_kwargs=BaseZarrReader.get_s3_client_kwargs()
         )
 
@@ -356,7 +356,7 @@ class CBAMBiasAdjustIngestor(BaseZarrIngestor):
             raise RuntimeError('DataSourceFile must have attribute!')
 
         # build url
-        bucket_name = self.s3['AWS_BUCKET_NAME']
+        bucket_name = self.s3['S3_BUCKET_NAME']
         netcdf_url = f's3://{bucket_name}/{prefix}'
         if not netcdf_url.endswith('/'):
             netcdf_url += '/'

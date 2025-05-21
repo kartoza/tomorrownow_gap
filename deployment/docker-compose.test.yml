@@ -59,13 +59,13 @@ services:
       - SENTRY_ENVIRONMENT=staging
 
       # Minio
-      - MINIO_AWS_ACCESS_KEY_ID=minio_user
-      - MINIO_AWS_SECRET_ACCESS_KEY=minio_password
-      - MINIO_AWS_ENDPOINT_URL=http://minio:9000/
-      - MINIO_AWS_BUCKET_NAME=tomorrownow
-      - MINIO_AWS_DIR_PREFIX=dev/media
-      - MINIO_GAP_AWS_BUCKET_NAME=tngap-products
-      - MINIO_GAP_AWS_DIR_PREFIX=dev
+      - GAP_S3_ACCESS_KEY_ID=minio_user
+      - GAP_S3_SECRET_ACCESS_KEY=minio_password
+      - GAP_S3_ENDPOINT_URL=http://minio:9000/
+      - GAP_S3_MEDIA_BUCKET_NAME=tomorrownow
+      - GAP_S3_MEDIA_DIR_PREFIX=dev/media
+      - GAP_S3_PRODUCTS_BUCKET_NAME=tngap-products
+      - GAP_S3_PRODUCTS_DIR_PREFIX=dev
     entrypoint: [ ]
     ports:
       # for django test server

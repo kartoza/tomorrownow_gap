@@ -116,8 +116,8 @@ class TestSalientCollector(SalientIngestorBaseTest):
         super().setUp()
         # Mock S3 variables
         mock_get_s3_variables.return_value = {
-            'AWS_ACCESS_KEY_ID': 'fake-access-key',
-            'AWS_SECRET_ACCESS_KEY': 'fake-secret-key'
+            'S3_ACCESS_KEY_ID': 'fake-access-key',
+            'S3_SECRET_ACCESS_KEY': 'fake-secret-key'
         }
 
         # Mock S3 client kwargs
@@ -269,8 +269,8 @@ class TestSalientIngestor(SalientIngestorBaseTest):
             name='salient_test.zarr'
         )
         mock_get_s3_variables.return_value = {
-            'AWS_ACCESS_KEY_ID': 'test_access_key',
-            'AWS_SECRET_ACCESS_KEY': 'test_secret_key'
+            'S3_ACCESS_KEY_ID': 'test_access_key',
+            'S3_SECRET_ACCESS_KEY': 'test_secret_key'
         }
         mock_get_s3_client_kwargs.return_value = {
             'endpoint_url': 'https://test-endpoint.com'
@@ -284,7 +284,7 @@ class TestSalientIngestor(SalientIngestorBaseTest):
             trigger_task=False
         )
         ingestor = SalientIngestor(session)
-        self.assertEqual(ingestor.s3['AWS_ACCESS_KEY_ID'], 'test_access_key')
+        self.assertEqual(ingestor.s3['S3_ACCESS_KEY_ID'], 'test_access_key')
         self.assertEqual(ingestor.s3_options['key'], 'test_access_key')
         self.assertTrue(ingestor.datasource_file)
         self.assertEqual(ingestor.datasource_file.name, datasource.name)
@@ -416,10 +416,13 @@ class TestSalientIngestor(SalientIngestorBaseTest):
     def _get_file_remote_url(self, filename):
         # use gap products dir prefix
         output_url = os.environ.get(
-            'MINIO_GAP_AWS_DIR_PREFIX', '')
+            'GAP_S3_PRODUCTS_DIR_PREFIX', '')
         if not output_url.endswith('/'):
             output_url += '/'
-        output_url += f'salient_collector/{filename}'
+        output_url += os.path.join(
+            'salient_collector',
+            filename
+        )
 
         return output_url
 

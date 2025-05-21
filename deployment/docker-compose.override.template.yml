@@ -72,8 +72,8 @@ services:
       - "9010:9000"
       - "9011:9001"
     environment:
-      MINIO_ROOT_USER: ${MINIO_AWS_ACCESS_KEY_ID:-minio_tomorrownow}
-      MINIO_ROOT_PASSWORD: ${MINIO_AWS_SECRET_ACCESS_KEY:-minio_tomorrownow}
+      MINIO_ROOT_USER: ${GAP_S3_ACCESS_KEY_ID:-minio_tomorrownow}
+      MINIO_ROOT_PASSWORD: ${GAP_S3_SECRET_ACCESS_KEY:-minio_tomorrownow}
       MINIO_HTTP_TRACE: /opt/bitnami/minio/log/minio.log
     volumes:
       - ./volumes/minio_data:/data

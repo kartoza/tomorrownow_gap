@@ -164,7 +164,7 @@ class DCASPreferences:
     @staticmethod
     def object_storage_path(filename):
         """Return object storage upload path for csv output."""
-        dir_prefix = os.environ.get('MINIO_GAP_AWS_DIR_PREFIX', '')
+        dir_prefix = os.environ.get('GAP_S3_PRODUCTS_DIR_PREFIX', '')
         if dir_prefix and not dir_prefix.endswith('/'):
             dir_prefix += '/'
         return (

@@ -506,25 +506,25 @@ class DatasetReaderValue:
         :return: Dictionary of S3 env vars
         :rtype: dict
         """
-        prefix = 'MINIO'
+        prefix = 'GAP'
         keys = [
-            'AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY',
-            'AWS_ENDPOINT_URL', 'AWS_REGION_NAME'
+            'S3_ACCESS_KEY_ID', 'S3_SECRET_ACCESS_KEY',
+            'S3_ENDPOINT_URL', 'S3_REGION_NAME'
         ]
         results = {}
         for key in keys:
             results[key] = os.environ.get(f'{prefix}_{key}', '')
-        results['AWS_BUCKET_NAME'] = os.environ.get(
-            'MINIO_GAP_AWS_BUCKET_NAME', '')
-        results['AWS_DIR_PREFIX'] = os.environ.get(
-            'MINIO_GAP_AWS_DIR_PREFIX', '')
+        results['S3_BUCKET_NAME'] = os.environ.get(
+            'GAP_S3_PRODUCTS_BUCKET_NAME', '')
+        results['S3_DIR_PREFIX'] = os.environ.get(
+            'GAP_S3_PRODUCTS_DIR_PREFIX', '')
         return results
 
     def _get_file_remote_url(self, suffix):
         # s3 variables to product bucket
         s3 = self._get_s3_variables()
 
-        output_url = s3["AWS_DIR_PREFIX"]
+        output_url = s3["S3_DIR_PREFIX"]
         if not output_url.endswith('/'):
             output_url += '/'
         output_url += f'user_data/{uuid.uuid4().hex}{suffix}'

@@ -55,13 +55,13 @@ class SalientCollector(BaseIngestor):
         # init s3 variables and fs
         self.s3 = BaseZarrReader.get_s3_variables()
         self.s3_options = {
-            'key': self.s3.get('AWS_ACCESS_KEY_ID'),
-            'secret': self.s3.get('AWS_SECRET_ACCESS_KEY'),
+            'key': self.s3.get('S3_ACCESS_KEY_ID'),
+            'secret': self.s3.get('S3_SECRET_ACCESS_KEY'),
             'client_kwargs': BaseZarrReader.get_s3_client_kwargs()
         }
         self.fs = s3fs.S3FileSystem(
-            key=self.s3.get('AWS_ACCESS_KEY_ID'),
-            secret=self.s3.get('AWS_SECRET_ACCESS_KEY'),
+            key=self.s3.get('S3_ACCESS_KEY_ID'),
+            secret=self.s3.get('S3_SECRET_ACCESS_KEY'),
             client_kwargs=BaseZarrReader.get_s3_client_kwargs()
         )
 
@@ -275,7 +275,7 @@ class SalientIngestor(BaseZarrIngestor):
         :return: s3 path to the file
         :rtype: str
         """
-        dir_prefix = os.environ.get('MINIO_GAP_AWS_DIR_PREFIX', '')
+        dir_prefix = os.environ.get('GAP_S3_PRODUCTS_DIR_PREFIX', '')
         return os.path.join(
             dir_prefix,
             'salient_collector',
@@ -310,13 +310,13 @@ class SalientIngestor(BaseZarrIngestor):
         """
         s3 = BaseZarrReader.get_s3_variables()
         fs = s3fs.S3FileSystem(
-            key=s3.get('AWS_ACCESS_KEY_ID'),
-            secret=s3.get('AWS_SECRET_ACCESS_KEY'),
+            key=s3.get('S3_ACCESS_KEY_ID'),
+            secret=s3.get('S3_SECRET_ACCESS_KEY'),
             client_kwargs=NetCDFMediaS3.get_s3_client_kwargs()
         )
 
-        prefix = s3['AWS_DIR_PREFIX']
-        bucket_name = s3['AWS_BUCKET_NAME']
+        prefix = s3['S3_DIR_PREFIX']
+        bucket_name = s3['S3_BUCKET_NAME']
         netcdf_url = f's3://{bucket_name}/{prefix}'
         if not netcdf_url.endswith('/'):
             netcdf_url += '/'
