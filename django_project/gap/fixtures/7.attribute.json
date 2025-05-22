@@ -746,5 +746,16 @@
       "unit": 6,
       "is_active": true
     }
+  },
+  {
+    "model": "gap.attribute",
+    "pk": 69,
+    "fields": {
+      "name": "Wind Direction",
+      "description": "The direction from which it originates, measured in degrees clockwise from due north",
+      "variable_name": "wind_direction",
+      "unit": 11,
+      "is_active": true
+    }
   }
 ]

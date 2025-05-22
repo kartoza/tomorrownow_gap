@@ -1505,5 +1505,27 @@
       "source_unit": 1,
       "ensembles": false
     }
+  },
+  {
+    "model": "gap.datasetattribute",
+    "pk": 138,
+    "fields": {
+      "dataset": 12,
+      "attribute": 69,
+      "source": "wind_direction",
+      "source_unit": 11,
+      "ensembles": false
+    }
+  },
+  {
+    "model": "gap.datasetattribute",
+    "pk": 139,
+    "fields": {
+      "dataset": 13,
+      "attribute": 69,
+      "source": "windDirection",
+      "source_unit": 11,
+      "ensembles": false
+    }
   }
 ]
