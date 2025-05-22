@@ -30,7 +30,8 @@ from core.settings.utils import absolute_path
 from gap.factories.grid import GridFactory
 from gap.ingestor.tomorrowio import (
     path, TioShortTermCollector, TioShortTermDuckDBCollector,
-    TioShortTermHourlyDuckDBCollector, TioShortTermDailyCollector
+    TioShortTermHourlyDuckDBCollector, TioShortTermDailyCollector,
+    TioShortTermHourlyCollector
 )
 from gap.models import (
     Country, IngestorSessionStatus, IngestorType,
@@ -927,6 +928,28 @@ class TioHourlyShortTermDuckDBCollectorTest(
         self.assertIn('forecast_date', data_source.metadata)
         self.assertIn('remote_url', data_source.metadata)
         self.assert_duckdb_file(data_source)
+
+    def assert_init_dates(self):
+        """Test init dates."""
+        session = CollectorSession.objects.create(
+            ingestor_type=self.ingestor_type,
+            additional_config={
+                'duckdb_num_threads': 1,
+                'grid_batch_size': 1
+            }
+        )
+        collector = TioShortTermHourlyCollector(session)
+        today = datetime(2025, 4, 24, 0, 0, 0)
+        collector._init_dates(today)
+        self.assertEqual(
+            collector.start_dt,
+            datetime(2025, 4, 25, 0, 0, 0)
+        )
+        self.assertEqual(
+            collector.end_dt,
+            datetime(2025, 4, 30, 0, 0, 0)
+        )
+        self.assertEqual(collector.forecast_date, today)
 
 
 class TioShortTermAsyncCollectorTest(DailyDuckDBAssert, TestCase):
