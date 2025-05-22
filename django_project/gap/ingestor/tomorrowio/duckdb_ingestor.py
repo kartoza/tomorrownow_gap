@@ -385,7 +385,7 @@ class TioHourlyShortTermIngestor(TioShortTermDuckDBIngestor):
     TRIGGER_DCAS = False
     default_chunks = {
         'forecast_date': 10,
-        'forecast_day_idx': 21,
+        'forecast_day_idx': 4,
         'time': 24,
         'lat': 20,
         'lon': 20
@@ -399,7 +399,8 @@ class TioHourlyShortTermIngestor(TioShortTermDuckDBIngestor):
         'wind_speed',
         'solar_radiation',
         'weather_code',
-        'flood_index'
+        'flood_index',
+        'wind_direction'
     ]
 
     def __init__(self, session: CollectorSession, working_dir: str = '/tmp'):
@@ -461,7 +462,8 @@ class TioHourlyShortTermIngestor(TioShortTermDuckDBIngestor):
         """Get coordinates for the dataset."""
         forecast_date_array = pd.date_range(
             forecast_date.isoformat(), periods=1)
-        forecast_day_indices = np.arange(-6, 15, 1)
+        # generate 4 days of forecast
+        forecast_day_indices = np.arange(1, 5, 1)
         times = np.array([np.timedelta64(h, 'h') for h in range(24)])
         return {
             'forecast_date': ('forecast_date', forecast_date_array),
