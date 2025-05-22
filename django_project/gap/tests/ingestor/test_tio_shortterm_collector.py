@@ -30,7 +30,8 @@ from core.settings.utils import absolute_path
 from gap.factories.grid import GridFactory
 from gap.ingestor.tomorrowio import (
     path, TioShortTermCollector, TioShortTermDuckDBCollector,
-    TioShortTermHourlyDuckDBCollector, TioShortTermDailyCollector
+    TioShortTermHourlyDuckDBCollector, TioShortTermDailyCollector,
+    TioShortTermHourlyCollector
 )
 from gap.models import (
     Country, IngestorSessionStatus, IngestorType,
@@ -115,7 +116,7 @@ class DailyDuckDBAssert:
             data = data.drop(
                 columns=['id', 'grid_id', 'lat', 'lon', 'date', 'time']
             )
-            print(data.iloc[0].to_dict())
+            # print(data.iloc[0].to_dict())
             # compare dataframe
             pd.testing.assert_frame_equal(
                 data,
@@ -169,7 +170,7 @@ class HourlyDuckDBAssert:
             self.assertEqual(rows[0], 24)
             # Check the columns in the table
             columns = duckdb_conn.execute("DESCRIBE weather").fetchall()
-            self.assertEqual(len(columns), 15)
+            self.assertEqual(len(columns), 16)
             columns_str = [col[0] for col in columns]
             self.assertIn('id', columns_str)
             self.assertIn('grid_id', columns_str)
@@ -196,8 +197,8 @@ class HourlyDuckDBAssert:
                 columns=['id', 'grid_id', 'lat', 'lon', 'date', 'time']
             )
             data = data.reset_index(drop=True)
-            print(data)
-            print(data.iloc[0].to_dict())
+            # print(data)
+            # print(data.iloc[0].to_dict())
             # compare dataframe
             pd.testing.assert_frame_equal(
                 data,
@@ -211,7 +212,8 @@ class HourlyDuckDBAssert:
                         'precipitation_probability': 0.0,
                         'weather_code': 1100.0,
                         'flood_index': np.nan,
-                        'humidity': 61.0
+                        'humidity': 61.0,
+                        'wind_direction': np.nan
                     }
                 ])
             )
@@ -926,6 +928,28 @@ class TioHourlyShortTermDuckDBCollectorTest(
         self.assertIn('forecast_date', data_source.metadata)
         self.assertIn('remote_url', data_source.metadata)
         self.assert_duckdb_file(data_source)
+
+    def test_assert_init_dates(self):
+        """Test init dates."""
+        session = CollectorSession.objects.create(
+            ingestor_type=self.ingestor_type,
+            additional_config={
+                'duckdb_num_threads': 1,
+                'grid_batch_size': 1
+            }
+        )
+        collector = TioShortTermHourlyCollector(session)
+        today = datetime(2025, 4, 24, 0, 0, 0)
+        collector._init_dates(today)
+        self.assertEqual(
+            collector.start_dt,
+            datetime(2025, 4, 25, 0, 0, 0)
+        )
+        self.assertEqual(
+            collector.end_dt,
+            datetime(2025, 4, 29, 0, 0, 0)
+        )
+        self.assertEqual(collector.forecast_date, today)
 
 
 class TioShortTermAsyncCollectorTest(DailyDuckDBAssert, TestCase):

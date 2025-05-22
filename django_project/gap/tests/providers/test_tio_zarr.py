@@ -470,8 +470,9 @@ class TestHourlyTioZarrReader(TestCase):
             self.assertIn('temperature', header)
             result_str = StringIO(header + '\n' + str(result[1]))
             result_df = pd.read_csv(result_str)
+            print(result_df)
             df = result_df[
-                (result_df['date'] == '2025-04-24') &
+                (result_df['date'] == '2025-04-25') &
                 (result_df['lat'] == -4.65014) &
                 (result_df['lon'] == 33.9182)
             ]
@@ -490,4 +491,4 @@ class TestHourlyTioZarrReader(TestCase):
             data_value = self.reader.get_data_values().to_json()
             mock_open.assert_called_once()
             result_data = data_value['data']
-            self.assertEqual(len(result_data), 68)
+            self.assertEqual(len(result_data), 50)

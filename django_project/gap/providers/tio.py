@@ -589,7 +589,8 @@ class TioZarrReader(BaseZarrReader):
                 dval = dval.assign_coords(date=('date', forecast_day))
                 self.xrDatasets.append(dval)
 
-        if ranges['past']:
+        # Hourly dataset does not have past historical data
+        if ranges['past'] and self.dataset.time_step == DatasetTimeStep.DAILY:
             val = self.read_variables(
                 ds, ranges['past'][0], ranges['past'][1]
             )

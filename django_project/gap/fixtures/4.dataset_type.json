@@ -103,7 +103,7 @@
     "model": "gap.datasettype",
     "pk": 11,
     "fields": {
-      "name": "CBAM Short-Term Weather Hourly Forecast (14-days)",
+      "name": "CBAM Short-Term Weather Hourly Forecast (4-days)",
       "description": "",
       "type": "forecast",
       "variable_name": "cbam_shortterm_hourly_forecast"

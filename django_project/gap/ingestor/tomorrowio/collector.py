@@ -157,3 +157,11 @@ class TioShortTermHourlyCollector(TioShortTermDailyCollector):
             time_step=DatasetTimeStep.HOURLY,
             is_internal_use=True
         )
+
+    def _init_dates(self, today: datetime):
+        """Initialize start and end dates."""
+        # Retrieve 4 days of forecast D+1 to D+4
+        # Total days: 4
+        self.start_dt = today + timedelta(days=1)
+        self.end_dt = today + timedelta(days=5)
+        self.forecast_date = today

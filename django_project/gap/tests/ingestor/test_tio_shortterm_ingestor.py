@@ -107,10 +107,13 @@ def mock_hourly_open_zarr_dataset():
     # Create the Dataset
     forecast_date_array = pd.date_range(
         '2025-04-24', periods=1)
-    forecast_day_indices = np.arange(-6, 15, 1)
+    forecast_day_indices = np.arange(1, 5, 1)
     times = np.array([np.timedelta64(h, 'h') for h in range(24)])
-    empty_shape = (1, 21, 24, len(new_lat), len(new_lon))
-    chunks = (1, 21, 24, 20, 20)
+    empty_shape = (
+        1, len(forecast_day_indices), 24,
+        len(new_lat), len(new_lon)
+    )
+    chunks = (1, len(forecast_day_indices), 24, 20, 20)
     data_vars = {
         'temperature': (
             ['forecast_date', 'forecast_day_idx', 'time', 'lat', 'lon'],
@@ -670,7 +673,7 @@ class TestDuckDBTioHourlyIngestor(TestCase):
         collector_runner = TioShortTermHourlyDuckDBCollector(self.collector)
         collector_runner._init_table(duckdb_conn)
         json_data = json.load(json_f)
-        forecast_day_indices = range(-6, 15, 1)
+        forecast_day_indices = range(1, 5, 1)
         for i in forecast_day_indices:
             date = datetime.fromisoformat(
                 json_data['data']['timelines'][0]['intervals'][0]['startTime']
