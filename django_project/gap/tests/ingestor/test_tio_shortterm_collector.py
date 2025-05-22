@@ -929,7 +929,7 @@ class TioHourlyShortTermDuckDBCollectorTest(
         self.assertIn('remote_url', data_source.metadata)
         self.assert_duckdb_file(data_source)
 
-    def assert_init_dates(self):
+    def test_assert_init_dates(self):
         """Test init dates."""
         session = CollectorSession.objects.create(
             ingestor_type=self.ingestor_type,
@@ -947,7 +947,7 @@ class TioHourlyShortTermDuckDBCollectorTest(
         )
         self.assertEqual(
             collector.end_dt,
-            datetime(2025, 4, 30, 0, 0, 0)
+            datetime(2025, 4, 29, 0, 0, 0)
         )
         self.assertEqual(collector.forecast_date, today)
 
