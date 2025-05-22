@@ -115,7 +115,7 @@ class DailyDuckDBAssert:
             data = data.drop(
                 columns=['id', 'grid_id', 'lat', 'lon', 'date', 'time']
             )
-            print(data.iloc[0].to_dict())
+            # print(data.iloc[0].to_dict())
             # compare dataframe
             pd.testing.assert_frame_equal(
                 data,
@@ -169,7 +169,7 @@ class HourlyDuckDBAssert:
             self.assertEqual(rows[0], 24)
             # Check the columns in the table
             columns = duckdb_conn.execute("DESCRIBE weather").fetchall()
-            self.assertEqual(len(columns), 15)
+            self.assertEqual(len(columns), 16)
             columns_str = [col[0] for col in columns]
             self.assertIn('id', columns_str)
             self.assertIn('grid_id', columns_str)
@@ -196,8 +196,8 @@ class HourlyDuckDBAssert:
                 columns=['id', 'grid_id', 'lat', 'lon', 'date', 'time']
             )
             data = data.reset_index(drop=True)
-            print(data)
-            print(data.iloc[0].to_dict())
+            # print(data)
+            # print(data.iloc[0].to_dict())
             # compare dataframe
             pd.testing.assert_frame_equal(
                 data,
@@ -211,7 +211,8 @@ class HourlyDuckDBAssert:
                         'precipitation_probability': 0.0,
                         'weather_code': 1100.0,
                         'flood_index': np.nan,
-                        'humidity': 61.0
+                        'humidity': 61.0,
+                        'wind_direction': np.nan
                     }
                 ])
             )
