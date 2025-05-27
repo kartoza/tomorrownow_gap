@@ -186,7 +186,9 @@ class ObjectStorageManager(models.Model):
         return s3_dicts
 
     @classmethod
-    def get_s3_client_kwargs(cls, connection_name = None, s3: dict = None) -> dict:
+    def get_s3_client_kwargs(
+        cls, connection_name = None, s3: dict = None
+    ) -> dict:
         """Get S3 client kwargs for Object Storage Manager.
 
         :return: Dictionary with key endpoint_url or region_name

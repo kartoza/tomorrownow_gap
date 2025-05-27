@@ -5,7 +5,6 @@ Tomorrow Now GAP.
 .. note:: Unit tests for NetCDF Utilities.
 """
 
-import os
 import json
 from django.test import TestCase
 from datetime import datetime

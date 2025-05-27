@@ -5,8 +5,6 @@ Tomorrow Now GAP.
 .. note:: Helper for reading and writing Parquet Files
 """
 
-
-import os
 import logging
 import pandas as pd
 import numpy as np
@@ -90,7 +88,7 @@ class ParquetConverter:
         """
         if s3 is None:
             s3 = cls._get_s3_variables()
-        
+
         client_kwargs = {}
         if s3.get('S3_ENDPOINT_URL'):
             client_kwargs['endpoint_url'] = s3['S3_ENDPOINT_URL']

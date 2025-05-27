@@ -5,7 +5,6 @@ Tomorrow Now GAP.
 .. note:: Helper for reading NetCDF File
 """
 
-import os
 import logging
 import traceback
 from typing import List

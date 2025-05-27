@@ -17,8 +17,6 @@ import pandas as pd
 from xarray.core.dataset import Dataset as xrDataset
 from django.utils import timezone
 
-
-from core.models import ObjectStorageManager
 from gap.models import (
     Dataset, DataSourceFile, DatasetStore,
     IngestorSession, IngestorSessionProgress, IngestorSessionStatus,

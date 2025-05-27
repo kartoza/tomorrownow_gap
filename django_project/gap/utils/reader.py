@@ -5,7 +5,6 @@ Tomorrow Now GAP.
 .. note:: Helper for reading dataset
 """
 
-import os
 import json
 import tempfile
 import dask
