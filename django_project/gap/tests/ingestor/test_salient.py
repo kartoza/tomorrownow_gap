@@ -89,6 +89,7 @@ class SalientIngestorBaseTest(TestCase):
     """Base test for Salient ingestor/collector."""
 
     fixtures = [
+        '1.object_storage_manager.json',
         '2.provider.json',
         '3.station_type.json',
         '4.dataset_type.json',
@@ -244,23 +245,21 @@ class TestSalientCollector(SalientIngestorBaseTest):
 class TestSalientIngestor(SalientIngestorBaseTest):
     """Salient ingestor test case."""
 
-    @patch('gap.utils.zarr.BaseZarrReader.get_s3_variables')
-    @patch('gap.utils.zarr.BaseZarrReader.get_s3_client_kwargs')
-    def test_init_with_existing_source(
-        self, mock_get_s3_client_kwargs, mock_get_s3_variables
-    ):
+    @patch(
+        'core.models.object_storage_manager.ObjectStorageManager.'
+        'get_s3_env_vars'
+    )
+    def test_init_with_existing_source(self, mock_get_s3_env):
         """Test init method with existing DataSourceFile."""
         datasource = DataSourceFileFactory.create(
             dataset=self.dataset,
             format=DatasetStore.ZARR,
             name='salient_test.zarr'
         )
-        mock_get_s3_variables.return_value = {
+        mock_get_s3_env.return_value = {
             'S3_ACCESS_KEY_ID': 'test_access_key',
-            'S3_SECRET_ACCESS_KEY': 'test_secret_key'
-        }
-        mock_get_s3_client_kwargs.return_value = {
-            'endpoint_url': 'https://test-endpoint.com'
+            'S3_SECRET_ACCESS_KEY': 'test_secret_key',
+            'S3_ENDPOINT_URL': 'https://test-endpoint.com',
         }
         session = IngestorSession.objects.create(
             ingestor_type=IngestorType.SALIENT,

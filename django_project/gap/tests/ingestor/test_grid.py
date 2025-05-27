@@ -23,6 +23,10 @@ from gap.models.station import Country
 class GridIngestorTest(TestCase):
     """Grid ingestor test case."""
 
+    fixtures = [
+        '1.object_storage_manager.json',
+    ]
+
     def setUp(self):
         """Init test case."""
         Country.objects.create(

@@ -22,6 +22,7 @@ class TestDCASErrorLogResource(TestCase):
     """Test case for DCASErrorLogResource."""
 
     fixtures = [
+        '1.object_storage_manager.json',
         '12.crop_stage_type.json',
         '13.crop_growth_stage.json',
         '14.crop.json'

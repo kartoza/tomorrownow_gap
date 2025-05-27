@@ -43,6 +43,7 @@ class TestTioZarrReaderValue(TestCase):
     """Unit test for class TioZarrReaderValue."""
 
     fixtures = [
+        '1.object_storage_manager.json',
         '2.provider.json',
         '3.station_type.json',
         '4.dataset_type.json',
@@ -164,6 +165,7 @@ class TestTioZarrReader(TestCase):
     """Unit test for Tio Zarr Reader class."""
 
     fixtures = [
+        '1.object_storage_manager.json',
         '2.provider.json',
         '3.station_type.json',
         '4.dataset_type.json',
@@ -399,6 +401,7 @@ class TestHourlyTioZarrReader(TestCase):
     """Unit test for Hourly Tio Zarr Reader class."""
 
     fixtures = [
+        '1.object_storage_manager.json',
         '2.provider.json',
         '3.station_type.json',
         '4.dataset_type.json',

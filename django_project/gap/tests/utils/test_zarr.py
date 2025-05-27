@@ -263,6 +263,7 @@ class TestAdminZarrFileActions(TestCase):
     """Test for actions for Zarr DataSourceFile."""
 
     fixtures = [
+        '1.object_storage_manager.json',
         '2.provider.json',
         '3.station_type.json',
         '4.dataset_type.json',

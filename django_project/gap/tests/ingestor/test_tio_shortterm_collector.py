@@ -228,6 +228,7 @@ class TioShortTermCollectorTest(BaseTestWithPatchResponses, TestCase):
     """Tio Collector test case."""
 
     fixtures = [
+        '1.object_storage_manager.json',
         '2.provider.json',
         '3.station_type.json',
         '4.dataset_type.json',
@@ -605,6 +606,7 @@ class TioShortTermDuckDBCollectorTest(
     """Tio DuckDB Collector test case."""
 
     fixtures = [
+        '1.object_storage_manager.json',
         '2.provider.json',
         '3.station_type.json',
         '4.dataset_type.json',
@@ -835,6 +837,7 @@ class TioHourlyShortTermDuckDBCollectorTest(
     """Tio Hourly DuckDB Collector test case."""
 
     fixtures = [
+        '1.object_storage_manager.json',
         '2.provider.json',
         '3.station_type.json',
         '4.dataset_type.json',
@@ -956,6 +959,7 @@ class TioShortTermAsyncCollectorTest(DailyDuckDBAssert, TestCase):
     """Tio Async Collector test case."""
 
     fixtures = [
+        '1.object_storage_manager.json',
         '2.provider.json',
         '3.station_type.json',
         '4.dataset_type.json',

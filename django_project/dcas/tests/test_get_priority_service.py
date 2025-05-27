@@ -25,6 +25,7 @@ class TestMessagePriorityService(TestCase):
     """Test cases for MessagePriorityService."""
 
     fixtures = [
+        '1.object_storage_manager.json',
         '1.dcas_config.json'
     ]
 

@@ -15,6 +15,10 @@ from gap.ingestor.base import BaseIngestor, ingestor_revoked_handler
 class BaseIngestorTest(TestCase):
     """Base ingestor test case."""
 
+    fixtures = [
+        '1.object_storage_manager.json',
+    ]
+
     def test_is_cancelled(self):
         """Test is_cancelled method."""
         session = IngestorSession.objects.create()

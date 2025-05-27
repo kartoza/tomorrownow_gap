@@ -41,6 +41,7 @@ class TestSalientReaderValue(TestCase):
     """Unit test for class SalientReaderValue."""
 
     fixtures = [
+        '1.object_storage_manager.json',
         '2.provider.json',
         '3.station_type.json',
         '4.dataset_type.json',
@@ -157,6 +158,10 @@ class TestSalientReaderValue(TestCase):
 
 class TestSalientNetCDFReader(TestCase):
     """Unit test for Salient NetCDFReader class."""
+
+    fixtures = [
+        '1.object_storage_manager.json',
+    ]
 
     def setUp(self):
         """Set Test class for SalientNetCDFReader."""
@@ -326,6 +331,7 @@ class TestSalientZarrReader(TestCase):
     """Unit test for Salient SalientZarrReader class."""
 
     fixtures = [
+        '1.object_storage_manager.json',
         '2.provider.json',
         '3.station_type.json',
         '4.dataset_type.json',

@@ -271,6 +271,10 @@ class TestObservationReader(TestCase):
 class TestObservationParquetReader(TestCase):
     """Unit tests for ObservationParquetReader class."""
 
+    fixtures = [
+        '1.object_storage_manager.json'
+    ]
+
     def setUp(self):
         """Set up test environment."""
         self.dataset = DatasetFactory.create(
