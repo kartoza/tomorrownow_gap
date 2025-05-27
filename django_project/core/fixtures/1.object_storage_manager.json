@@ -1,0 +1,18 @@
+[
+{
+    "model": "core.objectstoragemanager",
+    "pk": 1,
+    "fields": {
+        "connection_name": "default",
+        "protocol": "S3",
+        "access_key_id_var": "GAP_S3_ACCESS_KEY_ID",
+        "secret_access_key_var": "GAP_S3_SECRET_ACCESS_KEY",
+        "bucket_name": "GAP_S3_PRODUCTS_BUCKET_NAME",
+        "endpoint_url": "GAP_S3_ENDPOINT_URL",
+        "region_name": null,
+        "directory_prefix": "GAP_S3_PRODUCTS_DIR_PREFIX",
+        "use_env_vars": true,
+        "created_on": "2025-05-27T06:15:22.836Z"
+    }
+}
+]
