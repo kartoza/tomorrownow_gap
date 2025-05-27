@@ -26,7 +26,7 @@ from django.core.files.storage import storages
 from storages.backends.s3boto3 import S3Boto3Storage
 from typing import List
 
-
+from core.models import ObjectStorageManager
 from gap.models import (
     Dataset, DataSourceFile, DatasetStore,
     IngestorSession, CollectorSession, Preferences,
@@ -34,7 +34,7 @@ from gap.models import (
     IngestorSessionStatus
 )
 from gap.ingestor.base import BaseIngestor, BaseZarrIngestor, CoordMapping
-from gap.utils.netcdf import NetCDFMediaS3, find_start_latlng
+from gap.utils.netcdf import find_start_latlng
 from gap.utils.zarr import BaseZarrReader
 from gap.utils.dask import execute_dask_compute
 
@@ -52,18 +52,8 @@ class SalientCollector(BaseIngestor):
         super().__init__(session, working_dir)
         self.dataset = Dataset.objects.get(name='Salient Seasonal Forecast')
 
-        # init s3 variables and fs
-        self.s3 = BaseZarrReader.get_s3_variables()
-        self.s3_options = {
-            'key': self.s3.get('S3_ACCESS_KEY_ID'),
-            'secret': self.s3.get('S3_SECRET_ACCESS_KEY'),
-            'client_kwargs': BaseZarrReader.get_s3_client_kwargs()
-        }
-        self.fs = s3fs.S3FileSystem(
-            key=self.s3.get('S3_ACCESS_KEY_ID'),
-            secret=self.s3.get('S3_SECRET_ACCESS_KEY'),
-            client_kwargs=BaseZarrReader.get_s3_client_kwargs()
-        )
+        # init fs
+        self.fs = s3fs.S3FileSystem(**self.s3_options)
 
         # reset variables
         self.total_count = 0
@@ -134,7 +124,7 @@ class SalientCollector(BaseIngestor):
         # store as netcdf to S3
         filename = f'{str(uuid.uuid4())}.nc'
         netcdf_url = (
-            NetCDFMediaS3.get_netcdf_base_url(self.s3) +
+            ObjectStorageManager.get_s3_base_url(self.s3) +
             'salient_collector/' + filename
         )
         self.fs.put(file_path, netcdf_url)
@@ -154,7 +144,10 @@ class SalientCollector(BaseIngestor):
             start_date_time=start_datetime,
             end_date_time=end_datetime,
             created_on=timezone.now(),
-            format=DatasetStore.NETCDF
+            format=DatasetStore.NETCDF,
+            metadata={
+                's3_connection_name': self.s3.get('S3_CONNECTION_NAME', None),
+            }
         ))
         self.total_count += 1
         self.session.dataset_files.set(self.data_files)
@@ -308,11 +301,17 @@ class SalientIngestor(BaseZarrIngestor):
         :return: xarray dataset
         :rtype: xrDataset
         """
-        s3 = BaseZarrReader.get_s3_variables()
+        s3 = ObjectStorageManager.get_s3_env_vars(
+            connection_name=self.get_config(
+                's3_connection_name', None
+            )
+        )
         fs = s3fs.S3FileSystem(
             key=s3.get('S3_ACCESS_KEY_ID'),
             secret=s3.get('S3_SECRET_ACCESS_KEY'),
-            client_kwargs=NetCDFMediaS3.get_s3_client_kwargs()
+            client_kwargs=ObjectStorageManager.get_s3_client_kwargs(
+                s3=s3
+            )
         )
 
         prefix = s3['S3_DIR_PREFIX']

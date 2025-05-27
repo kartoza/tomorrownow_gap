@@ -18,7 +18,7 @@ from django.utils import timezone
 from django.core.files.storage import default_storage
 from django.db import transaction
 
-from core.models import BackgroundTask
+from core.models import BackgroundTask, ObjectStorageManager
 from gap.models import (
     CollectorSession,
     IngestorSession,
@@ -78,6 +78,10 @@ class BaseIngestor:
         self.working_dir = working_dir
         self.min_ingested_date = None
         self.max_ingested_date = None
+        # s3 variables for storing the product
+        self.s3 = None
+        self.s3_options = None
+        self._init_s3()
 
     def is_cancelled(self):
         """Check if session is cancelled by user.
@@ -161,6 +165,22 @@ class BaseIngestor:
             notes=notes
         )
 
+    def _init_s3(self):
+        """Initialize S3 variables for this ingestor."""
+        if self.s3 is None:
+            self.s3 = ObjectStorageManager.get_s3_env_vars(
+                connection_name=self.get_config(
+                    's3_connection_name', None
+                )
+            )
+            self.s3_options = {
+                'key': self.s3.get('S3_ACCESS_KEY_ID'),
+                'secret': self.s3.get('S3_SECRET_ACCESS_KEY'),
+                'client_kwargs': ObjectStorageManager.get_s3_client_kwargs(
+                    s3=self.s3
+                )
+            }
+
 
 class BaseZarrIngestor(BaseIngestor):
     """Base Ingestor class for Zarr product."""
@@ -174,12 +194,6 @@ class BaseZarrIngestor(BaseIngestor):
         super().__init__(session, working_dir)
         self.dataset = self._init_dataset()
 
-        self.s3 = BaseZarrReader.get_s3_variables()
-        self.s3_options = {
-            'key': self.s3.get('S3_ACCESS_KEY_ID'),
-            'secret': self.s3.get('S3_SECRET_ACCESS_KEY'),
-            'client_kwargs': BaseZarrReader.get_s3_client_kwargs()
-        }
         self.metadata = {}
         self.reindex_tolerance = 0.001
         self.existing_dates = None

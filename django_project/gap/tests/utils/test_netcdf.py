@@ -66,40 +66,6 @@ class TestNetCDFProvider(TestCase):
         self.assertEqual(NetCDFProvider.CBAM, 'CBAM')
         self.assertEqual(NetCDFProvider.SALIENT, 'Salient')
 
-    @patch.dict(os.environ, {
-        'CBAM_S3_ACCESS_KEY_ID': 'test_key',
-        'CBAM_S3_SECRET_ACCESS_KEY': 'test_secret',
-        'CBAM_S3_ENDPOINT_URL': 'https://test.endpoint',
-        'CBAM_S3_BUCKET_NAME': 'test_bucket',
-        'CBAM_S3_DIR_PREFIX': 'test_prefix',
-        'CBAM_S3_REGION_NAME': 'test_region'
-    })
-    def test_get_s3_variables(self):
-        """Test get_s3_variables method."""
-        expected = {
-            'S3_ACCESS_KEY_ID': 'test_key',
-            'S3_SECRET_ACCESS_KEY': 'test_secret',
-            'S3_ENDPOINT_URL': 'https://test.endpoint',
-            'S3_BUCKET_NAME': 'test_bucket',
-            'S3_DIR_PREFIX': 'test_prefix',
-            'S3_REGION_NAME': 'test_region'
-        }
-        self.assertEqual(
-            NetCDFProvider.get_s3_variables(self.provider), expected)
-
-    @patch.dict(os.environ, {
-        'CBAM_S3_ENDPOINT_URL': 'https://test.endpoint',
-        'CBAM_S3_REGION_NAME': 'test_region'
-    })
-    def test_get_s3_client_kwargs(self):
-        """Test for get_s3_client_kwargs."""
-        expected = {
-            'endpoint_url': 'https://test.endpoint',
-            'region_name': 'test_region'
-        }
-        self.assertEqual(
-            NetCDFProvider.get_s3_client_kwargs(self.provider), expected)
-
 
 class TestDaterangeInc(TestCase):
     """Unit test for daterange_inc function."""
@@ -431,19 +397,17 @@ class TestCBAMNetCDFReader(TestCase):
         result = reader.read_variables(xrDataset)
         self.assertEqual(result, [])
 
-    @patch('gap.utils.netcdf.NetCDFProvider.get_s3_client_kwargs')
-    @patch('gap.utils.netcdf.NetCDFProvider.get_s3_variables')
     @patch('fsspec.filesystem')
     def test_setup_reader(
-        self, mock_filesystem, mock_get_s3_vars, mock_get_s3_kwargs):
+        self, mock_filesystem):
         """Test for setup NetCDFReader class."""
-        mock_get_s3_kwargs.return_value = {
-            'endpoint_url': 'test_endpoint'
-        }
-        mock_get_s3_vars.return_value = {
-            'S3_ACCESS_KEY_ID': 'test_key_id',
-            'S3_SECRET_ACCESS_KEY': 'test_key_secret',
-        }
+        # mock_get_s3_kwargs.return_value = {
+        #     'endpoint_url': 'test_endpoint'
+        # }
+        # mock_get_s3_vars.return_value = {
+        #     'S3_ACCESS_KEY_ID': 'test_key_id',
+        #     'S3_SECRET_ACCESS_KEY': 'test_key_secret',
+        # }
         reader = CBAMNetCDFReader(Mock(), [], Mock(), Mock(), Mock())
         reader.setup_reader()
         mock_filesystem.assert_called_once_with(

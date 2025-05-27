@@ -156,11 +156,8 @@ class TestTioIngestor(TestCase):
         '8.dataset_attribute.json'
     ]
 
-    @patch('gap.utils.netcdf.NetCDFMediaS3')
     @patch('gap.utils.zarr.BaseZarrReader')
-    def setUp(
-            self, mock_zarr_reader,
-            mock_netcdf_media_s3):
+    def setUp(self, mock_zarr_reader):
         """Initialize TestTioIngestor."""
         super().setUp()
         self.dataset = Dataset.objects.get(
@@ -195,7 +192,7 @@ class TestTioIngestor(TestCase):
         self.session.collectors.set([self.collector])
 
         self.mock_zarr_reader = mock_zarr_reader
-        self.mock_netcdf_media_s3 = mock_netcdf_media_s3
+        # self.mock_netcdf_media_s3 = mock_netcdf_media_s3
         # self.mock_dask_compute = mock_dask_compute
 
         self.ingestor = TioShortTermIngestor(self.session)
@@ -471,11 +468,8 @@ class TestDuckDBTioIngestor(TestCase):
         '8.dataset_attribute.json'
     ]
 
-    @patch('gap.utils.netcdf.NetCDFMediaS3')
     @patch('gap.utils.zarr.BaseZarrReader')
-    def setUp(
-            self, mock_zarr_reader,
-            mock_netcdf_media_s3):
+    def setUp(self, mock_zarr_reader):
         """Initialize TestDuckDBTioIngestor."""
         super().setUp()
         self.dataset = Dataset.objects.get(
@@ -510,7 +504,7 @@ class TestDuckDBTioIngestor(TestCase):
         self.session.collectors.set([self.collector])
 
         self.mock_zarr_reader = mock_zarr_reader
-        self.mock_netcdf_media_s3 = mock_netcdf_media_s3
+        # self.mock_netcdf_media_s3 = mock_netcdf_media_s3
         # self.mock_dask_compute = mock_dask_compute
 
         self.ingestor = TioShortTermDuckDBIngestor(self.session)
@@ -605,11 +599,8 @@ class TestDuckDBTioHourlyIngestor(TestCase):
         '8.dataset_attribute.json'
     ]
 
-    @patch('gap.utils.netcdf.NetCDFMediaS3')
     @patch('gap.utils.zarr.BaseZarrReader')
-    def setUp(
-            self, mock_zarr_reader,
-            mock_netcdf_media_s3):
+    def setUp(self, mock_zarr_reader):
         """Initialize TestDuckDBTioHourlyIngestor."""
         super().setUp()
         self.dataset = Dataset.objects.get(
@@ -644,7 +635,7 @@ class TestDuckDBTioHourlyIngestor(TestCase):
         self.session.collectors.set([self.collector])
 
         self.mock_zarr_reader = mock_zarr_reader
-        self.mock_netcdf_media_s3 = mock_netcdf_media_s3
+        # self.mock_netcdf_media_s3 = mock_netcdf_media_s3
         # self.mock_dask_compute = mock_dask_compute
 
         self.ingestor = TioHourlyShortTermIngestor(self.session)

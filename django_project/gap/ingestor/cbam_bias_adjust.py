@@ -22,7 +22,7 @@ from django.utils import timezone
 from typing import List
 from xarray.core.dataset import Dataset as xrDataset
 
-
+from core.models import ObjectStorageManager
 from gap.models import (
     Dataset, DataSourceFile, DatasetStore,
     IngestorSession, IngestorSessionProgress, IngestorSessionStatus,
@@ -45,17 +45,8 @@ class CBAMBiasAdjustCollector(BaseIngestor):
         super().__init__(session, working_dir)
         self.dataset = Dataset.objects.get(
             name='CBAM Climate Reanalysis (Bias-Corrected)')
-        self.s3 = BaseZarrReader.get_s3_variables()
-        self.s3_options = {
-            'key': self.s3.get('S3_ACCESS_KEY_ID'),
-            'secret': self.s3.get('S3_SECRET_ACCESS_KEY'),
-            'client_kwargs': BaseZarrReader.get_s3_client_kwargs()
-        }
-        self.fs = s3fs.S3FileSystem(
-            key=self.s3.get('S3_ACCESS_KEY_ID'),
-            secret=self.s3.get('S3_SECRET_ACCESS_KEY'),
-            client_kwargs=BaseZarrReader.get_s3_client_kwargs()
-        )
+        # S3 connection to the NetCDF files
+        self.fs = s3fs.S3FileSystem(**self.s3_options)
 
         self.dir_path = session.additional_config.get('directory_path', None)
         if not self.dir_path:
@@ -148,7 +139,11 @@ class CBAMBiasAdjustCollector(BaseIngestor):
                     format=DatasetStore.NETCDF,
                     metadata={
                         'attribute': attribute,
-                        'directory_path': self.dir_path
+                        'directory_path': self.dir_path,
+                        's3_connection_name': self.s3.get(
+                            'S3_CONNECTION_NAME',
+                            None
+                        ),
                     }
                 ))
                 self.total_count += 1
@@ -340,10 +335,16 @@ class CBAMBiasAdjustIngestor(BaseZarrIngestor):
         :return: xarray dataset
         :rtype: xrDataset
         """
+        s3_connection_name = source_file.metadata['s3_connection_name']
+        s3 = ObjectStorageManager.get_s3_env_vars(
+            s3_connection_name
+        )
         fs = s3fs.S3FileSystem(
-            key=self.s3.get('S3_ACCESS_KEY_ID'),
-            secret=self.s3.get('S3_SECRET_ACCESS_KEY'),
-            client_kwargs=BaseZarrReader.get_s3_client_kwargs()
+            key=s3.get('S3_ACCESS_KEY_ID'),
+            secret=s3.get('S3_SECRET_ACCESS_KEY'),
+            client_kwargs=ObjectStorageManager.get_s3_client_kwargs(
+                s3=s3
+            )
         )
 
         # check for directory_path
@@ -356,7 +357,7 @@ class CBAMBiasAdjustIngestor(BaseZarrIngestor):
             raise RuntimeError('DataSourceFile must have attribute!')
 
         # build url
-        bucket_name = self.s3['S3_BUCKET_NAME']
+        bucket_name = s3['S3_BUCKET_NAME']
         netcdf_url = f's3://{bucket_name}/{prefix}'
         if not netcdf_url.endswith('/'):
             netcdf_url += '/'
@@ -451,11 +452,14 @@ class CBAMBiasAdjustIngestor(BaseZarrIngestor):
             'total_processed': 0
         }
 
+        # use first collector
+        collector = self.session.collectors.first()
+        if not collector:
+            logger.error('No collector found for this ingestor session.')
+            return
+
         # query NetCDF DataSourceFile for CBAM Dataset
-        sources = DataSourceFile.objects.filter(
-            dataset=self.dataset,
-            format=DatasetStore.NETCDF
-        ).order_by('start_date_time')
+        sources = collector.dataset_files.order_by('start_date_time')
 
         logger.info(f'Total CBAM source files: {sources.count()}')
         if not sources.exists():

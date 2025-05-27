@@ -117,7 +117,7 @@ class DCASQueriesTest(DCASPipelineBaseTest):
             duck_db_num_threads=2
         )
         dcas_output._setup_s3fs()
-        s3 = dcas_output._get_s3_variables()
+        s3 = dcas_output.s3
 
         # Call the function
         db_config = dcas_output._get_duckdb_config(s3)
@@ -160,7 +160,7 @@ class DCASQueriesTest(DCASPipelineBaseTest):
             duck_db_num_threads=2
         )
         dcas_output._setup_s3fs()
-        s3 = dcas_output._get_s3_variables()
+        s3 = dcas_output.s3
 
         # Call the function
         db_config = dcas_output._get_duckdb_config(s3)
@@ -211,7 +211,7 @@ class DCASQueriesTest(DCASPipelineBaseTest):
             duck_db_num_threads=2
         )
         dcas_output._setup_s3fs()
-        s3 = dcas_output._get_s3_variables()
+        s3 = dcas_output.s3
 
         # Call the function
         db_config = dcas_output._get_duckdb_config(s3)

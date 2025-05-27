@@ -46,17 +46,15 @@ class CBAMCollectorTest(CBAMIngestorBaseTest):
     """CBAM collector test case."""
 
     @patch('gap.ingestor.cbam.s3fs.S3FileSystem')
-    @patch('gap.utils.netcdf.NetCDFProvider.get_s3_variables')
-    @patch('gap.utils.netcdf.NetCDFProvider.get_s3_client_kwargs')
     def test_cbam_collector(
-        self, mock_get_s3_kwargs, mock_get_s3_env, mock_s3fs
+        self, mock_s3fs
     ):
         """Test run cbam collector."""
-        mock_get_s3_env.return_value = {
-            'S3_DIR_PREFIX': 'cbam',
-            'S3_ENDPOINT_URL': 'test_endpoint',
-            'S3_BUCKET_NAME': 'test_bucket'
-        }
+        # mock_get_s3_env.return_value = {
+        #     'S3_DIR_PREFIX': 'cbam',
+        #     'S3_ENDPOINT_URL': 'test_endpoint',
+        #     'S3_BUCKET_NAME': 'test_bucket'
+        # }
         mock_fs = MagicMock()
         mock_s3fs.return_value = mock_fs
         mock_fs.walk.return_value = [
@@ -100,17 +98,10 @@ class CBAMCollectorTest(CBAMIngestorBaseTest):
         )
 
     @patch('gap.ingestor.cbam.s3fs.S3FileSystem')
-    @patch('gap.utils.netcdf.NetCDFProvider.get_s3_variables')
-    @patch('gap.utils.netcdf.NetCDFProvider.get_s3_client_kwargs')
     def test_cbam_collector_cancel(
-        self, mock_get_s3_kwargs, mock_get_s3_env, mock_s3fs
+        self, mock_s3fs
     ):
         """Test run cbam collector."""
-        mock_get_s3_env.return_value = {
-            'S3_DIR_PREFIX': 'cbam',
-            'S3_ENDPOINT_URL': 'test_endpoint',
-            'S3_BUCKET_NAME': 'test_bucket'
-        }
         mock_fs = MagicMock()
         mock_s3fs.return_value = mock_fs
         mock_fs.walk.return_value = [
