@@ -28,6 +28,7 @@ class CBAMIngestorBaseTest(TestCase):
     """Base test for CBAM ingestor/collector."""
 
     fixtures = [
+        '1.object_storage_manager.json',
         '2.provider.json',
         '3.station_type.json',
         '4.dataset_type.json',
@@ -45,12 +46,12 @@ class CBAMIngestorBaseTest(TestCase):
 class CBAMCollectorTest(CBAMIngestorBaseTest):
     """CBAM collector test case."""
 
+    @patch(
+        'core.models.object_storage_manager.ObjectStorageManager.'
+        'get_s3_env_vars'
+    )
     @patch('gap.ingestor.cbam.s3fs.S3FileSystem')
-    @patch('gap.utils.netcdf.NetCDFProvider.get_s3_variables')
-    @patch('gap.utils.netcdf.NetCDFProvider.get_s3_client_kwargs')
-    def test_cbam_collector(
-        self, mock_get_s3_kwargs, mock_get_s3_env, mock_s3fs
-    ):
+    def test_cbam_collector(self, mock_s3fs, mock_get_s3_env):
         """Test run cbam collector."""
         mock_get_s3_env.return_value = {
             'S3_DIR_PREFIX': 'cbam',
@@ -99,12 +100,12 @@ class CBAMCollectorTest(CBAMIngestorBaseTest):
             ).exists()
         )
 
+    @patch(
+        'core.models.object_storage_manager.ObjectStorageManager.'
+        'get_s3_env_vars'
+    )
     @patch('gap.ingestor.cbam.s3fs.S3FileSystem')
-    @patch('gap.utils.netcdf.NetCDFProvider.get_s3_variables')
-    @patch('gap.utils.netcdf.NetCDFProvider.get_s3_client_kwargs')
-    def test_cbam_collector_cancel(
-        self, mock_get_s3_kwargs, mock_get_s3_env, mock_s3fs
-    ):
+    def test_cbam_collector_cancel(self, mock_s3fs, mock_get_s3_env):
         """Test run cbam collector."""
         mock_get_s3_env.return_value = {
             'S3_DIR_PREFIX': 'cbam',
@@ -140,6 +141,7 @@ class CBAMIngestorTest(CBAMIngestorBaseTest):
     """CBAM ingestor test case."""
 
     fixtures = [
+        '1.object_storage_manager.json',
         '2.provider.json',
         '3.station_type.json',
         '4.dataset_type.json',
@@ -149,16 +151,16 @@ class CBAMIngestorTest(CBAMIngestorBaseTest):
         '8.dataset_attribute.json'
     ]
 
-    @patch('gap.utils.zarr.BaseZarrReader.get_s3_variables')
-    @patch('gap.utils.zarr.BaseZarrReader.get_s3_client_kwargs')
-    def test_init(self, mock_get_s3_client_kwargs, mock_get_s3_variables):
+    @patch(
+        'core.models.object_storage_manager.ObjectStorageManager.'
+        'get_s3_env_vars'
+    )
+    def test_init(self, mock_get_s3_env):
         """Test init method."""
-        mock_get_s3_variables.return_value = {
+        mock_get_s3_env.return_value = {
             'S3_ACCESS_KEY_ID': 'test_access_key',
-            'S3_SECRET_ACCESS_KEY': 'test_secret_key'
-        }
-        mock_get_s3_client_kwargs.return_value = {
-            'endpoint_url': 'https://test-endpoint.com'
+            'S3_SECRET_ACCESS_KEY': 'test_secret_key',
+            'S3_ENDPOINT_URL': 'https://test-endpoint.com'
         }
         session = IngestorSession.objects.create(
             ingestor_type=IngestorType.CBAM,
@@ -171,23 +173,21 @@ class CBAMIngestorTest(CBAMIngestorBaseTest):
         self.assertIn('.zarr', ingestor.datasource_file.name)
         self.assertTrue(ingestor.created)
 
-    @patch('gap.utils.zarr.BaseZarrReader.get_s3_variables')
-    @patch('gap.utils.zarr.BaseZarrReader.get_s3_client_kwargs')
-    def test_init_with_existing_source(
-        self, mock_get_s3_client_kwargs, mock_get_s3_variables
-    ):
+    @patch(
+        'core.models.object_storage_manager.ObjectStorageManager.'
+        'get_s3_env_vars'
+    )
+    def test_init_with_existing_source(self, mock_get_s3_env):
         """Test init method with existing DataSourceFile."""
         datasource = DataSourceFileFactory.create(
             dataset=self.dataset,
             format=DatasetStore.ZARR,
             name='cbam_test.zarr'
         )
-        mock_get_s3_variables.return_value = {
+        mock_get_s3_env.return_value = {
             'S3_ACCESS_KEY_ID': 'test_access_key',
-            'S3_SECRET_ACCESS_KEY': 'test_secret_key'
-        }
-        mock_get_s3_client_kwargs.return_value = {
-            'endpoint_url': 'https://test-endpoint.com'
+            'S3_SECRET_ACCESS_KEY': 'test_secret_key',
+            'S3_ENDPOINT_URL': 'https://test-endpoint.com'
         }
         session = IngestorSession.objects.create(
             ingestor_type=IngestorType.CBAM,
@@ -239,16 +239,10 @@ class CBAMIngestorTest(CBAMIngestorBaseTest):
         self, mock_setup_reader, mock_open_dataset, mock_open_dataset_reader
     ):
         """Test run ingestor."""
-        session = IngestorSession.objects.create(
-            ingestor_type=IngestorType.CBAM,
-            trigger_task=False
+        collector = CollectorSession.objects.create(
+            ingestor_type=IngestorType.CBAM
         )
-        ingestor = CBAMIngestor(session)
-        mock_ds = MagicMock(spec=xrDataset)
-        mock_open_dataset.return_value = mock_ds
-        mock_open_dataset_reader.return_value = mock_ds
-
-        DataSourceFile.objects.create(
+        data_source = DataSourceFile.objects.create(
             name='test',
             dataset=self.dataset,
             start_date_time=datetime.combine(
@@ -258,6 +252,16 @@ class CBAMIngestorTest(CBAMIngestorBaseTest):
             format=DatasetStore.NETCDF,
             created_on=datetime.combine(date=date(2023, 1, 1), time=time.min)
         )
+        collector.dataset_files.set([data_source])
+        session = IngestorSession.objects.create(
+            ingestor_type=IngestorType.CBAM,
+            trigger_task=False
+        )
+        session.collectors.set([collector])
+        ingestor = CBAMIngestor(session)
+        mock_ds = MagicMock(spec=xrDataset)
+        mock_open_dataset.return_value = mock_ds
+        mock_open_dataset_reader.return_value = mock_ds
 
         ingestor.is_date_in_zarr = MagicMock(return_value=False)
         ingestor.store_as_zarr = MagicMock()

@@ -5,7 +5,6 @@ Tomorrow Now GAP.
 .. note:: Helper for reading dataset
 """
 
-import os
 import json
 import tempfile
 import dask
@@ -25,6 +24,7 @@ from django.contrib.gis.geos import (
 )
 from xarray.core.dataset import Dataset as xrDataset
 
+from core.models import ObjectStorageManager
 from gap.models import (
     CastType,
     Attribute,
@@ -506,18 +506,7 @@ class DatasetReaderValue:
         :return: Dictionary of S3 env vars
         :rtype: dict
         """
-        prefix = 'GAP'
-        keys = [
-            'S3_ACCESS_KEY_ID', 'S3_SECRET_ACCESS_KEY',
-            'S3_ENDPOINT_URL', 'S3_REGION_NAME'
-        ]
-        results = {}
-        for key in keys:
-            results[key] = os.environ.get(f'{prefix}_{key}', '')
-        results['S3_BUCKET_NAME'] = os.environ.get(
-            'GAP_S3_PRODUCTS_BUCKET_NAME', '')
-        results['S3_DIR_PREFIX'] = os.environ.get(
-            'GAP_S3_PRODUCTS_DIR_PREFIX', '')
+        results = ObjectStorageManager.get_s3_env_vars()
         return results
 
     def _get_file_remote_url(self, suffix):

@@ -89,6 +89,7 @@ class SalientIngestorBaseTest(TestCase):
     """Base test for Salient ingestor/collector."""
 
     fixtures = [
+        '1.object_storage_manager.json',
         '2.provider.json',
         '3.station_type.json',
         '4.dataset_type.json',
@@ -106,24 +107,12 @@ class SalientIngestorBaseTest(TestCase):
 class TestSalientCollector(SalientIngestorBaseTest):
     """Salient collector test case."""
 
-    @patch('gap.ingestor.salient.NetCDFMediaS3.get_s3_variables')
-    @patch('gap.ingestor.salient.NetCDFMediaS3.get_s3_client_kwargs')
     @patch('gap.ingestor.salient.s3fs.S3FileSystem')
     def setUp(
-        self, mock_s3fs, mock_get_s3_client_kwargs, mock_get_s3_variables
+        self, mock_s3fs
     ):
         """Initialize TestSalientCollector."""
         super().setUp()
-        # Mock S3 variables
-        mock_get_s3_variables.return_value = {
-            'S3_ACCESS_KEY_ID': 'fake-access-key',
-            'S3_SECRET_ACCESS_KEY': 'fake-secret-key'
-        }
-
-        # Mock S3 client kwargs
-        mock_get_s3_client_kwargs.return_value = {
-            'endpoint_url': 'https://fake-s3-endpoint'
-        }
 
         # Mock S3FileSystem object
         mock_fs = MagicMock()
@@ -164,14 +153,13 @@ class TestSalientCollector(SalientIngestorBaseTest):
 
     @patch('os.stat')
     @patch('uuid.uuid4')
-    @patch('gap.utils.netcdf.NetCDFMediaS3.get_netcdf_base_url')
     def test_store_as_netcdf_file(
-        self, mock_get_netcdf_base_url, mock_uuid4,
+        self, mock_uuid4,
         mock_os_stat
     ):
         """Test storing the downscaled Salient NetCDF as a file."""
         mock_uuid4.return_value = '1234-5678'
-        mock_get_netcdf_base_url.return_value = 's3://fake-bucket/'
+        # mock_get_netcdf_base_url.return_value = 's3://fake-bucket/'
         mock_os_stat.return_value.st_size = 1048576
 
         self.collector._store_as_netcdf_file('fake_path.nc', '2024-08-28')
@@ -257,23 +245,21 @@ class TestSalientCollector(SalientIngestorBaseTest):
 class TestSalientIngestor(SalientIngestorBaseTest):
     """Salient ingestor test case."""
 
-    @patch('gap.utils.zarr.BaseZarrReader.get_s3_variables')
-    @patch('gap.utils.zarr.BaseZarrReader.get_s3_client_kwargs')
-    def test_init_with_existing_source(
-        self, mock_get_s3_client_kwargs, mock_get_s3_variables
-    ):
+    @patch(
+        'core.models.object_storage_manager.ObjectStorageManager.'
+        'get_s3_env_vars'
+    )
+    def test_init_with_existing_source(self, mock_get_s3_env):
         """Test init method with existing DataSourceFile."""
         datasource = DataSourceFileFactory.create(
             dataset=self.dataset,
             format=DatasetStore.ZARR,
             name='salient_test.zarr'
         )
-        mock_get_s3_variables.return_value = {
+        mock_get_s3_env.return_value = {
             'S3_ACCESS_KEY_ID': 'test_access_key',
-            'S3_SECRET_ACCESS_KEY': 'test_secret_key'
-        }
-        mock_get_s3_client_kwargs.return_value = {
-            'endpoint_url': 'https://test-endpoint.com'
+            'S3_SECRET_ACCESS_KEY': 'test_secret_key',
+            'S3_ENDPOINT_URL': 'https://test-endpoint.com',
         }
         session = IngestorSession.objects.create(
             ingestor_type=IngestorType.SALIENT,

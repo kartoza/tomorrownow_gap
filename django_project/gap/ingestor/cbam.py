@@ -17,14 +17,13 @@ import pandas as pd
 from xarray.core.dataset import Dataset as xrDataset
 from django.utils import timezone
 
-
 from gap.models import (
     Dataset, DataSourceFile, DatasetStore,
     IngestorSession, IngestorSessionProgress, IngestorSessionStatus,
     CollectorSession
 )
 from gap.providers import CBAMNetCDFReader
-from gap.utils.netcdf import NetCDFProvider, find_start_latlng
+from gap.utils.netcdf import find_start_latlng
 from gap.utils.zarr import BaseZarrReader
 from gap.ingestor.base import BaseIngestor
 from gap.utils.dask import execute_dask_compute
@@ -40,13 +39,8 @@ class CBAMCollector(BaseIngestor):
         """Initialize CBAMCollector."""
         super().__init__(session, working_dir)
         self.dataset = Dataset.objects.get(name='CBAM Climate Reanalysis')
-        self.s3 = NetCDFProvider.get_s3_variables(self.dataset.provider)
-        self.fs = s3fs.S3FileSystem(
-            key=self.s3.get('S3_ACCESS_KEY_ID'),
-            secret=self.s3.get('S3_SECRET_ACCESS_KEY'),
-            client_kwargs=NetCDFProvider.get_s3_client_kwargs(
-                self.dataset.provider)
-        )
+        # S3 connection to the NetCDF files
+        self.fs = s3fs.S3FileSystem(**self.s3_options)
         self.total_count = 0
         self.data_files = []
 
@@ -114,7 +108,13 @@ class CBAMCollector(BaseIngestor):
                     start_date_time=start_datetime,
                     end_date_time=start_datetime,
                     created_on=timezone.now(),
-                    format=DatasetStore.NETCDF
+                    format=DatasetStore.NETCDF,
+                    metadata={
+                        's3_connection_name': self.s3.get(
+                            'S3_CONNECTION_NAME',
+                            None
+                        ),
+                    }
                 ))
                 self.total_count += 1
 
@@ -146,12 +146,6 @@ class CBAMIngestor(BaseIngestor):
         """Initialize CBAMIngestor."""
         super().__init__(session, working_dir)
         self.dataset = self._init_dataset()
-        self.s3 = BaseZarrReader.get_s3_variables()
-        self.s3_options = {
-            'key': self.s3.get('S3_ACCESS_KEY_ID'),
-            'secret': self.s3.get('S3_SECRET_ACCESS_KEY'),
-            'client_kwargs': BaseZarrReader.get_s3_client_kwargs()
-        }
 
         # get zarr data source file
         self.datasource_file, self.created = self._init_datasource()
@@ -282,11 +276,14 @@ class CBAMIngestor(BaseIngestor):
             'total_processed': 0
         }
 
+        # use first collector
+        collector = self.session.collectors.first()
+        if not collector:
+            logger.error('No collector found for this ingestor session.')
+            return
+
         # query NetCDF DataSourceFile for CBAM Dataset
-        sources = DataSourceFile.objects.filter(
-            dataset=self.dataset,
-            format=DatasetStore.NETCDF
-        ).order_by('start_date_time')
+        sources = collector.dataset_files.order_by('start_date_time')
         logger.info(f'Total CBAM source files: {sources.count()}')
         if not sources.exists():
             return

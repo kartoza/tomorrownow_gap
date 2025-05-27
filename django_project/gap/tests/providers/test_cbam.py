@@ -36,6 +36,10 @@ from gap.factories import (
 class TestCBAMNetCDFReader(TestCase):
     """Unit test for CBAM NetCDFReader class."""
 
+    fixtures = [
+        '1.object_storage_manager.json'
+    ]
+
     def setUp(self) -> None:
         """Set test class."""
         self.dataset = DatasetFactory.create(
@@ -100,6 +104,7 @@ class TestCBAMZarrReader(TestCase):
     """Test class for CBAMZarrReader."""
 
     fixtures = [
+        '1.object_storage_manager.json',
         '2.provider.json',
         '3.station_type.json',
         '4.dataset_type.json',

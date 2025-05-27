@@ -21,6 +21,7 @@ class DCASRuleIngestorTest(TestCase):
     """DCAS Rule ingestor test case."""
 
     fixtures = [
+        '1.object_storage_manager.json',
         '6.unit.json',
         '7.attribute.json',
         '12.crop_stage_type.json',
@@ -123,6 +124,7 @@ class DCASMessageIngestorTest(TestCase):
     """DCAS Message ingestor test case."""
 
     fixtures = [
+        '1.object_storage_manager.json',
         '6.unit.json',
         '7.attribute.json',
         '12.crop_stage_type.json',

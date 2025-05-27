@@ -75,6 +75,7 @@ class CBAMBiasAdjustIngestorBaseTest(TestCase):
     """Base test for CBAM ingestor/collector."""
 
     fixtures = [
+        '1.object_storage_manager.json',
         '2.provider.json',
         '3.station_type.json',
         '4.dataset_type.json',
@@ -93,12 +94,12 @@ class CBAMBiasAdjustIngestorBaseTest(TestCase):
 class CBAMBiasAdjustCollectorTest(CBAMBiasAdjustIngestorBaseTest):
     """CBAM collector test case."""
 
+    @patch(
+        'core.models.object_storage_manager.ObjectStorageManager.'
+        'get_s3_env_vars'
+    )
     @patch('gap.ingestor.cbam_bias_adjust.s3fs.S3FileSystem')
-    @patch('gap.utils.zarr.BaseZarrReader.get_s3_variables')
-    @patch('gap.utils.zarr.BaseZarrReader.get_s3_client_kwargs')
-    def test_cbam_collector(
-        self, mock_get_s3_kwargs, mock_get_s3_env, mock_s3fs
-    ):
+    def test_cbam_collector(self, mock_s3fs, mock_get_s3_env):
         """Test run cbam collector."""
         mock_get_s3_env.return_value = {
             'S3_DIR_PREFIX': 'cbam',
@@ -242,10 +243,9 @@ class CBAMBiasAdjustIngestorTest(CBAMBiasAdjustIngestorBaseTest):
             ingestor.created = False
 
     @patch('xarray.open_dataset')
-    @patch('gap.utils.zarr.BaseZarrReader.get_s3_client_kwargs')
     @patch('s3fs.S3FileSystem')
     def test_open_netcdf_file(
-        self, mock_s3_filesystem, mock_get_s3_client_kwargs, mock_open_dataset
+        self, mock_s3_filesystem, mock_open_dataset
     ):
         """Test open_netcdf_file."""
         session = IngestorSession.objects.create(
@@ -268,7 +268,8 @@ class CBAMBiasAdjustIngestorTest(CBAMBiasAdjustIngestorBaseTest):
             format=DatasetStore.ZARR,
             created_on=datetime.combine(date=date(2023, 1, 1), time=time.min),
             metadata={
-                'attribute': 'max_total_temperature'
+                'attribute': 'max_total_temperature',
+                's3_connection_name': 'default'
             }
         )
         with self.assertRaises(RuntimeError) as ctx:
@@ -286,7 +287,8 @@ class CBAMBiasAdjustIngestorTest(CBAMBiasAdjustIngestorBaseTest):
             format=DatasetStore.ZARR,
             created_on=datetime.combine(date=date(2023, 1, 1), time=time.min),
             metadata={
-                'directory_path': 'cbam_bias'
+                'directory_path': 'cbam_bias',
+                's3_connection_name': 'default'
             }
         )
         with self.assertRaises(RuntimeError) as ctx:
@@ -305,7 +307,8 @@ class CBAMBiasAdjustIngestorTest(CBAMBiasAdjustIngestorBaseTest):
             created_on=datetime.combine(date=date(2023, 1, 1), time=time.min),
             metadata={
                 'directory_path': 'cbam_bias',
-                'attribute': 'max_total_temperature'
+                'attribute': 'max_total_temperature',
+                's3_connection_name': 'default'
             }
         )
         ingestor._open_netcdf_file(datasourcefile)
@@ -342,23 +345,16 @@ class CBAMBiasAdjustIngestorTest(CBAMBiasAdjustIngestorBaseTest):
 
     @patch('xarray.Dataset.to_zarr')
     @patch('xarray.open_dataset')
-    @patch('gap.utils.zarr.BaseZarrReader.get_s3_client_kwargs')
     @patch('s3fs.S3FileSystem')
     @patch('gap.ingestor.cbam_bias_adjust.execute_dask_compute')
     def test_run_ingestor(
-        self, mock_dask_compute, mock_s3_filesystem, mock_get_s3_client_kwargs,
+        self, mock_dask_compute, mock_s3_filesystem,
         mock_open_dataset, mock_to_zarr
     ):
         """Test ingestor _run method."""
         mock_open_dataset.return_value = mock_open_zarr_dataset('time')
 
-        session = IngestorSession.objects.create(
-            ingestor_type=IngestorType.CBAM_BIAS_ADJUST,
-            trigger_task=False
-        )
-        ingestor = CBAMBiasAdjustIngestor(session)
-        ingestor.created = False
-        DataSourceFile.objects.create(
+        data_source = DataSourceFile.objects.create(
             name='test',
             dataset=self.dataset,
             start_date_time=datetime.combine(
@@ -369,9 +365,26 @@ class CBAMBiasAdjustIngestorTest(CBAMBiasAdjustIngestorBaseTest):
             created_on=datetime.combine(date=date(2023, 1, 1), time=time.min),
             metadata={
                 'directory_path': 'cbam_bias',
-                'attribute': 'max_total_temperature'
+                'attribute': 'max_total_temperature',
+                's3_connection_name': 'default'
             }
         )
+        collector = CollectorSession.objects.create(
+            ingestor_type=IngestorType.CBAM_BIAS_ADJUST,
+            additional_config={
+                'directory_path': 'cbam_bias'
+            }
+        )
+        collector.dataset_files.set([data_source])
+
+        session = IngestorSession.objects.create(
+            ingestor_type=IngestorType.CBAM_BIAS_ADJUST,
+            trigger_task=False
+        )
+        session.collectors.set([collector])
+        ingestor = CBAMBiasAdjustIngestor(session)
+        ingestor.created = False
+
         with patch.object(ingestor, '_open_zarr_dataset') as mock_open:
             mock_open.return_value = mock_open_zarr_dataset()
             ingestor._run()

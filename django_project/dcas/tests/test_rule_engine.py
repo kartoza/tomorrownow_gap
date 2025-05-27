@@ -21,6 +21,7 @@ class DCASRuleEngineTest(TestCase, BaseRuleEngineTest):
     """DCAS Rule Engine test case."""
 
     fixtures = [
+        '1.object_storage_manager.json',
         '6.unit.json',
         '7.attribute.json',
         '12.crop_stage_type.json',

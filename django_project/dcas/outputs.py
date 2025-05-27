@@ -18,6 +18,7 @@ from typing import Union
 import duckdb
 from django.conf import settings
 
+from core.models import ObjectStorageManager
 from core.utils.file import format_size
 from gap.utils.dask import execute_dask_compute
 
@@ -144,55 +145,20 @@ class DCASPipelineOutput:
 
     def _setup_s3fs(self):
         """Initialize s3fs."""
-        self.s3 = self._get_s3_variables()
+        self.s3 = ObjectStorageManager.get_s3_env_vars()
         self.s3_options = {
             'key': self.s3.get('S3_ACCESS_KEY_ID'),
             'secret': self.s3.get('S3_SECRET_ACCESS_KEY'),
-            'client_kwargs': self._get_s3_client_kwargs()
+            'client_kwargs': ObjectStorageManager.get_s3_client_kwargs(
+                s3=self.s3
+            )
         }
         self.fs = fsspec.filesystem(
             's3',
             key=self.s3.get('S3_ACCESS_KEY_ID'),
             secret=self.s3.get('S3_SECRET_ACCESS_KEY'),
-            client_kwargs=self._get_s3_client_kwargs()
+            client_kwargs=self.s3_options['client_kwargs']
         )
-
-    def _get_s3_variables(self) -> dict:
-        """Get s3 env variables for product bucket.
-
-        :return: Dictionary of S3 env vars
-        :rtype: dict
-        """
-        prefix = 'GAP'
-        keys = [
-            'S3_ACCESS_KEY_ID', 'S3_SECRET_ACCESS_KEY',
-            'S3_ENDPOINT_URL', 'S3_REGION_NAME'
-        ]
-        results = {}
-        for key in keys:
-            results[key] = os.environ.get(f'{prefix}_{key}', '')
-        results['S3_BUCKET_NAME'] = os.environ.get(
-            'GAP_S3_PRODUCTS_BUCKET_NAME', '')
-        results['S3_DIR_PREFIX'] = os.environ.get(
-            'GAP_S3_PRODUCTS_DIR_PREFIX', '')
-
-        return results
-
-    def _get_s3_client_kwargs(self) -> dict:
-        """Get s3 client kwargs for parquet file.
-
-        :return: dictionary with key endpoint_url or region_name
-        :rtype: dict
-        """
-        prefix = 'GAP'
-        client_kwargs = {}
-        if os.environ.get(f'{prefix}_S3_ENDPOINT_URL', ''):
-            client_kwargs['endpoint_url'] = os.environ.get(
-                f'{prefix}_S3_ENDPOINT_URL', '')
-        if os.environ.get(f'{prefix}_S3_REGION_NAME', ''):
-            client_kwargs['region_name'] = os.environ.get(
-                f'{prefix}_S3_REGION_NAME', '')
-        return client_kwargs
 
     def _get_directory_path(self, directory_name):
         return (
@@ -348,7 +314,7 @@ class DCASPipelineOutput:
             f"'{self._get_directory_path(self.DCAS_OUTPUT_DIR)}/"
             "iso_a3=*/year=*/month=*/day=*/*.parquet'"
         )
-        s3 = self._get_s3_variables()
+        s3 = ObjectStorageManager.get_s3_env_vars()
         conn = self._get_connection(s3)
 
         # Copy data from parquet to duckdb table

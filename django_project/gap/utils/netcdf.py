@@ -5,7 +5,6 @@ Tomorrow Now GAP.
 .. note:: Helper for reading NetCDF File
 """
 
-import os
 import logging
 import traceback
 from typing import List
@@ -17,8 +16,8 @@ import xarray as xr
 from xarray.core.dataset import Dataset as xrDataset
 import fsspec
 
+from core.models import ObjectStorageManager
 from gap.models import (
-    Provider,
     Dataset,
     DatasetAttribute,
     DataSourceFile
@@ -38,45 +37,6 @@ class NetCDFProvider:
 
     CBAM = 'CBAM'
     SALIENT = 'Salient'
-
-    @classmethod
-    def get_s3_variables(cls, provider: Provider):
-        """Get s3 variables for data access.
-
-        :param provider: NetCDF Data Provider
-        :type provider: Provider
-        :return: Dict<Key, Value> of S3 Credentials
-        :rtype: dict
-        """
-        prefix = provider.name.upper()
-        keys = [
-            'S3_ACCESS_KEY_ID', 'S3_SECRET_ACCESS_KEY',
-            'S3_ENDPOINT_URL', 'S3_BUCKET_NAME',
-            'S3_DIR_PREFIX', 'S3_REGION_NAME'
-        ]
-        results = {}
-        for key in keys:
-            results[key] = os.environ.get(f'{prefix}_{key}', '')
-        return results
-
-    @classmethod
-    def get_s3_client_kwargs(cls, provider: Provider):
-        """Get s3 client_kwargs for s3fs initialization.
-
-        :param provider: NetCDF Data Provider
-        :type provider: Provider
-        :return: Dict of endpoint_url or region_name
-        :rtype: dict
-        """
-        prefix = provider.name.upper()
-        client_kwargs = {}
-        if os.environ.get(f'{prefix}_S3_ENDPOINT_URL', ''):
-            client_kwargs['endpoint_url'] = os.environ.get(
-                f'{prefix}_S3_ENDPOINT_URL', '')
-        if os.environ.get(f'{prefix}_S3_REGION_NAME', ''):
-            client_kwargs['region_name'] = os.environ.get(
-                f'{prefix}_S3_REGION_NAME', '')
-        return client_kwargs
 
 
 def daterange_inc(start_date: datetime, end_date: datetime):
@@ -110,70 +70,6 @@ def find_start_latlng(metadata: dict) -> float:
     return metadata['original_min'] - (diff * metadata['inc'])
 
 
-class NetCDFMediaS3:
-    """Class to provide S3 variables to Media bucket."""
-
-    @classmethod
-    def get_s3_variables(cls, dir_name: str) -> dict:
-        """Get s3 env variables for NetCDF file.
-
-        :param dir_name: Directory name
-        :type dir_name: str
-        :return: Dictionary of S3 env vars
-        :rtype: dict
-        """
-        prefix = 'GAP'
-        keys = [
-            'S3_ACCESS_KEY_ID', 'S3_SECRET_ACCESS_KEY',
-            'S3_ENDPOINT_URL', 'S3_REGION_NAME'
-        ]
-        results = {}
-        for key in keys:
-            results[key] = os.environ.get(f'{prefix}_{key}', '')
-        results['S3_BUCKET_NAME'] = os.environ.get(
-            'GAP_S3_MEDIA_BUCKET_NAME', '')
-        dir_prefix = os.environ.get(
-            'GAP_S3_MEDIA_DIR_PREFIX', '')
-        results['S3_DIR_PREFIX'] = os.path.join(
-            dir_prefix,
-            dir_name
-        )
-        return results
-
-    @classmethod
-    def get_s3_client_kwargs(cls) -> dict:
-        """Get s3 client kwargs for NetCDF file.
-
-        :return: dictionary with key endpoint_url or region_name
-        :rtype: dict
-        """
-        prefix = 'GAP'
-        client_kwargs = {}
-        if os.environ.get(f'{prefix}_S3_ENDPOINT_URL', ''):
-            client_kwargs['endpoint_url'] = os.environ.get(
-                f'{prefix}_S3_ENDPOINT_URL', '')
-        if os.environ.get(f'{prefix}_S3_REGION_NAME', ''):
-            client_kwargs['region_name'] = os.environ.get(
-                f'{prefix}_S3_REGION_NAME', '')
-        return client_kwargs
-
-    @classmethod
-    def get_netcdf_base_url(cls, s3: dict) -> str:
-        """Generate NetCDF base URL.
-
-        :param s3: Dictionary of S3 env vars
-        :type s3: dict
-        :return: Base URL with s3 and bucket name
-        :rtype: str
-        """
-        prefix = s3['S3_DIR_PREFIX']
-        bucket_name = s3['S3_BUCKET_NAME']
-        netcdf_url = f's3://{bucket_name}/{prefix}'
-        if not netcdf_url.endswith('/'):
-            netcdf_url += '/'
-        return netcdf_url
-
-
 class BaseNetCDFReader(BaseDatasetReader):
     """Base class for NetCDF File Reader."""
 
@@ -203,17 +99,24 @@ class BaseNetCDFReader(BaseDatasetReader):
         )
         self.xrDatasets = []
 
-    def setup_reader(self):
-        """Initialize s3fs."""
-        self.s3 = NetCDFProvider.get_s3_variables(self.dataset.provider)
-        self.fs = fsspec.filesystem(
+    def _get_fs(self, s3: dict):
+        return fsspec.filesystem(
             's3',
-            key=self.s3.get('S3_ACCESS_KEY_ID'),
-            secret=self.s3.get('S3_SECRET_ACCESS_KEY'),
+            key=s3.get('S3_ACCESS_KEY_ID'),
+            secret=s3.get('S3_SECRET_ACCESS_KEY'),
             client_kwargs=(
-                NetCDFProvider.get_s3_client_kwargs(self.dataset.provider)
+                ObjectStorageManager.get_s3_client_kwargs(
+                    s3=s3
+                )
             )
         )
+
+    def setup_reader(self, connection_name: str = None):
+        """Initialize s3fs."""
+        self.s3 = ObjectStorageManager.get_s3_env_vars(
+            connection_name
+        )
+        self.fs = self._get_fs(self.s3)
 
     def open_dataset(self, source_file: DataSourceFile) -> xrDataset:
         """Open a NetCDFFile using xArray.
@@ -223,13 +126,26 @@ class BaseNetCDFReader(BaseDatasetReader):
         :return: xArray Dataset object
         :rtype: xrDataset
         """
-        prefix = self.s3['S3_DIR_PREFIX']
-        bucket_name = self.s3['S3_BUCKET_NAME']
+        # if there is s3_connection_name in source_file metadata, use it
+        s3 = self.s3
+        fs = self.fs
+        if (
+            source_file.metadata and
+            's3_connection_name' in source_file.metadata
+        ):
+            s3_connection_name = source_file.metadata['s3_connection_name']
+            s3 = ObjectStorageManager.get_s3_env_vars(
+                s3_connection_name
+            )
+            fs = self._get_fs(self.s3)
+
+        prefix = s3['S3_DIR_PREFIX']
+        bucket_name = s3['S3_BUCKET_NAME']
         netcdf_url = f's3://{bucket_name}/{prefix}'
         if not netcdf_url.endswith('/'):
             netcdf_url += '/'
         netcdf_url += f'{source_file.name}'
-        return xr.open_dataset(self.fs.open(netcdf_url))
+        return xr.open_dataset(fs.open(netcdf_url))
 
     def _read_variables_by_point(
             self, dataset: xrDataset, variables: List[str],

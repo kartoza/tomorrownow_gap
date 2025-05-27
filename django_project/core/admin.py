@@ -16,6 +16,7 @@ from core.forms import CreateKnoxTokenForm, CreateAuthToken
 from core.group_email_receiver import crop_plan_receiver
 from core.models.background_task import BackgroundTask
 from core.models.table_usage import TableUsage
+from core.models.object_storage_manager import ObjectStorageManager
 from core.settings.utils import absolute_path
 
 User = get_user_model()
@@ -215,3 +216,17 @@ class TableUsageAdmin(AbstractDefinitionAdmin):
     ordering = ['-created_on']
     readonly_fields = ('created_on',)
     actions = [run_fetch_table_stats, run_clear_temp_table]
+
+
+@admin.register(ObjectStorageManager)
+class ObjectStorageManagerAdmin(admin.ModelAdmin):
+    """Admin class for ObjectStorageManager model."""
+
+    list_display = (
+        'connection_name', 'protocol', 'bucket_name',
+        'endpoint_url', 'region_name', 'use_env_vars',
+        'created_on'
+    )
+    search_fields = ('connection_name', 'bucket_name')
+    list_filter = ('protocol',)
+    ordering = ['-created_on']
