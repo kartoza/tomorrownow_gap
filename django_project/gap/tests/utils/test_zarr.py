@@ -15,6 +15,7 @@ from django.contrib.gis.geos import (
 from django.utils import timezone
 from unittest.mock import MagicMock, patch
 
+from core.models import ObjectStorageManager
 from gap.models import (
     Provider, Dataset, DatasetAttribute,
     DatasetStore
@@ -40,6 +41,10 @@ from gap.factories import (
 class TestCBAMZarrReader(TestCase):
     """Unit test for class TestCBAMZarrReader."""
 
+    fixtures = [
+        '1.object_storage_manager.json',
+    ]
+
     def setUp(self):
         """Set test for TestCBAMZarrReader."""
         self.provider = Provider(name='CBAM')
@@ -60,7 +65,7 @@ class TestCBAMZarrReader(TestCase):
         'GAP_S3_ACCESS_KEY_ID': 'test_access_key',
         'GAP_S3_SECRET_ACCESS_KEY': 'test_secret_key',
         'GAP_S3_ENDPOINT_URL': 'https://test-endpoint.com',
-        'GAP_S3_REGION_NAME': 'us-test-1',
+        'GAP_S3_REGION_NAME': '',
         'GAP_S3_PRODUCTS_BUCKET_NAME': 'test-bucket',
         'GAP_S3_PRODUCTS_DIR_PREFIX': 'test-prefix/'
     })
@@ -70,9 +75,10 @@ class TestCBAMZarrReader(TestCase):
             'S3_ACCESS_KEY_ID': 'test_access_key',
             'S3_SECRET_ACCESS_KEY': 'test_secret_key',
             'S3_ENDPOINT_URL': 'https://test-endpoint.com',
-            'S3_REGION_NAME': 'us-test-1',
+            'S3_REGION_NAME': '',
             'S3_BUCKET_NAME': 'test-bucket',
-            'S3_DIR_PREFIX': 'test-prefix/'
+            'S3_DIR_PREFIX': 'test-prefix/',
+            'S3_CONNECTION_NAME': 'default'
         }
         result = self.reader.get_s3_variables()
         self.assertEqual(result, expected_result)
@@ -83,6 +89,10 @@ class TestCBAMZarrReader(TestCase):
     })
     def test_get_s3_client_kwargs(self):
         """Test get_s3_client_kwargs function."""
+        # set region name
+        conn = ObjectStorageManager.objects.get(connection_name='default')
+        conn.region_name = 'GAP_S3_REGION_NAME'
+        conn.save()
         expected_result = {
             'endpoint_url': 'https://test-endpoint.com',
             'region_name': 'us-test-1'
@@ -141,7 +151,9 @@ class TestCBAMZarrReader(TestCase):
         mock_s3fs.assert_called_once_with(
             key='test_access_key',
             secret='test_secret_key',
-            endpoint_url='https://test-endpoint.com'
+            client_kwargs={
+                'endpoint_url': 'https://test-endpoint.com'
+            }
         )
         cache_filename = 'test_dataset_zarr'
         mock_fsspec_filesystem.assert_called_once_with(
@@ -210,7 +222,9 @@ class TestCBAMZarrReader(TestCase):
         mock_s3fs.assert_called_once_with(
             key='test_access_key',
             secret='test_secret_key',
-            endpoint_url='https://test-endpoint.com'
+            client_kwargs={
+                'endpoint_url': 'https://test-endpoint.com'
+            }
         )
         cache_filename = 'test_dataset_zarr'
         mock_fsspec_filesystem.assert_called_once_with(

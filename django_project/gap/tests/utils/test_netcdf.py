@@ -397,17 +397,18 @@ class TestCBAMNetCDFReader(TestCase):
         result = reader.read_variables(xrDataset)
         self.assertEqual(result, [])
 
+    @patch(
+        'core.models.object_storage_manager.ObjectStorageManager.'
+        'get_s3_env_vars'
+    )
     @patch('fsspec.filesystem')
-    def test_setup_reader(
-        self, mock_filesystem):
+    def test_setup_reader(self, mock_filesystem, mock_get_env_vars):
         """Test for setup NetCDFReader class."""
-        # mock_get_s3_kwargs.return_value = {
-        #     'endpoint_url': 'test_endpoint'
-        # }
-        # mock_get_s3_vars.return_value = {
-        #     'S3_ACCESS_KEY_ID': 'test_key_id',
-        #     'S3_SECRET_ACCESS_KEY': 'test_key_secret',
-        # }
+        mock_get_env_vars.return_value = {
+            'S3_ACCESS_KEY_ID': 'test_key_id',
+            'S3_SECRET_ACCESS_KEY': 'test_key_secret',
+            'S3_ENDPOINT_URL': 'test_endpoint',
+        }
         reader = CBAMNetCDFReader(Mock(), [], Mock(), Mock(), Mock())
         reader.setup_reader()
         mock_filesystem.assert_called_once_with(
@@ -427,6 +428,7 @@ class TestCBAMNetCDFReader(TestCase):
         }
         netcdf_file = Mock()
         netcdf_file.name = 'test_file.nc'
+        netcdf_file.metadata = {}
         reader.open_dataset(netcdf_file)
         mock_open_dataset.assert_called_once()
 
