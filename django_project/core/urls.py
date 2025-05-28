@@ -7,8 +7,10 @@ from django.urls import path, include, re_path
 
 from core.views import (
     PreferencesRedirectView, FlowerProxyView,
-    RegisterView, VerifyEmailView, SignUpRequestView,
-    LoginView, LogoutView, UserFromUIDView
+    UserFromUIDView, SignUpRequestView,
+    KnoxLoginView, KnoxRegisterView,
+    KnoxLogoutAllView, KnoxLogoutView,
+    KnoxSocialLoginView
 )
 
 
@@ -21,29 +23,36 @@ urlpatterns = [
         name='index'
     ),
     FlowerProxyView.as_url(),
+    # Knox token endpoints
     path(
-        'api/auth/login/',
-        LoginView.as_view(),
-        name='login'
+        "auth/login/", KnoxLoginView.as_view(),
+        name="knox_login"
     ),
     path(
-        'api/auth/logout/',
-        LogoutView.as_view(),
-        name='logout'
+        "auth/registration/", KnoxRegisterView.as_view(),
+        name="knox_signup"
     ),
+    path(
+        "auth/logout/", KnoxLogoutView.as_view(),
+        name="knox_logout"
+    ),
+    path(
+        "auth/logoutall/", KnoxLogoutAllView.as_view(),
+        name="knox_logoutall"
+    ),
+    # dj-rest-auth endpoints
+    path(
+        "auth/social/login/", KnoxSocialLoginView.as_view(),
+        name='social_login'
+    ),
+    path(
+        "auth/social/", include("allauth.socialaccount.urls")
+    ),
+    path("auth/", include("dj_rest_auth.registration.urls")),
+    path("auth/", include("dj_rest_auth.urls")),
     path(
         'api/signup-request/',
-        SignUpRequestView.as_view(),
-        name='signup-request'
-    ),
-    path(
-        'api/auth/register/',
-        RegisterView.as_view(),
-        name='register'
-    ),
-    path(
-        'api/auth/verify-email/',
-        VerifyEmailView.as_view(), name='verify-email'
+        SignUpRequestView.as_view(), name='signup-request'
     ),
     path(
         'api/user-uid/<str:uid>/',
