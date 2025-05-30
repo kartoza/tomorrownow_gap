@@ -50,6 +50,7 @@ def create_user_profile(sender, instance, created, **kwargs):
 
 @receiver(user_signed_up, sender=User)
 def mark_social_email_verified_on_signup(request, user, **kwargs):
+    """Mark email as verified for social signups."""
     try:
         is_verified = user.emailaddress_set.filter(
             email=user.email, verified=True

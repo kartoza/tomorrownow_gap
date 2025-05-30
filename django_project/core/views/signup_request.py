@@ -80,10 +80,7 @@ class UserFromUIDView(APIView):
 
 
 class SignUpRequestStatusView(APIView):
-    """
-    Checks whether a user has already submitted a signup request
-    or if one is still required.
-    """
+    """Checks whether a user has already submitted a signup request."""
 
     permission_classes = [AllowAny]
 
@@ -111,11 +108,11 @@ class SignUpRequestStatusView(APIView):
 
 class CurrentUserView(APIView):
     """Returns the current user's details."""
+
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
         """Get current user details."""
-
         user = request.user
         return Response({
             "email": user.email,
