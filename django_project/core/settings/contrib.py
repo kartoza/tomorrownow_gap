@@ -118,6 +118,6 @@ SOCIALACCOUNT_PROVIDERS = {
             'user',
         ],
         'EMAIL_AUTHENTICATION': True,
-        'OAUTH_PKCE_ENABLED': True, 
+        'OAUTH_PKCE_ENABLED': True,
     }
 }

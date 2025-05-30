@@ -1,3 +1,8 @@
+"""
+Tomorrow Now GAP.
+
+.. note:: authentication views.
+"""
 from knox.models import AuthToken
 from knox.views import LogoutView as KnoxLogoutView, LogoutAllView
 from allauth.socialaccount.providers.google.views import GoogleOAuth2Adapter
@@ -16,6 +21,8 @@ class KnoxLoginView(LoginView):
     """
 
     def get_response(self):
+        """Override to return Knox token instead of default token."""
+
         # create token for self.user set in LoginView.login()
         _, token = AuthToken.objects.create(self.user)
         return Response(
@@ -25,24 +32,24 @@ class KnoxLoginView(LoginView):
 
 # --- registration ---
 class KnoxRegisterView(RegisterView):
-    """
-    On successful signup immediately log the user in & return token.
-    """
+    """On successful signup immediately log the user in & return token."""
 
     def get_response_data(self, user):
+        """Override to return Knox token instead of default token."""
+
         _, token = AuthToken.objects.create(user)
         return {"key": token, "user": self.get_serializer(user).data}
 
 
 # --- logout (single token & all tokens) ---
 class KnoxLogoutView(KnoxLogoutView):
-    """POST → revoke current token"""
+    """POST → revoke current token."""
 
     pass
 
 
 class KnoxLogoutAllView(LogoutAllView):
-    """POST → revoke all tokens for the user"""
+    """POST → revoke all tokens for the user."""
 
     pass
 
@@ -56,7 +63,13 @@ ADAPTERS = {
 
 
 class KnoxSocialLoginView(SocialLoginView):
+    """Returns Knox token in dj-rest-auth social login format."""
     def get_serializer(self, *args, **kwargs):
+        """
+        Override to select the correct adapter based on the provider
+        specified in the request data or query parameters.
+        """
+
         provider = (
             self.request.data.get("provider")
             or self.request.query_params.get("provider")
@@ -69,6 +82,8 @@ class KnoxSocialLoginView(SocialLoginView):
 
 
     def get_response(self):
+        """Override to return Knox token instead of default token."""
+
         # self.user is set after successful social login
         _, token = AuthToken.objects.create(self.user)
         return Response(
