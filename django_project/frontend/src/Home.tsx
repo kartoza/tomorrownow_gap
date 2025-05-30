@@ -7,6 +7,9 @@ import {
   Flex,
   Spacer,
 } from '@chakra-ui/react';
+import Navbar from './components/Navbar';
+import Footer from './components/Footer';
+import LandingPage from './pages/LandingPage';
 
 function Home() {
   const gapContext = useGapContext();
@@ -17,26 +20,14 @@ function Home() {
 
   return (
     <Box className="App">
+      {/* Navbar */}
+      <Navbar/>
 
       {/* Main content */}
-      <Box className="App-header">
-        <p>OSIRIS II Global Access Platform</p>
-
-        <div className="button-container">
-          <div
-            className="App-link link-button"
-            onClick={() => redirectToURL(gapContext.api_swagger_url)}
-          >
-            API Swagger Docs
-          </div>
-          <div
-            className="App-link link-button"
-            onClick={() => redirectToURL(gapContext.api_docs_url)}
-          >
-            API Documentation
-          </div>
-        </div>
-      </Box>
+      <LandingPage />
+      
+      {/* Footer */}
+      <Footer />
     </Box>
   );
 }

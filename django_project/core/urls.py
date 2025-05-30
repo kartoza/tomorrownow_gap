@@ -50,6 +50,7 @@ urlpatterns = [
     ),
     path("auth/", include("dj_rest_auth.registration.urls")),
     path("auth/", include("dj_rest_auth.urls")),
+    path("accounts/", include("allauth.urls")),
     path(
         'api/signup-request/',
         SignUpRequestView.as_view(), name='signup-request'
