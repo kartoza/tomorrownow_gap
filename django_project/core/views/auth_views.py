@@ -16,13 +16,14 @@ from rest_framework.exceptions import ValidationError
 # --- login ---
 class KnoxLoginView(LoginView):
     """
-    Returns Knox token in dj-rest-auth login format:
+    Returns Knox token in dj-rest-auth login format.
+
+    Example response on successful login:
     { "key": "<token>", "user": {…} }
     """
 
     def get_response(self):
         """Override to return Knox token instead of default token."""
-
         # create token for self.user set in LoginView.login()
         _, token = AuthToken.objects.create(self.user)
         return Response(
@@ -36,7 +37,6 @@ class KnoxRegisterView(RegisterView):
 
     def get_response_data(self, user):
         """Override to return Knox token instead of default token."""
-
         _, token = AuthToken.objects.create(user)
         return {"key": token, "user": self.get_serializer(user).data}
 
@@ -64,12 +64,9 @@ ADAPTERS = {
 
 class KnoxSocialLoginView(SocialLoginView):
     """Returns Knox token in dj-rest-auth social login format."""
-    def get_serializer(self, *args, **kwargs):
-        """
-        Override to select the correct adapter based on the provider
-        specified in the request data or query parameters.
-        """
 
+    def get_serializer(self, *args, **kwargs):
+        """Override to select the correct adapter based on the provider."""
         provider = (
             self.request.data.get("provider")
             or self.request.query_params.get("provider")
@@ -83,7 +80,6 @@ class KnoxSocialLoginView(SocialLoginView):
 
     def get_response(self):
         """Override to return Knox token instead of default token."""
-
         # self.user is set after successful social login
         _, token = AuthToken.objects.create(self.user)
         return Response(
