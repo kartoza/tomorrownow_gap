@@ -203,13 +203,13 @@ export default function SignIn({ isOpen, onClose }: SignInProps) {
                   or continue with
                 </Text>
                 <Flex justify="center" gap={6}>
-                  <Link href="/accounts/google/login" aria-label="Login with Google">
+                  <Link href="/accounts/google/login/" aria-label="Login with Google">
                     <Image src="/static/images/google_icon.svg" alt="Google login" boxSize={6} />
                   </Link>
-                  <Link href="/accounts/github/login" aria-label="Login with GitHub">
+                  <Link href="/accounts/github/login/" aria-label="Login with GitHub">
                     <Image src="/static/images/github_icon.svg" alt="GitHub login" boxSize={6} />
                   </Link>
-                  <Link href="/accounts/apple/login" aria-label="Login with Apple">
+                  <Link href="/accounts/apple/login/" aria-label="Login with Apple">
                     <Image src="/static/images/apple_icon.svg" alt="Apple login" boxSize={6} />
                   </Link>
                 </Flex>

@@ -8,6 +8,8 @@ from django.urls import path, include, re_path
 from core.views import (
     PreferencesRedirectView, FlowerProxyView,
     UserFromUIDView, SignUpRequestView,
+    SignUpRequestStatusView, CurrentUserView,
+    MySignUpRequestView,
     KnoxLoginView, KnoxRegisterView,
     KnoxLogoutAllView, KnoxLogoutView,
     KnoxSocialLoginView
@@ -51,6 +53,13 @@ urlpatterns = [
     path("auth/", include("dj_rest_auth.registration.urls")),
     path("auth/", include("dj_rest_auth.urls")),
     path("accounts/", include("allauth.urls")),
+    path("api/signup-request/me/", MySignUpRequestView.as_view()),
+    path("api/me/", CurrentUserView.as_view(), name="current-user"),
+    path(
+        "api/signup-request-check/",
+        SignUpRequestStatusView.as_view(),
+        name="signup-request-check"
+    ),
     path(
         'api/signup-request/',
         SignUpRequestView.as_view(), name='signup-request'

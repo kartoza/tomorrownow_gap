@@ -9,6 +9,7 @@ import {
   Text,
 } from '@chakra-ui/react';
 import { useGapContext } from '../../contexts/GapContext';
+import { SignupRequest } from '../SignupRequest';
 
 
 const LandingPage = () => {
