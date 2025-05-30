@@ -1,15 +1,23 @@
-import React, { useState, useEffect } from 'react';
+// src/components/SignupRequest.tsx
+import React, { useEffect, useState } from "react";
 import {
   Box,
   Button,
+  CloseButton,
+  Dialog,
+  Field,
   Input,
+  Portal,
+  Stack,
   Textarea,
-  Heading
-} from '@chakra-ui/react';
-import { FormControl, FormLabel } from '@chakra-ui/form-control';
-import { Stack } from '@chakra-ui/layout';
+  Heading,
+  Text,
+} from "@chakra-ui/react";
+import { AiOutlineMail, AiOutlineUser, AiOutlineHome } from "react-icons/ai";
 
-interface SignupRequestFormProps {
+interface SignupRequestProps {
+  isOpen: boolean;
+  onClose: () => void;
   user: {
     email: string;
     first_name?: string;
@@ -17,57 +25,34 @@ interface SignupRequestFormProps {
   };
 }
 
-const SignupRequestForm = ({ user }: SignupRequestFormProps) => {
+export function SignupRequest({ isOpen, onClose, user }: SignupRequestProps) {
   const [formData, setFormData] = useState({
     first_name: user.first_name || '',
     last_name: user.last_name || '',
     email: user.email,
-    description: '',
+    description: "",
   });
-
   const [loading, setLoading] = useState(false);
-  const [successMessage, setSuccessMessage] = useState('');
-  const [errorMessage, setErrorMessage] = useState('');
-
-  useEffect(() => {
-    const saved = sessionStorage.getItem('signup-request');
-    if (saved) {
-      try {
-        setFormData(JSON.parse(saved));
-      } catch (e) {
-        console.warn("Could not parse saved form data", e);
-      }
-    }
-  }, []);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const uid = params.get("uid");
-  
     if (uid) {
       fetch(`/api/user-uid/${uid}/`)
-        .then((res) => {
-          if (!res.ok) throw new Error('User fetch failed');
-          return res.json();
-        })
-        .then((data) => {
+        .then(res => res.json())
+        .then(data => {
           setFormData(prev => ({
             ...prev,
-            email: data.email || '',
-            first_name: data.first_name || '',
-            last_name: data.last_name || ''
+            email: data.email || "",
           }));
         })
-        .catch((err) => {
-          console.error("Error loading user from uid:", err);
-          setErrorMessage("Could not preload user information.");
+        .catch(() => {
+          setError("Could not preload user information.");
         });
     }
   }, []);
-
-  useEffect(() => {
-    sessionStorage.setItem('signup-request', JSON.stringify(formData));
-  }, [formData]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -76,118 +61,128 @@ const SignupRequestForm = ({ user }: SignupRequestFormProps) => {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const getCookie = (name: string): string => {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop()?.split(";")[0] || "";
+    return "";
+  };
+
+  const handleSubmit = async () => {
     setLoading(true);
-    setSuccessMessage('');
-    setErrorMessage('');
+    setError("");
+    setSuccess("");
 
     try {
-      const response = await fetch('/api/signup-request/', {
-        method: 'POST',
+      const res = await fetch("/api/signup-request/", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
-          'X-CSRFToken': getCookie('csrftoken'),
+          "Content-Type": "application/json",
+          "X-CSRFToken": getCookie("csrftoken"),
         },
-        credentials: 'include',
+        credentials: "include",
         body: JSON.stringify(formData),
       });
 
-      if (response.status === 403) {
-        setErrorMessage("Please verify your email before submitting this request.");
-        return;
-      }
-
-      if (response.ok) {
-        setSuccessMessage('Request submitted successfully.');
-        sessionStorage.removeItem('signup-request');
-        setFormData(prev => ({ ...prev, description: '' }));
+      if (res.status === 403) {
+        setError("Please verify your email before submitting this request.");
+      } else if (res.ok) {
+        setSuccess("Request submitted successfully.");
+        setFormData(prev => ({ ...prev, description: "" }));
+        onClose();
       } else {
-        setErrorMessage('Submission failed. Please try again.');
+        setError("Submission failed. Please try again.");
       }
     } catch {
-      setErrorMessage('Server error occurred.');
+      setError("Server error occurred.");
     } finally {
       setLoading(false);
     }
   };
 
-  const getCookie = (name: string) => {
-    const value = `; ${document.cookie}`;
-    const parts = value.split(`; ${name}=`);
-    if (parts.length === 2) return parts.pop()?.split(';')[0] || '';
-    return '';
-  };
-
   return (
-    <Box maxW="md" mx="auto" mt={8} px={4}>
-      <Heading size="md" mb={4}>Submit Sign-Up Request</Heading>
+    <Dialog.Root open={isOpen} onOpenChange={(open: any) => !open && onClose()} modal>
+      <Dialog.Backdrop />
+      <Portal>
+        <Dialog.Positioner>
+          <Dialog.Content>
+            <Button
+                onClick={onClose}
+                position="absolute"
+                top={2}
+                right={2}
+                bg={"transparent"}
+            >
+                <CloseButton />
+            </Button>
+            <Box p={6} bg="white">
+              <Heading size="md" mb={2}>Join Our Waitlist</Heading>
+              <Text fontSize="sm" mb={4}>Please share your information and we will be in touch within 1 week.</Text>
 
-      {successMessage && (
-        <Box bg="green.100" border="1px solid" borderColor="green.300" p={4} mb={4} borderRadius="md" color="green.800">
-          {successMessage}
-        </Box>
-      )}
-      {errorMessage && (
-        <Box bg="red.100" border="1px solid" borderColor="red.300" p={4} mb={4} borderRadius="md" color="red.800">
-          {errorMessage}
-        </Box>
-      )}
+              <Stack gap={4}>
+                <Field.Root required>
+                  <Field.Label>First Name</Field.Label>
+                  <Input
+                    name="first_name"
+                    value={formData.first_name}
+                    onChange={handleChange}
+                    placeholder="First Name"
+                  />
+                </Field.Root>
 
-      <form onSubmit={handleSubmit}>
-        <Stack spacing={4}>
-          <FormControl isRequired>
-            <FormLabel>First Name</FormLabel>
-            <Input
-              name="first_name"
-              autoComplete='given-name'
-              value={formData.first_name}
-              onChange={handleChange}
-            />
-          </FormControl>
+                <Field.Root required>
+                  <Field.Label>Last Name</Field.Label>
+                  <Input
+                    name="last_name"
+                    value={formData.last_name}
+                    onChange={handleChange}
+                    placeholder="Last Name"
+                  />
+                </Field.Root>
 
-          <FormControl isRequired>
-            <FormLabel>Last Name</FormLabel>
-            <Input
-              name="last_name"
-              autoComplete='family-name'
-              value={formData.last_name}
-              onChange={handleChange}
-            />
-          </FormControl>
+                <Field.Root required>
+                  <Field.Label>Email</Field.Label>
+                  <Input
+                    name="email"
+                    value={formData.email}
+                    readOnly
+                    type="email"
+                    placeholder="email@example.com"
+                  />
+                </Field.Root>
 
-          <FormControl isRequired>
-            <FormLabel>Email</FormLabel>
-            <Input
-              type="email"
-              name="email"
-              autoComplete='email'
-              value={formData.email}
-              readOnly
-            />
-          </FormControl>
+                <Field.Root required>
+                  <Field.Label>Description</Field.Label>
+                  <Textarea
+                    name="description"
+                    value={formData.description}
+                    onChange={handleChange}
+                    placeholder="Tell us what you're looking for..."
+                  />
+                </Field.Root>
 
-          <FormControl isRequired>
-            <FormLabel>Description</FormLabel>
-            <Textarea
-              name="description"
-              value={formData.description}
-              onChange={handleChange}
-            />
-          </FormControl>
+                {error && (
+                  <Text fontSize="sm" color="red.600">{error}</Text>
+                )}
 
-          <Button
-            type="submit"
-            colorScheme="purple"
-            loading={loading}
-            width="full"
-          >
-            Submit Request
-          </Button>
-        </Stack>
-      </form>
-    </Box>
+                <Button
+                  w="full"
+                  bg={"green.400"}
+                  color="white"
+                  _hover={{ bg: "green.500" }}
+                  rounded="full"
+                  fontWeight="bold"
+                  mb={4}
+                  loading={loading}
+                  onClick={handleSubmit}
+                >
+                  Submit
+                </Button>
+              </Stack>
+            </Box>
+          </Dialog.Content>
+        </Dialog.Positioner>
+      </Portal>
+    </Dialog.Root>
   );
-};
-
-export { SignupRequestForm };
+}

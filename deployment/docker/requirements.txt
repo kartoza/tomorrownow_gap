@@ -112,3 +112,10 @@ numcodecs==0.15.1
 
 # asyncio rate limiter
 aiolimiter==1.2.1
+
+# for authentication
+django-allauth==65.1.0
+
+# allauth to use rest api
+dj-rest-auth==7.0.1
+pyjwt

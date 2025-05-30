@@ -16,8 +16,6 @@ const minimized = !isDev;
 let conf = {
     entry: {
         App: './src/index.tsx',
-        Signup: './src/Signup.tsx',
-        SignupRequest: './src/SignupRequest.tsx',
         Login: './src/Login.tsx',
     },
     output: {

@@ -1,121 +1,238 @@
-import React, { useState } from 'react';
+// src/components/SignIn.tsx
+import React, { useEffect, useState } from "react";
 import {
-  Box,
+  Dialog,
+  Portal,
   Button,
+  CloseButton,
+  Field,
   Input,
-  Heading
-} from '@chakra-ui/react';
-import { FormControl, FormLabel } from '@chakra-ui/form-control';
-import { Stack } from '@chakra-ui/layout';
+  Flex,
+  Heading,
+  Text,
+  Box,
+  Link,
+  VStack,
+  HStack,
+  Image,
+} from "@chakra-ui/react";
+import { AiOutlineMail, AiOutlineLock } from "react-icons/ai";
+import { useDispatch, useSelector } from "react-redux";
+import {
+  loginUser,
+  registerUser,
+  resetPasswordRequest,
+  resetPasswordConfirm,
+} from "../../store/authSlice";
+import { RootState, AppDispatch } from "../../store";
+import { useLocation } from "react-router-dom";
 
-const LoginAccountForm = () => {
-  const [formData, setFormData] = useState({
-    username: '',
-    password: '',
-  });
+interface SignInProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
 
-  const [loading, setLoading] = useState(false);
-  const [successMessage, setSuccessMessage] = useState('');
-  const [errorMessage, setErrorMessage] = useState('');
+type FormType = "signin" | "signup" | "forgotPassword" | "resetPassword";
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
+export default function SignIn({ isOpen, onClose }: SignInProps) {
+  const [formType, setFormType] = useState<FormType>("signin");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPw, setConfirmPw] = useState("");
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setErrorMessage('');
-    setSuccessMessage('');
 
-    try {
-      const response = await fetch('/api/auth/login/', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRFToken': getCookie('csrftoken'),
-        },
-        body: JSON.stringify({
-          username: formData.username,
-          password: formData.password,
-        }),
-      });
+  const dispatch = useDispatch<AppDispatch>();
+  const { loading, token, error } = useSelector((s: RootState) => s.auth);
+  const { search } = useLocation();
 
-      if (response.ok) {
-        const data = await response.json();
-        setSuccessMessage('Login successful! Redirecting...');
-        setTimeout(() => {
-          window.location.href = data.redirect_url;
-        }, 1500);
-      } else {
-        setErrorMessage('Invalid username or password.');
+  useEffect(() => {
+    const params = new URLSearchParams(search);
+    if (params.get("uid") && params.get("token")) {
+      setFormType("resetPassword");
+    }
+  }, [search]);
+
+  useEffect(() => {
+    if (token) {
+      onClose();
+      setFormType("signin");
+
+      // Redirect to Swagger docs
+      window.location.href = "/api/v1/docs/";
+    }
+  }, [token, onClose]);
+
+  const handleSubmit = () => {
+    switch (formType) {
+      case "signin":
+        dispatch(loginUser(email, password));
+        break;
+      case "signup":
+        dispatch(registerUser(email, password, confirmPw));
+        break;
+      case "forgotPassword":
+        dispatch(resetPasswordRequest(email));
+        break;
+      case "resetPassword": {
+        const params = new URLSearchParams(search);
+        dispatch(
+          resetPasswordConfirm(
+            params.get("uid") as string,
+            params.get("token") as string,
+            password
+          )
+        );
+        break;
       }
-    } catch (err) {
-      setErrorMessage('Server error. Please try again.');
-    } finally {
-      setLoading(false);
     }
   };
 
-  const getCookie = (name: string) => {
-    const value = `; ${document.cookie}`;
-    const parts = value.split(`; ${name}=`);
-    if (parts.length === 2) return parts.pop()?.split(';')[0] || '';
-    return '';
-  };
-
   return (
-    <Box maxW="sm" mx="auto" mt={8} px={4}>
-      <Heading as="h1" size="lg" textAlign="center" mb={6}>
-        Log In
-      </Heading>
+    <Dialog.Root
+      open={isOpen}
+      onOpenChange={(open: any) => {
+        if (!open) onClose();
+      }}
+      modal
+    >
+      <Portal>
+        <Dialog.Backdrop />
+        <Dialog.Positioner>
+          <Dialog.Content>
+            <Button
+              onClick={onClose}
+              position="absolute"
+              top={2}
+              right={2}
+              bg={"transparent"}
+            >
+              <CloseButton />
+            </Button>
 
-      {successMessage && (
-        <Box bg="green.100" border="1px solid" borderColor="green.300" p={4} mb={4} borderRadius="md" color="green.800">
-          {successMessage}
-        </Box>
-      )}
-      {errorMessage && (
-        <Box bg="red.100" border="1px solid" borderColor="red.300" p={4} mb={4} borderRadius="md" color="red.800">
-          {errorMessage}
-        </Box>
-      )}
+            <Box p={6}>
+              <Heading size="lg" mb={2}>
+                {formType === "signin"
+                  ? "Welcome Back!"
+                  : formType === "forgotPassword"
+                  ? "Forgot Password"
+                  : formType === "resetPassword"
+                  ? "Reset Password"
+                  : "Sign Up"}
+              </Heading>
+              <Text mb={4} color="gray.600">
+                {formType === "signin"
+                  ? "Please sign into your profile."
+                  : formType === "forgotPassword"
+                  ? "Enter your email to receive a reset link."
+                  : formType === "resetPassword"
+                  ? "Please set your new password."
+                  : "Create a new account."}
+              </Text>
 
-      <form onSubmit={handleSubmit}>
-        <Stack spacing={4}>
-          <FormControl isRequired>
-            <FormLabel>Username</FormLabel>
-            <Input
-              type="text"
-              name="username"
-              value={formData.username}
-              onChange={handleChange}
-            />
-          </FormControl>
+              {/* Email */}
+              {formType !== "resetPassword" && (
+                <Field.Root required mb={3} invalid={!!error}>
+                  <Field.Label>Email</Field.Label>
+                    <Input
+                      placeholder="you@example.com"
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                    />
+                  <Field.ErrorText>{error}</Field.ErrorText>
+                </Field.Root>
+              )}
 
-          <FormControl isRequired>
-            <FormLabel>Password</FormLabel>
-            <Input
-              type="password"
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-            />
-          </FormControl>
+              {/* Password */}
+              {formType !== "forgotPassword" && (
+                <Field.Root required mb={3}>
+                  <Field.Label>Password</Field.Label>
+                    <Input
+                      placeholder="Password"
+                      type="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                    />
+                </Field.Root>
+              )}
 
-          <Button
-            type="submit"
-            colorScheme="purple"
-            loading={loading}
-            width="full"
-          >
-            Log In
-          </Button>
-        </Stack>
-      </form>
-    </Box>
+              {/* Confirm Password */}
+              {(formType === "signup" || formType === "resetPassword") && (
+                <Field.Root required mb={3}>
+                  <Field.Label>Confirm Password</Field.Label>
+                    <Input
+                      placeholder="Confirm Password"
+                      type="password"
+                      value={confirmPw}
+                      onChange={(e) => setConfirmPw(e.target.value)}
+                    />
+                </Field.Root>
+              )}
+
+              {/* Forgot */}
+              {formType === "signin" && (
+                <Flex mb={4} justify="space-between" align="center">
+                  <Link color="green.600" onClick={() => setFormType("forgotPassword")}>
+                    Forgot Password?
+                  </Link>
+                </Flex>
+              )}
+
+              <Button
+                w="full"
+                bg={"green.400"}
+                color="white"
+                _hover={{ bg: "green.500" }}
+                rounded="full"
+                fontWeight="bold"
+                mb={4}
+                loading={loading}
+                onClick={handleSubmit}
+              >
+                {formType === "signin"
+                  ? "Sign In"
+                  : formType === "forgotPassword"
+                  ? "Send Email"
+                  : formType === "resetPassword"
+                  ? "Reset Password"
+                  : "Sign Up"}
+              </Button>
+
+              <Box textAlign="center" mb={4}>
+                <Text fontSize="sm" color="gray.500" mb={2}>
+                  or continue with
+                </Text>
+                <Flex justify="center" gap={6}>
+                  <Link href="/accounts/google/login/" aria-label="Login with Google">
+                    <Image src="/static/images/google_icon.svg" alt="Google login" boxSize={6} />
+                  </Link>
+                  <Link href="/accounts/github/login/" aria-label="Login with GitHub">
+                    <Image src="/static/images/github_icon.svg" alt="GitHub login" boxSize={6} />
+                  </Link>
+                  <Link href="/accounts/apple/login/" aria-label="Login with Apple">
+                    <Image src="/static/images/apple_icon.svg" alt="Apple login" boxSize={6} />
+                  </Link>
+                </Flex>
+              </Box>
+
+              <Flex justify="center">
+                {formType === "signin" ? (
+                  <Text fontSize="sm">
+                    Don’t have an account?{" "}
+                    <Link color="green.600" onClick={() => setFormType("signup")}>
+                      Sign Up
+                    </Link>
+                  </Text>
+                ) : (
+                  <Link color="green.600" onClick={() => setFormType("signin")}>
+                    Back to Sign In
+                  </Link>
+                )}
+              </Flex>
+            </Box>
+          </Dialog.Content>
+        </Dialog.Positioner>
+      </Portal>
+    </Dialog.Root>
   );
-};
-
-export { LoginAccountForm };
+}

@@ -21,7 +21,23 @@ INSTALLED_APPS = INSTALLED_APPS + (
     'rest_framework_tracking',
     'django_admin_inline_paginator',
     'import_export',
-    'import_export_celery'
+    'import_export_celery',
+
+    'allauth',
+    'allauth.account',
+    'allauth.socialaccount',
+    'allauth.socialaccount.providers.google',
+    'allauth.socialaccount.providers.github',
+    'allauth.socialaccount.providers.apple',
+    'rest_framework.authtoken',
+    # REST helpers
+    'dj_rest_auth',
+    'dj_rest_auth.registration',
+)
+
+# Extra middleware
+MIDDLEWARE = MIDDLEWARE + (
+    "allauth.account.middleware.AccountMiddleware",
 )
 
 WEBPACK_LOADER = {
@@ -52,6 +68,7 @@ REST_FRAMEWORK = {
 AUTHENTICATION_BACKENDS = (
     'django.contrib.auth.backends.ModelBackend',  # default
     'guardian.backends.ObjectPermissionBackend',
+    'allauth.account.auth_backends.AuthenticationBackend',
 )
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 CELERY_RESULT_BACKEND = 'django-db'
@@ -70,3 +87,37 @@ SENTRY_DSN = os.environ.get('SENTRY_DSN', '')
 
 # Disable log API request body
 DRF_TRACKING_DECODE_REQUEST_BODY = False
+
+# Auth
+ACCOUNT_AUTHENTICATION_METHOD = 'email'
+ACCOUNT_AUTHENTICATED_LOGIN_REDIRECTS = False
+ACCOUNT_EMAIL_REQUIRED = True
+ACCOUNT_EMAIL_VERIFICATION = False
+ACCOUNT_CONFIRM_EMAIL_ON_GET = True
+ACCOUNT_AUTHENTICATED_REMEMBER = True
+ACCOUNT_USERNAME_REQUIRED = False
+ACCOUNT_EMAIL_CONFIRMATION_EXPIRE_DAYS = 3
+SOCIALACCOUNT_LOGIN_ON_GET = True
+SOCIALACCOUNT_EMAIL_VERIFICATION = True
+SOCIALACCOUNT_AUTO_SIGNUP = True
+
+SOCIALACCOUNT_PROVIDERS = {
+    "google": {
+        "SCOPE": [
+            "profile",
+            "email"
+        ],
+        'EMAIL_AUTHENTICATION': True,
+        'OAUTH_PKCE_ENABLED': True,
+        "AUTH_PARAMS": {
+            "access_type": "online"
+        }
+    },
+    'github': {
+        'SCOPE': [
+            'user',
+        ],
+        'EMAIL_AUTHENTICATION': True,
+        'OAUTH_PKCE_ENABLED': True,
+    }
+}
