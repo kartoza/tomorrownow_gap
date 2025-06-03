@@ -80,4 +80,3 @@ def mark_email_verified_from_allauth(request, email_address, **kwargs):
             logger.info(f"Marked {user.email} as verified (email_confirmed).")
     except Exception as e:
         logger.error(f"Error updating profile for email confirmation: {e}")
-

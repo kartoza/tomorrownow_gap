@@ -44,13 +44,14 @@ class KnoxRegisterView(RegisterView):
     def get_response_data(self, user):
         """Just return success message, not a token."""
         return {
-            "detail": "Verification email sent. Please verify to activate your account."
+            "detail": (
+                "Verification email sent. "
+                "Please verify to activate your account."
+            )
         }
 
     def perform_create(self, serializer):
-        """
-        Save the user and trigger email verification.
-        """
+        """Save the user and trigger email verification."""
         user = serializer.save(self.request)
         complete_signup(
             self.request, user,
