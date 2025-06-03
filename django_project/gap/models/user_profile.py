@@ -13,7 +13,9 @@ from django.db import models
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.contrib.auth import get_user_model
-from allauth.account.signals import user_signed_up
+from allauth.account.signals import (
+    user_signed_up, email_confirmed
+)
 
 
 logger = logging.getLogger(__name__)
@@ -63,3 +65,18 @@ def mark_social_email_verified_on_signup(request, user, **kwargs):
                 profile.save()
     except Exception as e:
         logger.warning(f"Could not set verified flag at signup: {e}")
+
+
+@receiver(email_confirmed)
+def mark_email_verified_from_allauth(request, email_address, **kwargs):
+    """Mark email_verified=True if email confirmed via link."""
+    try:
+        user = email_address.user
+        profile, _ = UserProfile.objects.get_or_create(user=user)
+        if not profile.email_verified:
+            profile.email_verified = True
+            profile.verified_at = timezone.now()
+            profile.save()
+            logger.info(f"Marked {user.email} as verified (email_confirmed).")
+    except Exception as e:
+        logger.error(f"Error updating profile for email confirmation: {e}")
