@@ -94,6 +94,7 @@ sqlalchemy==2.0.36
 GeoAlchemy2==0.16.0
 
 # dask geopandas
+geopandas==1.0.1
 dask-geopandas==0.4.2
 
 # duckdb
