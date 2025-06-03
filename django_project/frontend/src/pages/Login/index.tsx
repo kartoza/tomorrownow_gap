@@ -42,7 +42,7 @@ export default function SignIn({ isOpen, onClose }: SignInProps) {
 
 
   const dispatch = useDispatch<AppDispatch>();
-  const { loading, token, error } = useSelector((s: RootState) => s.auth);
+  const { loading, token, message,error } = useSelector((s: RootState) => s.auth);
   const { search } = useLocation();
 
   useEffect(() => {
@@ -61,6 +61,19 @@ export default function SignIn({ isOpen, onClose }: SignInProps) {
       window.location.href = "/api/v1/docs/";
     }
   }, [token, onClose]);
+
+  useEffect(() => {
+    if (formType === 'signup' && message) {
+      // Close after a delay
+      const timeout = setTimeout(() => {
+        onClose();
+        setFormType('signin');
+      }, 3000);
+  
+      return () => clearTimeout(timeout);
+    }
+  }, [formType, message, onClose]);
+  
 
   const handleSubmit = () => {
     switch (formType) {
@@ -128,7 +141,36 @@ export default function SignIn({ isOpen, onClose }: SignInProps) {
                   ? "Please set your new password."
                   : "Create a new account."}
               </Text>
+              {/* Message */}
+              {message && (
+                <Box
+                  color="green.600"
+                  bg="green.50"
+                  border="1px solid"
+                  borderColor="green.300"
+                  p={3}
+                  mb={4}
+                  borderRadius="md"
+                  fontSize="sm"
+                >
+                  {message}
+                </Box>
+              )}
 
+              {error && (
+                <Box
+                  color="red.600"
+                  bg="red.50"
+                  border="1px solid"
+                  borderColor="red.300"
+                  p={3}
+                  mb={4}
+                  borderRadius="md"
+                  fontSize="sm"
+                >
+                  {error}
+                </Box>
+              )}
               {/* Email */}
               {formType !== "resetPassword" && (
                 <Field.Root required mb={3} invalid={!!error}>

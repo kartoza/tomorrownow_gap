@@ -13,6 +13,7 @@ interface AuthState {
   token: string | null;
   loading: boolean;
   error: string | null;
+  message: string | null;
   isAuthenticated: boolean;
   isAdmin: boolean;
 }
@@ -22,6 +23,7 @@ const initialState: AuthState = {
   token: null,
   loading: false,
   error: null,
+  message: null,
   isAuthenticated: false,
   isAdmin: false
 };
@@ -33,6 +35,7 @@ const authSlice = createSlice({
     loginStart: (state) => {
       state.loading = true;
       state.error = null;
+      state.message = null;
     },
     loginSuccess: (state, action: PayloadAction<{ is_admin: boolean; user: User; token: string }>) => {
       state.loading = false;
@@ -40,10 +43,12 @@ const authSlice = createSlice({
       state.token = action.payload.token;
       state.isAuthenticated = true;
       state.isAdmin = action.payload.is_admin;
+      state.message = 'Login successful';
     },
     loginFailure: (state, action: PayloadAction<string>) => {
       state.loading = false;
       state.error = action.payload;
+      state.message = null;
       state.isAuthenticated = false;
     },
     logout: (state) => {
@@ -59,10 +64,14 @@ const authSlice = createSlice({
     setUser: (state, action: PayloadAction<User>) => {
       state.user = action.payload;
     },
+    setMessage: (state, action: PayloadAction<string>) => {
+      state.message = action.payload;
+      state.error = null;
+    },
   },
 });
 
-export const { loginStart, loginSuccess, loginFailure, logout, setUser } = authSlice.actions;
+export const { loginStart, loginSuccess, loginFailure, logout, setUser, setMessage } = authSlice.actions;
 
 export const loginUser = (email: string, password: string) => async (dispatch: AppDispatch) => {
   dispatch(loginStart());
@@ -92,7 +101,7 @@ export const checkLoginStatus = () => async (dispatch: AppDispatch) => {
   }
   try {
     setCSRFToken();
-    const response = await axios.post("/api/user-info/", { credentials: "include" });
+    const response = await axios.post("/auth/user/", { credentials: "include" });
     if (response.data.is_authenticated) {
       dispatch(loginSuccess({ user: response.data.user, token: null, is_admin: response.data.is_admin }));
     } else {
@@ -154,35 +163,44 @@ export const registerUser = (email: string, password: string, repeatPassword: st
   }
   try {
     setCSRFToken();
-    const response = await axios.post('/registration/', {
+    const response = await axios.post('/auth/registration/', {
       email,
       password1: password,
       password2: repeatPassword
     });
     if (response.data?.errors) {
       dispatch(loginFailure(response.data.errors.join(' ')));
-    } else if (response.data?.message) {
-      dispatch(loginSuccess({ user: null, token: null, is_admin: false }));
-      errorMessages.push("Verification email sent.");
-      dispatch(loginFailure(errorMessages.join(' ')));
+    } else if (response.data?.detail) {
+      dispatch(setMessage(response.data.detail || "Verification email sent."));
     }
   } catch (error: any) {
     if (error.response) {
       const { data, status } = error.response;
-      if (status === 400 && data?.errors) {
-        dispatch(loginFailure(data.errors.join(' ')));
-      } else {
-        dispatch(loginFailure('An unexpected error occurred during registration.'));
+  
+      if (status === 400) {
+        // Handle specific form field errors
+        if (data.email && Array.isArray(data.email)) {
+          dispatch(loginFailure(data.email.join(' ')));
+          return;
+        }
+  
+        if (data.errors) {
+          dispatch(loginFailure(data.errors.join(' ')));
+          return;
+        }
       }
+  
+      dispatch(loginFailure('An unexpected error occurred during registration.'));
     } else {
       dispatch(loginFailure('An unexpected error occurred during registration.'));
     }
   }
 };
 
-export const selectIsLoggedIn = (state: RootState) => !!state.auth.token || state.auth.isAuthenticated;
+export const selectIsLoggedIn = (state: RootState) => state.auth.isAuthenticated;
 export const isAdmin = (state: RootState) => state.auth.isAdmin;
 export const selectAuthLoading = (state: RootState) => state.auth.loading;
 export const selectUserEmail = (state: RootState) => state.auth.user?.email;
+export const selectUsername = (state: RootState) => state.auth.user?.username;
 
 export default authSlice.reducer;

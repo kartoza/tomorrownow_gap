@@ -5,6 +5,8 @@ Tomorrow Now GAP.
 """
 from knox.models import AuthToken
 from knox.views import LogoutView as KnoxLogoutView, LogoutAllView
+from allauth.account.utils import complete_signup
+from allauth.account import app_settings as allauth_settings
 from allauth.socialaccount.providers.google.views import GoogleOAuth2Adapter
 from allauth.socialaccount.providers.github.views import GitHubOAuth2Adapter
 from dj_rest_auth.views import LoginView
@@ -35,10 +37,26 @@ class KnoxLoginView(LoginView):
 class KnoxRegisterView(RegisterView):
     """On successful signup immediately log the user in & return token."""
 
+    def get_success_url(self):
+        """Override to redirect to the root URL after registration."""
+        return "/"
+
     def get_response_data(self, user):
-        """Override to return Knox token instead of default token."""
-        _, token = AuthToken.objects.create(user)
-        return {"key": token, "user": self.get_serializer(user).data}
+        """Just return success message, not a token."""
+        return {
+            "detail": "Verification email sent. Please verify to activate your account."
+        }
+
+    def perform_create(self, serializer):
+        """
+        Save the user and trigger email verification.
+        """
+        user = serializer.save(self.request)
+        complete_signup(
+            self.request, user,
+            allauth_settings.EMAIL_VERIFICATION,
+            self.get_success_url()
+        )
 
 
 # --- logout (single token & all tokens) ---
