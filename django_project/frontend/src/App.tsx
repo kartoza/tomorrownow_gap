@@ -4,11 +4,12 @@ import { GapContextProvider } from './contexts/GapContext';
 import ErrorBoundary from './components/ErrorBoundary';
 import Home from './Home';
 import store from './store';
+import system from './theme';
 import { Provider } from 'react-redux';
 import { BrowserRouter } from 'react-router-dom';
 
 const App = () => (
-  <ChakraProvider value={defaultSystem}>
+  <ChakraProvider value={system}>
     <Provider store={store}>
       <BrowserRouter>
       <GapContextProvider>
