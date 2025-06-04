@@ -41,15 +41,17 @@ TomorrowNow provides access to the data through a RESTful API, available at http
 | Product | Provider | Resolution | Source | Version | API product_type |
 |---------|----------|------------|--------|---------|------------------|
 | **Historical Data** |
-| CBAM Daily Historical Reanalysis (2012 - 2023) | Tomorrow.io | 4km x 4km | Tomorrow.io CBAM 1F enhanced bias-corrected reanalysis | 2012-2023 | cbam_historical_analysis |
-| CBAM Daily Historical Reanalysis (Bias-Corrected) (2012-2023) | Tomorrow.io | 4km x 4km | Tomorrow.io CBAM 1F enhanced bias-corrected reanalysis | 2012-2023 | cbam_historical_analysis_bias_adjust |
-| Ground Observations (TAHMO stations) | TAHMO weather stations | 300+ stations across East Africa | TAHMO Gap Filled Data (csv) | 2018-2024 | tahmo_ground_observation |
-| Ground Observations (Arable stations) | Arable weather stations | 300+ stations across East Africa | Arable (API) | | arable_ground_observation |
-| Disdrometer Observation Data | disdrometers | | Tahmo (API) | | disdrometer_ground_observation |
-| Radiosonde Observations (Windborne) | WindBorne Systems | 100 weather balloons| Windborne Systems | | windborne_radiosonde_observation |
+| CBAM Daily Reanalysis (Raw) 2012-2024 v2 | Tomorrow.io | 4km x 4km | Tomorrow.io CBAM 1F enhanced bias-corrected reanalysis | 2012-2024 v2 | cbam_historical_analysis |
+| CBAM Daily Reanalysis (Bias-Corrected) 2012-2023 v1 | Tomorrow.io | 4km x 4km | Tomorrow.io CBAM 1F enhanced bias-corrected reanalysis | 2012-2023 v1 | cbam_historical_analysis_bias_adjust |
+| Automated Weather Stations (TAHMO) (QC/QA) 2018 - 2025 v1 | TAHMO weather stations | 300+ stations across East Africa | TAHMO Gap Filled Data (csv) | 2018-2025 v1 | tahmo_ground_observation |
+| Automated Weather Stations (Arable) 2024-2025 | Arable weather stations | 300+ stations across East Africa | Arable (API) | 2024-2025 | arable_ground_observation |
+| Disdrometer (Laser Rain Gauge) | disdrometers | | Tahmo (API) | | disdrometer_ground_observation |
+| Radiosonde Observations (Windborne) | WindBorne Systems | 100 weather balloons | Windborne Systems | | windborne_radiosonde_observation |
+| TAMSAT Precipitation Long-term Normals (20-year) | TAMSAT | | | | tamsat_ltn |
 | **Weather Forecasts** |
-| CBAM Short-Term weather forecast (14-days) | Tomorrow.io | 4km x 4km | Tomorrow.io CBAM satellite enhanced short-term weather forecasts | | cbam_shortterm_forecast |
-| Salient Seasonal weather forecast (3-months) | Salient | 28km x 28km | Salient (API) | v9 | salient_seasonal_forecast |
+| CBAM Weather Forecast Daily 10-day | Tomorrow.io | 4km x 4km | Tomorrow.io CBAM satellite enhanced short-term weather forecasts | | cbam_shortterm_forecast |
+| CBAM Weather Forecast Hourly 4-day | Tomorrow.io | 4km x 4km | Tomorrow.io CBAM satellite enhanced short-term weather forecasts | | cbam_shortterm_hourly_forecast |
+| Salient Predictions Weather Forecast - Sub-seasonal to Seasonal (8-month) | Salient | 28km x 28km | Salient (API) | v9 | salient_seasonal_forecast |
 | |
 
 > Note: The Today value from the CBAM sort term weather forecast is store and can be accessed for historical records dating back to 12 October 2024
@@ -58,102 +60,117 @@ TomorrowNow provides access to the data through a RESTful API, available at http
 
 | Product | Name | Description | Unit | API attribute name |
 |---------|------|-------------|------|---------------------|
-| **Salient Seasonal weather forecast (3-months)** |
-| Salient Seasonal weather forecast (3-months) | Temperature | | °C | temperature |
-| Salient Seasonal weather forecast (3-months) | Temperature Climatology | | °C | temperature_clim |
-| Salient Seasonal weather forecast (3-months) | Temperature Anomaly | | °C | temperature_anom |
-| Salient Seasonal weather forecast (3-months) | Precipitation | | mm day-1 | precipitation |
-| Salient Seasonal weather forecast (3-months) | Precipitation Anomaly | | mm day-1 | precipitation_anom |
-| Salient Seasonal weather forecast (3-months) | Precipitation Climatology | | mm day-1 | precipitation_clim |
-| Salient Seasonal weather forecast (3-months) | Minimum Temperature | | °C | min_temperature |
-| Salient Seasonal weather forecast (3-months) | Minimum Temperature Climatology | | °C | min_temperature_clim |
-| Salient Seasonal weather forecast (3-months) | Minimum Temperature Anomaly | | °C | min_temperature_anom |
-| Salient Seasonal weather forecast (3-months) | Maximum Temperature | | °C | max_temperature |
-| Salient Seasonal weather forecast (3-months) | Maximum Temperature Climatology | | °C | max_temperature_clim |
-| Salient Seasonal weather forecast (3-months) | Maximum Temperature Anomaly | | °C | max_temperature_anom |
-| Salient Seasonal weather forecast (3-months) | Relative Humidity | | % | relative_humidty |
-| Salient Seasonal weather forecast (3-months) | Relative Humidity Climatology | | % | relative_humidty_clim |
-| Salient Seasonal weather forecast (3-months) | Relative Humidity Anomaly | | % | relative_humidty_anom |
-| Salient Seasonal weather forecast (3-months) | Downward Solar Radiation | | kWh m-2 day-1 | solar_radiation |
-| Salient Seasonal weather forecast (3-months) | Downward Solar Radiation Climatology | | kWh m-2 day-1 | solar_radiation_clim |
-| Salient Seasonal weather forecast (3-months) | Downward Solar Radiation Anomaly | | kWh m-2 day-1 | solar_radiation_anom |
-| Salient Seasonal weather forecast (3-months) | Wind Speed Climatology | | m/s | wind_speed |
-| Salient Seasonal weather forecast (3-months) | Wind Speed Climatology | | m/s | wind_speed_clim |
-| Salient Seasonal weather forecast (3-months) | Wind Speed Climatology | | m/s | wind_speed_anom |
-| **CBAM Short-Term weather forecast (14-days)** |
-| CBAM Short-Term weather forecast (14-days) | Total Rainfall | | mm | total_rainfall |
-| CBAM Short-Term weather forecast (14-days) | Total Evapotranspiration Flux | | mm | total_evapotranspiration_flux |
-| CBAM Short-Term weather forecast (14-days) | Max Temperature | | °C | max_temperature |
-| CBAM Short-Term weather forecast (14-days) | Min Temperature | | °C | min_temperature |
-| CBAM Short-Term weather forecast (14-days) | Precipitation Probability | | % | precipitation_probability |
-| CBAM Short-Term weather forecast (14-days) | Humidity Maximum | | % | humidity_maximum |
-| CBAM Short-Term weather forecast (14-days) | Humidity Minimum | | % | humidity_minimum |
-| CBAM Short-Term weather forecast (14-days) | Wind Speed Average | | m/s | wind_speed_avg |
-| CBAM Short-Term weather forecast (14-days) | Solar radiation | | Wh/m2 | solar_radiation |
-| **CBAM Daily Historical Reanalysis (2012 - 2023)** |
-| CBAM Daily Historical Reanalysis (2012 - 2023) | Min Total Temperature | Minimum temperature (0000:2300) | °C | min_temperature |
-| CBAM Daily Historical Reanalysis (2012 - 2023) | Min Day Temperature | Minimum day-time temperature (0600:1800) | °C | min_day_temperature |
-| CBAM Daily Historical Reanalysis (2012 - 2023) | Total Rainfall | Total rainfall (0000:2300) | mm | total_rainfall |
-| CBAM Daily Historical Reanalysis (2012 - 2023) | Max Day Temperature | Maximum day-time temperature (0600:1800) | °C | max_day_temperature |
-| CBAM Daily Historical Reanalysis (2012 - 2023) | Min Night Temperature | Minimum night-time temperature (1900:0500) | °C | min_night_temperature |
-| CBAM Daily Historical Reanalysis (2012 - 2023) | Total Solar Irradiance | Total solar irradiance reaching the surface (0000:2300) | MJ/sqm | total_solar_irradiance |
-| CBAM Daily Historical Reanalysis (2012 - 2023) | Average Solar Irradiance | Average hourly solar irradiance reaching the surface (0600:1800) | MJ/sqm | average_solar_irradiance |
-| CBAM Daily Historical Reanalysis (2012 - 2023) | Max Night Temperature | Maximum night-time temperature (1900:0500) | °C | max_night_temperature |
-| CBAM Daily Historical Reanalysis (2012 - 2023) | Max Total Temperature | Maximum temperature (0000:2300) | °C | max_temperature |
-| CBAM Daily Historical Reanalysis (2012 - 2023) | Total Evapotranspiration Flux | Total Evapotranspiration flux with respect to grass cover (0000:2300) | mm | total_evapotranspiration_flux |
-| **CBAM Daily Historical Reanalysis (Bias-Corrected) (2012-2023)** |
-| CBAM Daily Historical Reanalysis (Bias-Corrected) (2012-2023) | Min Total Temperature | Minimum temperature (0000:2300) | °C | min_temperature |
-| CBAM Daily Historical Reanalysis (Bias-Corrected) (2012-2023) | Total Rainfall | Total rainfall (0000:2300) | mm | total_rainfall |
-| CBAM Daily Historical Reanalysis (Bias-Corrected) (2012-2023) | Total Solar Irradiance | Total solar irradiance reaching the surface (0000:2300) | MJ/sqm | total_solar_irradiance |
-| CBAM Daily Historical Reanalysis (Bias-Corrected) (2012-2023) | Max Total Temperature | Maximum temperature (0000:2300) | °C | max_temperature |
-| **Ground Observations (TAHMO stations)** |
-| Ground Observations (TAHMO stations) | Precipitation | | mm/day | precipitation |
-| Ground Observations (TAHMO stations) | Precipitation Total Chirps | | % | precipitation_total_chirps |
-| Ground Observations (TAHMO stations) | Precipitation Total Chirps Qflag | | % | precipitation_total_chirps_qflag |
-| Ground Observations (TAHMO stations) | Precipitation Total Era5 | | % | precipitation_total_era5 |
-| Ground Observations (TAHMO stations) | Precipitation Total Qflag | | % | precipitation_total_qflag |
-| Ground Observations (TAHMO stations) | Solar radiation | | Wh/m2 | solar_radiation |
-| Ground Observations (TAHMO stations) | Relative Humidity Max | | % | max_relative_humidity |
-| Ground Observations (TAHMO stations) | Relative Humidity Min | | % | min_relative_humidity |
-| Ground Observations (TAHMO stations) | Air Temperature Average | | °C | average_air_temperature |
-| Ground Observations (TAHMO stations) | Air Temperature Max | | °C | max_air_temperature |
-| Ground Observations (TAHMO stations) | Air Temperature Min | | °C | min_air_temperature |
-| **Ground Observations (Arable stations)** |
-| Ground Observations (Arable stations) | Total Evapotranspiration Flux | | mm | total_evapotranspiration_flux |
-| Ground Observations (Arable stations) | Relative Humidity Max | | % | max_relative_humidity |
-| Ground Observations (Arable stations) | Max Day Temperature | | °C | max_day_temperature |
-| Ground Observations (Arable stations) | Relative Humidity Mean | | % | mean_relative_humidity |
-| Ground Observations (Arable stations) | Mean Day Temperature | | °C | mean_day_temperature |
-| Ground Observations (Arable stations) | Relative Humidity Min | | % | min_relative_humidity |
-| Ground Observations (Arable stations) | Min Day Temperature | | °C | min_day_temperature |
-| Ground Observations (Arable stations) | Precipitation Total | | mm | precipitation_total |
-| Ground Observations (Arable stations) | Precipitation | | mm/day | precipitation |
-| Ground Observations (Arable stations) | Sea Level Pressure | | kPa | sea_level_pressure |
-| Ground Observations (Arable stations) | Wind Heading | | degree | wind_heading |
-| Ground Observations (Arable stations) | Wind Speed | | m/s | wind_speed |
-| Ground Observations (Arable stations) | Wind Speed Max | | m/s | wind_speed_max |
-| Ground Observations (Arable stations) | Wind Speed Min | | m/s | wind_speed_min |
-| **Disdrometer Observation Data** |
-| Disdrometer Observation Data | Atmospheric Pressure | | kPa | atmospheric_pressure |
-| Disdrometer Observation Data | Depth of Water | | mm | depth_of_water |
-| Disdrometer Observation Data | Electrical Conductivity of Precipitation | | mS/cm | electrical_conductivity_of_precipitation |
-| Disdrometer Observation Data | Electrical Conductivity of Water | | mS/cm | electrical_conductivity_of_water |
-| Disdrometer Observation Data | Lightning Distance | | km | lightning_distance |
-| Disdrometer Observation Data | Shortwave Radiation | | W/m2 | shortwave_radiation |
-| Disdrometer Observation Data | Soil Moisture Content | | m3/m3 | soil_moisture_content |
-| Disdrometer Observation Data | Soil Temperature | | °C | soil_temperature |
-| Disdrometer Observation Data | Surface Air Temperature | | °C | surface_air_temperature |
-| Disdrometer Observation Data | Wind Speed | | m/s | wind_speed |
-| Disdrometer Observation Data | Wind Gusts | | m/s | wind_gusts |
-| Disdrometer Observation Data | Precipitation Total | | mm | precipitation_total |
-| Disdrometer Observation Data | Precipitation | | mm/day | precipitation |
-| Disdrometer Observation Data | Relative Humidity | | % | relative_humidity |
-| Disdrometer Observation Data | Wind Heading | | degree | wind_heading |
+| **Salient Predictions Weather Forecast (8-month)** |
+| Salient Predictions Weather Forecast (8-month) | Temperature | | °C | temperature |
+| Salient Predictions Weather Forecast (8-month) | Temperature Climatology | | °C | temperature_clim |
+| Salient Predictions Weather Forecast (8-month) | Temperature Anomaly | | °C | temperature_anom |
+| Salient Predictions Weather Forecast (8-month) | Precipitation | | mm day-1 | precipitation |
+| Salient Predictions Weather Forecast (8-month) | Precipitation Anomaly | | mm day-1 | precipitation_anom |
+| Salient Predictions Weather Forecast (8-month) | Precipitation Climatology | | mm day-1 | precipitation_clim |
+| Salient Predictions Weather Forecast (8-month) | Minimum Temperature | | °C | min_temperature |
+| Salient Predictions Weather Forecast (8-month) | Minimum Temperature Climatology | | °C | min_temperature_clim |
+| Salient Predictions Weather Forecast (8-month) | Minimum Temperature Anomaly | | °C | min_temperature_anom |
+| Salient Predictions Weather Forecast (8-month) | Maximum Temperature | | °C | max_temperature |
+| Salient Predictions Weather Forecast (8-month) | Maximum Temperature Climatology | | °C | max_temperature_clim |
+| Salient Predictions Weather Forecast (8-month) | Maximum Temperature Anomaly | | °C | max_temperature_anom |
+| Salient Predictions Weather Forecast (8-month) | Relative Humidity | | % | relative_humidty |
+| Salient Predictions Weather Forecast (8-month) | Relative Humidity Climatology | | % | relative_humidty_clim |
+| Salient Predictions Weather Forecast (8-month) | Relative Humidity Anomaly | | % | relative_humidty_anom |
+| Salient Predictions Weather Forecast (8-month) | Downward Solar Radiation | | kWh m-2 day-1 | solar_radiation |
+| Salient Predictions Weather Forecast (8-month) | Downward Solar Radiation Climatology | | kWh m-2 day-1 | solar_radiation_clim |
+| Salient Predictions Weather Forecast (8-month) | Downward Solar Radiation Anomaly | | kWh m-2 day-1 | solar_radiation_anom |
+| Salient Predictions Weather Forecast (8-month) | Wind Speed Climatology | | m/s | wind_speed |
+| Salient Predictions Weather Forecast (8-month) | Wind Speed Climatology | | m/s | wind_speed_clim |
+| Salient Predictions Weather Forecast (8-month) | Wind Speed Climatology | | m/s | wind_speed_anom |
+| **CBAM Weather Forecast Daily 10-day** |
+| CBAM Weather Forecast Daily 10-day | Total Rainfall | | mm | total_rainfall |
+| CBAM Weather Forecast Daily 10-day | Total Evapotranspiration Flux | | mm | total_evapotranspiration_flux |
+| CBAM Weather Forecast Daily 10-day | Max Temperature | | °C | max_temperature |
+| CBAM Weather Forecast Daily 10-day | Min Temperature | | °C | min_temperature |
+| CBAM Weather Forecast Daily 10-day | Precipitation Probability | | % | precipitation_probability |
+| CBAM Weather Forecast Daily 10-day | Humidity Maximum | | % | humidity_maximum |
+| CBAM Weather Forecast Daily 10-day | Humidity Minimum | | % | humidity_minimum |
+| CBAM Weather Forecast Daily 10-day | Wind Speed Average | | m/s | wind_speed_avg |
+| CBAM Weather Forecast Daily 10-day | Solar radiation | | Wh/m2 | solar_radiation |
+| CBAM Weather Forecast Daily 10-day | Weather Code | | | weather_code |
+| CBAM Weather Forecast Daily 10-day | Flood Index | | | flood_index |
+| **CBAM Weather Forecast Hourly 4-day** |
+| CBAM Weather Forecast Hourly 4-day | Total Rainfall | | mm | total_rainfall |
+| CBAM Weather Forecast Hourly 4-day | Total Evapotranspiration Flux | | mm | total_evapotranspiration_flux |
+| CBAM Weather Forecast Hourly 4-day | Temperature | | °C | temperature |
+| CBAM Weather Forecast Hourly 4-day | Precipitation Probability | | % | precipitation_probability |
+| CBAM Weather Forecast Hourly 4-day | Humidity | | % | humidity |
+| CBAM Weather Forecast Hourly 4-day | Wind Speed | | m/s | wind_speed |
+| CBAM Weather Forecast Hourly 4-day | Solar radiation | | Wh/m2 | solar_radiation |
+| CBAM Weather Forecast Hourly 4-day | Weather Code | | | weather_code |
+| CBAM Weather Forecast Hourly 4-day | Flood Index | | | flood_index |
+| CBAM Weather Forecast Hourly 4-day | Wind Direction | | degree | wind_direction |
+| **CBAM Daily Reanalysis (Raw) 2012-2024 v2** |
+| CBAM Daily Reanalysis (Raw) 2012-2024 v2 | Min Total Temperature | Minimum temperature (0000:2300) | °C | min_temperature |
+| CBAM Daily Reanalysis (Raw) 2012-2024 v2 | Min Day Temperature | Minimum day-time temperature (0600:1800) | °C | min_day_temperature |
+| CBAM Daily Reanalysis (Raw) 2012-2024 v2 | Total Rainfall | Total rainfall (0000:2300) | mm | total_rainfall |
+| CBAM Daily Reanalysis (Raw) 2012-2024 v2 | Max Day Temperature | Maximum day-time temperature (0600:1800) | °C | max_day_temperature |
+| CBAM Daily Reanalysis (Raw) 2012-2024 v2 | Min Night Temperature | Minimum night-time temperature (1900:0500) | °C | min_night_temperature |
+| CBAM Daily Reanalysis (Raw) 2012-2024 v2 | Total Solar Irradiance | Total solar irradiance reaching the surface (0000:2300) | MJ/sqm | total_solar_irradiance |
+| CBAM Daily Reanalysis (Raw) 2012-2024 v2 | Average Solar Irradiance | Average hourly solar irradiance reaching the surface (0600:1800) | MJ/sqm | average_solar_irradiance |
+| CBAM Daily Reanalysis (Raw) 2012-2024 v2 | Max Night Temperature | Maximum night-time temperature (1900:0500) | °C | max_night_temperature |
+| CBAM Daily Reanalysis (Raw) 2012-2024 v2 | Max Total Temperature | Maximum temperature (0000:2300) | °C | max_temperature |
+| CBAM Daily Reanalysis (Raw) 2012-2024 v2 | Total Evapotranspiration Flux | Total Evapotranspiration flux with respect to grass cover (0000:2300) | mm | total_evapotranspiration_flux |
+| **CBAM Daily Reanalysis (Bias-Corrected) 2012-2023 v1** |
+| CBAM Daily Reanalysis (Bias-Corrected) 2012-2023 v1 | Min Total Temperature | Minimum temperature (0000:2300) | °C | min_temperature |
+| CBAM Daily Reanalysis (Bias-Corrected) 2012-2023 v1 | Total Rainfall | Total rainfall (0000:2300) | mm | total_rainfall |
+| CBAM Daily Reanalysis (Bias-Corrected) 2012-2023 v1 | Total Solar Irradiance | Total solar irradiance reaching the surface (0000:2300) | MJ/sqm | total_solar_irradiance |
+| CBAM Daily Reanalysis (Bias-Corrected) 2012-2023 v1 | Max Total Temperature | Maximum temperature (0000:2300) | °C | max_temperature |
+| **Automated Weather Stations (TAHMO) (QC/QA) 2018 - 2025 v1** |
+| Automated Weather Stations (TAHMO) (QC/QA) 2018 - 2025 v1 | Precipitation | | mm/day | precipitation |
+| Automated Weather Stations (TAHMO) (QC/QA) 2018 - 2025 v1 | Precipitation Total Chirps | | % | precipitation_total_chirps |
+| Automated Weather Stations (TAHMO) (QC/QA) 2018 - 2025 v1 | Precipitation Total Chirps Qflag | | % | precipitation_total_chirps_qflag |
+| Automated Weather Stations (TAHMO) (QC/QA) 2018 - 2025 v1 | Precipitation Total Era5 | | % | precipitation_total_era5 |
+| Automated Weather Stations (TAHMO) (QC/QA) 2018 - 2025 v1 | Precipitation Total Qflag | | % | precipitation_total_qflag |
+| Automated Weather Stations (TAHMO) (QC/QA) 2018 - 2025 v1 | Solar radiation | | Wh/m2 | solar_radiation |
+| Automated Weather Stations (TAHMO) (QC/QA) 2018 - 2025 v1 | Relative Humidity Max | | % | max_relative_humidity |
+| Automated Weather Stations (TAHMO) (QC/QA) 2018 - 2025 v1 | Relative Humidity Min | | % | min_relative_humidity |
+| Automated Weather Stations (TAHMO) (QC/QA) 2018 - 2025 v1 | Air Temperature Average | | °C | average_air_temperature |
+| Automated Weather Stations (TAHMO) (QC/QA) 2018 - 2025 v1 | Air Temperature Max | | °C | max_air_temperature |
+| Automated Weather Stations (TAHMO) (QC/QA) 2018 - 2025 v1 | Air Temperature Min | | °C | min_air_temperature |
+| **Automated Weather Stations (Arable) 2024-2025** |
+| Automated Weather Stations (Arable) 2024-2025 | Total Evapotranspiration Flux | | mm | total_evapotranspiration_flux |
+| Automated Weather Stations (Arable) 2024-2025 | Relative Humidity Max | | % | max_relative_humidity |
+| Automated Weather Stations (Arable) 2024-2025 | Max Day Temperature | | °C | max_day_temperature |
+| Automated Weather Stations (Arable) 2024-2025 | Relative Humidity Mean | | % | mean_relative_humidity |
+| Automated Weather Stations (Arable) 2024-2025 | Mean Day Temperature | | °C | mean_day_temperature |
+| Automated Weather Stations (Arable) 2024-2025 | Relative Humidity Min | | % | min_relative_humidity |
+| Automated Weather Stations (Arable) 2024-2025 | Min Day Temperature | | °C | min_day_temperature |
+| Automated Weather Stations (Arable) 2024-2025 | Precipitation Total | | mm | precipitation_total |
+| Automated Weather Stations (Arable) 2024-2025 | Precipitation | | mm/day | precipitation |
+| Automated Weather Stations (Arable) 2024-2025 | Sea Level Pressure | | kPa | sea_level_pressure |
+| Automated Weather Stations (Arable) 2024-2025 | Wind Heading | | degree | wind_heading |
+| Automated Weather Stations (Arable) 2024-2025 | Wind Speed | | m/s | wind_speed |
+| Automated Weather Stations (Arable) 2024-2025 | Wind Speed Max | | m/s | wind_speed_max |
+| Automated Weather Stations (Arable) 2024-2025 | Wind Speed Min | | m/s | wind_speed_min |
+| **Disdrometer (Laser Rain Gauge)** |
+| Disdrometer (Laser Rain Gauge) | Atmospheric Pressure | | kPa | atmospheric_pressure |
+| Disdrometer (Laser Rain Gauge) | Depth of Water | | mm | depth_of_water |
+| Disdrometer (Laser Rain Gauge) | Electrical Conductivity of Precipitation | | mS/cm | electrical_conductivity_of_precipitation |
+| Disdrometer (Laser Rain Gauge) | Electrical Conductivity of Water | | mS/cm | electrical_conductivity_of_water |
+| Disdrometer (Laser Rain Gauge) | Lightning Distance | | km | lightning_distance |
+| Disdrometer (Laser Rain Gauge) | Shortwave Radiation | | W/m2 | shortwave_radiation |
+| Disdrometer (Laser Rain Gauge) | Soil Moisture Content | | m3/m3 | soil_moisture_content |
+| Disdrometer (Laser Rain Gauge) | Soil Temperature | | °C | soil_temperature |
+| Disdrometer (Laser Rain Gauge) | Surface Air Temperature | | °C | surface_air_temperature |
+| Disdrometer (Laser Rain Gauge) | Wind Speed | | m/s | wind_speed |
+| Disdrometer (Laser Rain Gauge) | Wind Gusts | | m/s | wind_gusts |
+| Disdrometer (Laser Rain Gauge) | Precipitation Total | | mm | precipitation_total |
+| Disdrometer (Laser Rain Gauge) | Precipitation | | mm/day | precipitation |
+| Disdrometer (Laser Rain Gauge) | Relative Humidity | | % | relative_humidity |
+| Disdrometer (Laser Rain Gauge) | Wind Heading | | degree | wind_heading |
 | **Radiosonde Observations (Windborne)** |
 | Radiosonde Observations (Windborne) | Temperature | | °C | temperature |
 | Radiosonde Observations (Windborne) | Atmospheric Pressure | | hPa | atmospheric_pressure |
 | Radiosonde Observations (Windborne) | Specific Humidity | | mg/kg | specific_humidity |
 | Radiosonde Observations (Windborne) | Relative Humidity | | % | relative_humidity |
+| **TAMSAT Precipitation Long-term Normals (20-year)** |
+| TAMSAT Precipitation Long-term Normals (20-year) | Precipitation Total | | mm | precipitation_total |
 | |
 
 In order to use the API, the user must be authenticated and must have authorisation to access the data.
