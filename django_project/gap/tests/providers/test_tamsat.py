@@ -94,7 +94,7 @@ class TestTamsatZarrReader(TestCase):
     def setUp(self):
         """Set Test class for Tamsat Zarr Reader."""
         self.dataset = Dataset.objects.get(
-            name='Tamsat Long Term Normals (10 years)',
+            name='Tamsat Long Term Normals (20 years)',
             store_type=DatasetStore.ZARR
         )
         self.zarr_source = DataSourceFileFactory.create(

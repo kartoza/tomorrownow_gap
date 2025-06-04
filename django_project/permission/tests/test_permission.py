@@ -30,7 +30,7 @@ class TestPermission(TestCase):
             is_superuser=False
         )
         self.type1 = DatasetType.objects.get(
-            name='Ground Observations (TAHMO stations)'
+            variable_name='tahmo_ground_observation'
         )
 
     def test_group_permission(self):

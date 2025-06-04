@@ -38,7 +38,7 @@ class DatasetTypeObjectPermissionAdminTestCase(TestCase):
         )
         cls.group = Group.objects.create(name='test_group')
         cls.type1 = DatasetType.objects.get(
-            name='Ground Observations (TAHMO stations)'
+            variable_name='tahmo_ground_observation'
         )
         # Create the required permission
         cls.view_permission = Permission.objects.get(
