@@ -21,8 +21,7 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '1.5'
-          memory: 4G
+          memory: 12G
     volumes:
       - ../:/home/web/project
       - ../django_project:/home/web/django_project
