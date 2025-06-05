@@ -1,5 +1,5 @@
 // theme.ts
-import { defineConfig, createSystem, defaultConfig } from '@chakra-ui/react'
+import { defineConfig, createSystem, defaultConfig, Button } from '@chakra-ui/react'
 
 // Define your custom theme configuration
 const config = defineConfig({
@@ -9,12 +9,12 @@ const config = defineConfig({
         // Your brand colors
         brand: {
           50: { value: '#E8FDF4' },   // Very light green
-          100: { value: '#C3F9E0' },  // Light green
+          100: { value: '#B7CCB7' },  // Light green - design
           200: { value: '#9EF5CC' },  // Lighter green
           300: { value: '#79F1B8' },  // Light glowing green
           400: { value: '#54EDA4' },  // Medium glowing green
-          500: { value: '#3AF1A3' },  // Your primary glowing green
-          600: { value: '#2EC182' },  // Darker green
+          500: { value: '#3AF1A3' },  // Your primary glowing green - design
+          600: { value: '#38453C' },  // Darker green - design
           700: { value: '#229161' },  // Much darker green
           800: { value: '#166140' },  // Very dark green
           900: { value: '#0A311F' },  // Darkest green
@@ -40,9 +40,34 @@ const config = defineConfig({
         }
       },
       fonts: {
-        heading: { value: `'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif` },
-        body: { value: `'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif` },
+        heading: { value: `Mulish, sans-serif` },
+        body: { value: `Mulish, sans-serif` },
       },
+      fontSizes: {
+        xs: { value: '0.75rem' },     // 12px
+        sm: { value: '0.875rem' },    // 14px
+        base: { value: '1rem' },      // 16px
+        '2base': { value: '2rem' },      // 32px
+        md: { value: '1.125rem' },    // 18px - modified
+        lg: { value: '1.25rem' },     // 20px
+        '2lg': { value: '2.5rem' },  // 40px
+        xl: { value: '1.5rem' },      // 24px
+        '2xl': { value: '1.875rem' }, // 30px
+        '3xl': { value: '2.25rem' },  // 36px
+        '4xl': { value: '3rem' },     // 48px
+        '5xl': { value: '4rem' },     // 64px
+        '6xl': { value: '4.5rem' },   // 72px
+        '7xl': { value: '5rem' },     // new size
+      },
+      fontWeights: {
+        normal: {value: 400},
+        medium: {value: 500},
+        semibold: {value: 600},
+        bold: {value: 700},
+        extrabold: {value: 800},
+        black: {value: 900},
+      },
+
     },
     semanticTokens: {
       colors: {
@@ -65,143 +90,40 @@ const config = defineConfig({
         'fg.subtle': { value: '{text.muted}' },
       }
     },
-    // globalCss: {
-    //   body: {
-    //     bg: 'white',
-    //     color: 'text.primary',
-    //   },
-    //   '*::placeholder': {
-    //     color: 'text.muted',
-    //   },
-    // },
+    recipes: {
+      button: {
+        variants: {
+          visual: {
+            
+            outline: { borderWidth: "1px", borderColor: "brand.500" },
+          },
+          size: {
+            sm: { padding: "4", fontSize: "12px" },
+            md: { padding: "16px", fontSize: "16px", minW: "200px", minH: "54px", gap: "10px", } 
+          },
+          variant: {
+            solid: { bg: "brand.500", color: "brand.600", borderRadius: "25px", p: "10px" },
+            landingPage: { bg: "brand.500", color: "brand.600", borderRadius: "50px", fontWeight: "bold", _hover: { bg: "brand.600", color: "white" }, _active: { bg: "brand.700", color: "white" } }
+          }
+        }
+      }
+    }
   },
   globalCss: {
     body: {
       bg: 'white',
       color: '{text.primary}',
+      fontSize: 'base',
+      fontFamily: '{fonts.body}',
     },
-  },
+  }
 })
 
-// Create the system
-// const system = createSystem(config, {
-//   // Component recipes/styles
-//   recipes: {
-//     button: {
-//       base: {
-//         fontWeight: 'medium',
-//         borderRadius: 'md',
-//         _focusVisible: {
-//           outline: '2px solid',
-//           outlineColor: 'brand.500',
-//           outlineOffset: '2px',
-//         },
-//       },
-//       variants: {
-//         variant: {
-//           solid: {
-//             bg: 'brand.500',
-//             color: 'white',
-//             _hover: {
-//               bg: 'brand.600',
-//               transform: 'translateY(-2px)',
-//               boxShadow: '0 4px 12px rgba(58, 241, 163, 0.4)',
-//             },
-//             _active: {
-//               bg: 'brand.700',
-//               transform: 'translateY(0)',
-//             },
-//           },
-//           outline: {
-//             borderWidth: '1px',
-//             borderColor: 'brand.500',
-//             color: 'brand.500',
-//             _hover: {
-//               bg: 'brand.50',
-//               borderColor: 'brand.600',
-//             },
-//           },
-//           ghost: {
-//             color: 'brand.500',
-//             _hover: {
-//               bg: 'brand.50',
-//             },
-//           },
-//         },
-//         size: {
-//           sm: {
-//             h: '8',
-//             minW: '8',
-//             fontSize: 'sm',
-//             px: '3',
-//           },
-//           md: {
-//             h: '10',
-//             minW: '10',
-//             fontSize: 'sm',
-//             px: '4',
-//           },
-//           lg: {
-//             h: '12',
-//             minW: '12',
-//             fontSize: 'md',
-//             px: '6',
-//           },
-//         },
-//       },
-//       defaultVariants: {
-//         variant: 'solid',
-//         size: 'md',
-//       },
-//     },
-//     heading: {
-//       base: {
-//         color: 'text.primary',
-//         fontWeight: 'bold',
-//       },
-//     },
-//     text: {
-//       base: {
-//         color: 'text.primary',
-//       },
-//     },
-//     link: {
-//       base: {
-//         color: 'brand.500',
-//         _hover: {
-//           color: 'brand.600',
-//           textDecoration: 'none',
-//         },
-//       },
-//     },
-//   },
-// })
+// Note:
+// Updating theme, may require to execute `npx @chakra-ui/cli typegen ./src/theme.ts`
+// to generate the types for the new theme configuration.
+
 const system = createSystem(defaultConfig, config)
 
 
 export default system
-
-// Type extensions for better TypeScript support
-// declare module '@chakra-ui/react' {
-//   interface Token {
-//     colors: {
-//       brand: {
-//         50: string
-//         100: string
-//         200: string
-//         300: string
-//         400: string
-//         500: string
-//         600: string
-//         700: string
-//         800: string
-//         900: string
-//       }
-//       text: {
-//         primary: string
-//         secondary: string
-//         muted: string
-//       }
-//     }
-//   }
-// }

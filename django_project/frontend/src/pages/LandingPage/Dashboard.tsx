@@ -56,27 +56,34 @@ const GlobalAccessPlatform: React.FC = () => {
   const [isAutoPlaying, setIsAutoPlaying] = useState(true);
   const [activeSection, setActiveSection] = useState('');
 
+  // const navItems: NavItem[] = [
+  //   { label: 'Bridging The Gap', href: '#bridging' },
+  //   { label: 'Global Impact', href: '#impact' },
+  //   { label: 'Agro-Met Intelligence Hub', href: '#hub' },
+  //   { label: 'Our Partners', href: '#partners' },
+  //   { label: 'About Us', href: '#about' }
+  // ];
   const navItems: NavItem[] = [
-    { label: 'Bridging The Gap', href: '#bridging' },
-    { label: 'Global Impact', href: '#impact' },
-    { label: 'Agro-Met Intelligence Hub', href: '#hub' },
+    { label: 'Data Access', href: '' },
+    { label: 'Our Products', href: '#hub' },
+    { label: 'API Docs', href: '/api/v1/docs/' },
     { label: 'Our Partners', href: '#partners' },
     { label: 'About Us', href: '#about' }
   ];
 
   const partners: PartnerLogo[] = [
-    { name: 'Microsoft', logo: '/api/placeholder/150/60', website: 'https://microsoft.com' },
-    { name: 'Google', logo: '/api/placeholder/150/60', website: 'https://google.com' },
-    { name: 'Amazon', logo: '/api/placeholder/150/60', website: 'https://amazon.com' },
-    { name: 'IBM', logo: '/api/placeholder/150/60', website: 'https://ibm.com' },
-    { name: 'Oracle', logo: '/api/placeholder/150/60', website: 'https://oracle.com' },
-    { name: 'Salesforce', logo: '/api/placeholder/150/60', website: 'https://salesforce.com' }
+    { name: 'CGIAR', logo: '/static/images/cgiar.png', website: 'https://microsoft.com' },
+    { name: 'ONE ACRE FUND', logo: '/static/images/oneacrelogo.png', website: 'https://google.com' },
+    { name: 'Regen Organics', logo: '/static/images/regen_organics.png', website: 'https://amazon.com' },
+    { name: 'Rhiza Research', logo: '/static/images/rhiza_v5.png', website: 'https://ibm.com' },
+    { name: 'Salient', logo: '/static/images/salient.png', website: 'https://oracle.com' },
+    { name: 'Tahmo', logo: '/static/images/tahmo.png', website: 'https://salesforce.com' },
   ];
 
   const aboutPartners: PartnerLogo[] = [
-    { name: 'Tomorrow.io', logo: '/api/placeholder/150/60', website: 'https://salesforce.com' },
-    { name: 'Kartozoa', logo: '/api/placeholder/150/60', website: 'https://salesforce.com' },
-    { name: 'Gates Foundation', logo: '/api/placeholder/150/60', website: 'https://salesforce.com' }
+    { name: 'TomorrowNow', logo: '/static/images/tomorrownow.png', website: 'https://salesforce.com' },
+    { name: 'Kartoza', logo: '/static/images/kartoza.png', website: 'https://salesforce.com' },
+    { name: 'Gates Foundation', logo: '/static/images/gates_foundation.png', website: 'https://salesforce.com' }
   ];
 
   const services: ServiceCard[] = [
@@ -127,38 +134,38 @@ const GlobalAccessPlatform: React.FC = () => {
   }, [isAutoPlaying, partners.length]);
 
   // Scroll spy for active section highlighting
-  useEffect(() => {
-    const handleScroll = () => {
-      const sections = ['bridging', 'impact', 'hub', 'partners', 'about'];
-      const scrollPosition = window.scrollY + 100; // Offset for better UX
+  // useEffect(() => {
+  //   const handleScroll = () => {
+  //     const sections = ['bridging', 'impact', 'hub', 'partners', 'about'];
+  //     const scrollPosition = window.scrollY + 100; // Offset for better UX
 
-      for (const section of sections) {
-        const element = document.getElementById(section);
-        if (element) {
-          let { offsetTop, offsetHeight } = element;
-          if (section === 'partners') {
-            offsetHeight = offsetHeight - 100;
-          } else if (section === 'about') {
-            offsetTop = offsetTop - 50;
-          }
-          if (scrollPosition >= offsetTop && scrollPosition < offsetTop + offsetHeight) {
-            setActiveSection(`#${section}`);
-            break;
-          }
-        }
-      }
+  //     for (const section of sections) {
+  //       const element = document.getElementById(section);
+  //       if (element) {
+  //         let { offsetTop, offsetHeight } = element;
+  //         if (section === 'partners') {
+  //           offsetHeight = offsetHeight - 100;
+  //         } else if (section === 'about') {
+  //           offsetTop = offsetTop - 50;
+  //         }
+  //         if (scrollPosition >= offsetTop && scrollPosition < offsetTop + offsetHeight) {
+  //           setActiveSection(`#${section}`);
+  //           break;
+  //         }
+  //       }
+  //     }
 
-      // Clear active section if we're at the top
-      if (window.scrollY < 100) {
-        setActiveSection('');
-      }
-    };
+  //     // Clear active section if we're at the top
+  //     if (window.scrollY < 100) {
+  //       setActiveSection('');
+  //     }
+  //   };
 
-    window.addEventListener('scroll', handleScroll);
-    handleScroll(); // Check initial position
+  //   window.addEventListener('scroll', handleScroll);
+  //   handleScroll(); // Check initial position
 
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+  //   return () => window.removeEventListener('scroll', handleScroll);
+  // }, []);
 
   const nextSlide = () => {
     setCurrentSlide((prev) => (prev + 1) % Math.ceil(partners.length / 3));
@@ -201,13 +208,12 @@ const GlobalAccessPlatform: React.FC = () => {
                     e.preventDefault();
                     handleSmoothScroll(item.href);
                   }}
-                  fontSize="sm"
-                  fontWeight={activeSection === item.href ? "bold" : "medium"}
-                  color={activeSection === item.href ? "brand.500" : "text.secondary"}
+                  fontWeight={activeSection === item.href && item.href != '' ? "bold" : "medium"}
+                  color={activeSection === item.href && item.href != '' ? "brand.500" : "text.secondary"}
                   _hover={{ color: 'brand.500' }}
                   position="relative"
                   transition="all 0.2s ease"
-                  _after={activeSection === item.href ? {
+                  _after={activeSection === item.href && item.href != '' ? {
                     content: '""',
                     position: 'absolute',
                     bottom: '-4px',
@@ -222,8 +228,8 @@ const GlobalAccessPlatform: React.FC = () => {
                 </Link>
               ))}
             </HStack>
-            <Button colorScheme="brand" size="sm" ml={4}>
-              Join Us
+            <Button variant="solid" size="sm" ml={4}>
+              Login
             </Button>
           </Flex>
         </Container>
@@ -231,31 +237,35 @@ const GlobalAccessPlatform: React.FC = () => {
 
       {/* Hero Section */}
       <Box
-        bgImage="linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.4)), url('/static/images/home.webp')"
-        bgSize="cover"
-        // bgPosition="center"
-        bgAttachment="fixed"
         h="100vh"
         display="flex"
         alignItems="center"
         color="white"
+        position={'relative'}
+        bgImage="url('/static/images/home.webp')"
+        bgSize="cover"
+        bgPos="center"
+        bgAttachment="fixed"
+        w="full"
       >
-        <Container maxW="7xl" px={{ base: 4, md: 6 }} w="full">
-          <VStack gap={6} alignItems="flex-start" maxW={{ base: "full", xl: "xl" }} w="full">
-            <Heading as="h1" size={{ base: "2xl", md: "4xl" }} fontWeight="bold" lineHeight="shorter">
-              Global Access Platform
-            </Heading>
-            <Text fontSize={{ base: "xl", md: "2xl" }} fontWeight="medium" color="brand.300">
-              For Agro-Met Intelligence
-            </Text>
-            <Text fontSize={{ base: "md", md: "lg" }} opacity={0.9} maxW="md">
-              Unlocking Weather Resilience for Sustainable Farming
-            </Text>
-            <Button colorScheme="brand" size={{ base: "md", md: "lg" }} px={{ base: 6, md: 8 }} py={{ base: 4, md: 6 }}>
-              Get Started
-            </Button>
-          </VStack>
-        </Container>
+        <Box h='100vh' w="full" display="flex" alignItems="center" position="relative" backdropFilter={'blur(2px)'} bgColor="rgba(0, 213, 142, 0.05)">
+          <Container px={{ base: 4, md: 6 }} w="full">
+            <VStack gap={6} alignItems="flex-start" maxW={{ base: "full", xl: "8xl" }} w="full">
+              <Heading as="h1" size={{ base: "2xl", md: "5xl" }} fontWeight="black" lineHeight="normal" letterSpacing={0.15}>
+                Global Access Platform
+              </Heading>
+              <Text fontSize={{ base: "2base", md: "2lg" }} fontWeight="extrabold" lineHeight="moderate" letterSpacing={0.15}>
+                For Agro-Met Intelligence
+              </Text>
+              <Text fontSize={{ base: "base", md: "xl" }} fontWeight="extrabold" mt={5}>
+                Unlocking Weather Resilience for Smallholder Farming
+              </Text>
+              <Button variant="landingPage" size="md">
+                Join Us
+              </Button>
+            </VStack>
+          </Container>
+        </Box>
       </Box>
 
       {/* Bridging The Gap Section */}
@@ -266,27 +276,60 @@ const GlobalAccessPlatform: React.FC = () => {
               Bridging The Gap
             </Heading>
             
-            <Box w="full" maxW="4xl">
+            <Box w="full">
               <Image
-                src="/api/placeholder/800/400"
+                src="/static/images/crop_plan.webp"
                 alt="Bridging the gap infographic"
                 w="full"
                 borderRadius="lg"
                 boxShadow="lg"
               />
             </Box>
+          </VStack>
+        </Container>
+      </Box>
 
-            <VStack gap={6} maxW="3xl" textAlign="center">
-              <Heading as="h3" size={{ base: "md", md: "lg" }} color="text.primary">
-                What is Agro-Met Intelligence?
+      {/* Agro-Met Intelligence Hub */}
+      <Box
+        id="hub"
+        py={20}
+        bgImage="url('/static/images/bg_hub.webp')"
+        bgSize="100% auto"
+        bgPos="top"
+        color="white"
+      >
+        <Container maxW="7xl" px={{ base: 4, md: 6 }} w="full">
+          <VStack gap={12}>
+            <VStack gap={4} textAlign="center">
+              <Heading as="h2" size="5xl" color="text.primary" fontWeight="black">
+                Agro-Met Intelligence Hub
               </Heading>
-              <Text fontSize={{ base: "md", md: "lg" }} color="text.secondary" lineHeight="tall">
-                Agro-Met Intelligence combines meteorological data with agricultural insights to provide farmers with
-                complete, localized, and decision-support tools to optimize agricultural practices, enhance crop productivity, and
-                manage risks. It ensures collecting and accessing meteorological information alongside agronomic data to provide
-                actionable intelligence for sustainable farming decisions.
+              <Text fontSize="lg" color="text.primary">
+                Trusted, localized insights for organizations on the front lines of helping farmers increase productivity and resilience.
               </Text>
             </VStack>
+
+            <SimpleGrid columns={{ base: 1, md: 3 }} gap={{ base: 6, md: 8 }} w="full">
+              {services.map((service, index) => (
+                <Box key={index} bg="white"  border="1px solid" p={6} borderRadius="lg">
+                  <VStack gap={4} align="start">
+                    <Heading as="h3" size="md" color="text.primary">
+                      {service.title}
+                    </Heading>
+                    <VStack gap={2} align="start" w="full">
+                      {service.items.map((item, itemIndex) => (
+                        <HStack key={itemIndex} gap={2} align="start">
+                          <Box w={2} h={2} bg="brand.400" borderRadius="full" mt={2} flexShrink={0} />
+                          <Text fontSize="sm" opacity={0.9} color="text.primary">
+                            {item}
+                          </Text>
+                        </HStack>
+                      ))}
+                    </VStack>
+                  </VStack>
+                </Box>
+              ))}
+            </SimpleGrid>
           </VStack>
         </Container>
       </Box>
@@ -300,14 +343,14 @@ const GlobalAccessPlatform: React.FC = () => {
                 Global Impact
               </Heading>
               <Text fontSize={{ base: "md", md: "lg" }} color="text.secondary">
-                Our reach via partner like Mali, Weather Content Partner Across Africa
+                Our north star vision is 100 Million Weather-Resilient Farmers Across Africa.
               </Text>
             </VStack>
 
             <Grid templateColumns={{ base: '1fr', lg: '1fr 1fr' }} gap={12} alignItems="center">
               <GridItem>
                 <Image
-                  src="/api/placeholder/500/400"
+                  src="/static/images/map_africa.webp"
                   alt="Africa map showing global impact"
                   w="full"
                   borderRadius="lg"
@@ -349,51 +392,7 @@ const GlobalAccessPlatform: React.FC = () => {
         </Container>
       </Box>
 
-      {/* Agro-Met Intelligence Hub */}
-      <Box
-        id="hub"
-        py={20}
-        bgImage="linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)), url('/api/placeholder/1920/600')"
-        bgSize="cover"
-        // bgPosition="center"
-        color="white"
-      >
-        <Container maxW="7xl" px={{ base: 4, md: 6 }} w="full">
-          <VStack gap={12}>
-            <VStack gap={4} textAlign="center">
-              <Heading as="h2" size="2xl">
-                Agro-Met Intelligence Hub
-              </Heading>
-              <Text fontSize="lg" opacity={0.9} maxW="2xl">
-                Trusted weather insights for agriculture via Real-time & cloud-based intelligence platform (RTCIP) built with advanced
-                weather APIs
-              </Text>
-            </VStack>
-
-            <SimpleGrid columns={{ base: 1, md: 3 }} gap={{ base: 6, md: 8 }} w="full">
-              {services.map((service, index) => (
-                <Box key={index} bg="whiteAlpha.100" backdropFilter="blur(10px)" border="1px solid" borderColor="whiteAlpha.200" p={6} borderRadius="lg">
-                  <VStack gap={4} align="start">
-                    <Heading as="h3" size="md" color="white">
-                      {service.title}
-                    </Heading>
-                    <VStack gap={2} align="start" w="full">
-                      {service.items.map((item, itemIndex) => (
-                        <HStack key={itemIndex} gap={2} align="start">
-                          <Box w={2} h={2} bg="brand.400" borderRadius="full" mt={2} flexShrink={0} />
-                          <Text fontSize="sm" opacity={0.9}>
-                            {item}
-                          </Text>
-                        </HStack>
-                      ))}
-                    </VStack>
-                  </VStack>
-                </Box>
-              ))}
-            </SimpleGrid>
-          </VStack>
-        </Container>
-      </Box>
+      
 
       {/* Partners Section */}
       <Box id={"partners"} py={20} bg="white">
@@ -538,7 +537,7 @@ const GlobalAccessPlatform: React.FC = () => {
               {aboutPartners.map((partner, index) => (
                 <Box key={index} bg="white" p={6} borderRadius="lg" boxShadow="md" border="1px solid" borderColor="gray.200">
                   <Box textAlign="center">
-                    <Image src={partner.logo} alt={partner.name} h={16} mx="auto" mb={4} />
+                    <Image src={partner.logo} alt={partner.name} h={16} mx="auto" mb={4} objectFit={"contain"} />
                   </Box>
                 </Box>
               ))}
@@ -552,7 +551,7 @@ const GlobalAccessPlatform: React.FC = () => {
       </Box>
 
       {/* Footer */}
-      <Box bg="gray.800" color="white" py={12}>
+      <Box bg="brand.600" color="white" py={12}>
         <Container maxW="7xl" px={{ base: 4, md: 6 }} w="full">
           <Grid templateColumns={{ base: '1fr', md: 'repeat(4, 1fr)' }} gap={8}>
             <GridItem>
