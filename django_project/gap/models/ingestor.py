@@ -42,6 +42,7 @@ class IngestorType:
     FARM_REGISTRY = 'Farm Registry'
     DCAS_MESSAGE = 'DCAS Message'
     HOURLY_TOMORROWIO = 'Hourly Tomorrow.io'
+    HOURLY_CBAM = 'Hourly CBAM'
 
 
 class IngestorSessionStatus:
@@ -89,6 +90,7 @@ class BaseSession(models.Model):
             (IngestorType.FARM_REGISTRY, IngestorType.FARM_REGISTRY),
             (IngestorType.DCAS_MESSAGE, IngestorType.DCAS_MESSAGE),
             (IngestorType.HOURLY_TOMORROWIO, IngestorType.HOURLY_TOMORROWIO),
+            (IngestorType.HOURLY_CBAM, IngestorType.HOURLY_CBAM),
         ),
         max_length=512
     )
@@ -133,13 +135,16 @@ class CollectorSession(BaseSession):
 
     def _run(self, working_dir):
         """Run the collector session."""
-        from gap.ingestor.cbam import CBAMCollector
+        from gap.ingestor.cbam import (
+            CBAMCollector,
+            CBAMBiasAdjustCollector,
+            CBAMHourlyCollector
+        )
         from gap.ingestor.salient import SalientCollector
         from gap.ingestor.tomorrowio import (
             TioShortTermDailyCollector,
             TioShortTermHourlyCollector
         )
-        from gap.ingestor.cbam_bias_adjust import CBAMBiasAdjustCollector
 
         ingestor = None
         if self.ingestor_type == IngestorType.CBAM:
@@ -152,6 +157,8 @@ class CollectorSession(BaseSession):
             ingestor = CBAMBiasAdjustCollector(self, working_dir)
         elif self.ingestor_type == IngestorType.HOURLY_TOMORROWIO:
             ingestor = TioShortTermHourlyCollector(self, working_dir)
+        elif self.ingestor_type == IngestorType.HOURLY_CBAM:
+            ingestor = CBAMHourlyCollector(self, working_dir)
 
         if ingestor:
             ingestor.run()
@@ -170,6 +177,7 @@ class CollectorSession(BaseSession):
         except Exception as e:
             self.status = IngestorSessionStatus.FAILED
             self.notes = f'{e}'
+            print(traceback.format_exc())
 
         self.end_at = timezone.now()
         self.save()
@@ -213,7 +221,11 @@ class IngestorSession(BaseSession):
         """Run the ingestor session."""
         from gap.ingestor.tahmo import TahmoIngestor
         from gap.ingestor.farm import FarmIngestor
-        from gap.ingestor.cbam import CBAMIngestor
+        from gap.ingestor.cbam import (
+            CBAMIngestor,
+            CBAMBiasAdjustIngestor,
+            CBAMHourlyIngestor
+        )
         from gap.ingestor.salient import SalientIngestor
         from gap.ingestor.grid import GridIngestor
         from gap.ingestor.arable import ArableIngestor
@@ -224,7 +236,6 @@ class IngestorSession(BaseSession):
             TioHourlyShortTermIngestor
         )
         from gap.ingestor.cabi_prise import CabiPriseIngestor
-        from gap.ingestor.cbam_bias_adjust import CBAMBiasAdjustIngestor
         from gap.ingestor.dcas_rule import DcasRuleIngestor
         from gap.ingestor.farm_registry import DCASFarmRegistryIngestor
         from gap.utils.parquet import (
@@ -264,6 +275,8 @@ class IngestorSession(BaseSession):
             ingestor = DCASMessageIngestor
         elif self.ingestor_type == IngestorType.HOURLY_TOMORROWIO:
             ingestor = TioHourlyShortTermIngestor
+        elif self.ingestor_type == IngestorType.HOURLY_CBAM:
+            ingestor = CBAMHourlyIngestor
 
         if ingestor:
             ingestor_obj = ingestor(self, working_dir)

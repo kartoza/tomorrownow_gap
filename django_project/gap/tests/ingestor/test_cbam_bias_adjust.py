@@ -20,7 +20,7 @@ from gap.models.ingestor import (
     CollectorSession,
     IngestorSessionStatus
 )
-from gap.ingestor.cbam_bias_adjust import CBAMBiasAdjustIngestor
+from gap.ingestor.cbam import CBAMBiasAdjustIngestor
 from gap.factories import DataSourceFileFactory
 from gap.ingestor.base import CoordMapping
 
