@@ -12,6 +12,8 @@ echo "-----------------------------------------------------"
 cd /home/web/django_project/frontend
 echo "npm install"
 npm install --verbose
+echo "generating theme types"
+npx -y @chakra-ui/cli typegen ./src/theme.ts
 echo "npm build"
 npm run build
 
