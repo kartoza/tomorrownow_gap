@@ -22,8 +22,8 @@ const config = defineConfig({
         // Your text colors
         text: {
           primary: { value: '#38453C' },    // Your dark green text color
-          secondary: { value: '#5A6B5E' },  // Lighter variation
-          muted: { value: '#7A8B7E' },      // Even lighter for secondary text
+          secondary: { value: '#3AF1A3' },  // Lighter variation
+          muted: { value: '#B7CCB7' },      // Even lighter for secondary text
         },
         // Standard grays
         gray: {
@@ -44,30 +44,31 @@ const config = defineConfig({
         body: { value: `Mulish, sans-serif` },
       },
       fontSizes: {
-        xs: { value: '0.75rem' },     // 12px
-        sm: { value: '0.875rem' },    // 14px
-        base: { value: '1rem' },      // 16px
         '2base': { value: '2rem' },      // 32px
-        md: { value: '1.125rem' },    // 18px - modified
-        lg: { value: '1.25rem' },     // 20px
-        '2lg': { value: '2.5rem' },  // 40px
-        xl: { value: '1.5rem' },      // 24px
-        '2xl': { value: '1.875rem' }, // 30px
-        '3xl': { value: '2.25rem' },  // 36px
-        '4xl': { value: '3rem' },     // 48px
-        '5xl': { value: '4rem' },     // 64px
-        '6xl': { value: '4.5rem' },   // 72px
-        '7xl': { value: '5rem' },     // new size
+        'giant': { value: '4rem' }, // 64px
+        'subGiant': { value: '2.5rem' }, // 40px
       },
-      fontWeights: {
-        normal: {value: 400},
-        medium: {value: 500},
-        semibold: {value: 600},
-        bold: {value: 700},
-        extrabold: {value: 800},
-        black: {value: 900},
+      radii: {
+        '2lg': { value: '0.625rem' }, // 10px
+        'buttonSm': {value: '1.5625rem'}, // 25px
+        'buttonLg': {value: '3.125rem'}, // 50px
       },
-
+      sizes: {
+        'pLg': { value: '1.5625rem'}, // 25px
+        'minWLg': {value: '12.5rem' }, // 200px
+        'minHlg': {value: '3.375rem' }, // 54px
+        'minWSm': {value: '5.625rem' }, // 90px
+      },
+      letterSpacings: {
+        'default': { value: '0.009375em' }, // Default letter spacing 0.15px,
+        'empty': { value: '0.0em' }, // No letter spacing
+      },
+      lineHeights: {
+        'alignBulletPoint': { value: '1.45rem'}
+      },
+      spacing: {
+        '7.5': { value: '1.875rem' }, // 30px
+      }
     },
     semanticTokens: {
       colors: {
@@ -94,16 +95,32 @@ const config = defineConfig({
       button: {
         variants: {
           visual: {
-            
-            outline: { borderWidth: "1px", borderColor: "brand.500" },
+            solid: { bg: "brand.500", color: "text.primary", _hover: { boxShadow: "5px 2px 5px 0px rgba(56, 69, 60, 0.35) inset", bg: "brand.500" }, _active: { bg: "brand.600", color: "white" } },
+            outline: { borderWidth: "0.5", borderColor: "brand.500", color: "white", bg: "transparent", _hover: { bg: "brand.100", color: "text.primary", boxShadow: "5px 2px 5px 0px rgba(56, 69, 60, 0.35) inset" }, _active: { bg: "brand.500", color: "text.primary" } },
           },
           size: {
-            sm: { padding: "4", fontSize: "12px" },
-            md: { padding: "16px", fontSize: "16px", minW: "200px", minH: "54px", gap: "10px", } 
-          },
+            sm: { padding: "2.5", borderRadius: "buttonSm", fontSize: "base", fontWeight: "bold", minW: "minWSm", minH: "10", lineHeight: "moderate", letterSpacing: "default" },
+            md: { padding: "4", fontSize: "base", borderRadius: "buttonLg", minW: "minWLg", minH: "minHlg", gap: "2.5", fontWeight: "bold", lineHeight: "moderate", letterSpacing: "empty" },
+            lg: { padding: "pLg", fontSize: "base", borderRadius: "buttonLg", minW: "minWLg", minH: "minHlg", gap: "2.5", fontWeight: "bold", lineHeight: "moderate", letterSpacing: "empty" },
+          }
+        }
+      },
+      heading: {
+        variants: {
           variant: {
-            solid: { bg: "brand.500", color: "brand.600", borderRadius: "25px", p: "10px" },
-            landingPage: { bg: "brand.500", color: "brand.600", borderRadius: "50px", fontWeight: "bold", _hover: { bg: "brand.600", color: "white" }, _active: { bg: "brand.700", color: "white" } }
+            default: { color: "text.primary", fontWeight: "black", textAlign: "center" },
+            mainTitle: { color: "white", fontWeight: "black" }
+          },
+          size: {
+            md: { fontSize: "subGiant", lineHeight: "moderate" },
+            lg: { fontSize: "giant", lineHeight: "moderate" }
+          }
+        }
+      },
+      text: {
+        variants: {
+          variant: {
+            subTitle: { color: "text.primary", fontSize: "xl", fontWeight: "normal", textAlign: "center" },
           }
         }
       }
@@ -115,6 +132,8 @@ const config = defineConfig({
       color: '{text.primary}',
       fontSize: 'base',
       fontFamily: '{fonts.body}',
+      letterSpacing: '{letterSpacings.default}',
+      lineHeight: 'moderate'
     },
   }
 })
