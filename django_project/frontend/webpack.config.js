@@ -73,6 +73,20 @@ let conf = {
     ],
     resolve: {
         modules: ['node_modules'],
+        alias: {
+            '@': path.resolve(__dirname, 'src'),
+            // Specific folder aliases
+            '@components': path.resolve(__dirname, 'src/components'),
+            '@features': path.resolve(__dirname, 'src/features'),
+            '@layouts': path.resolve(__dirname, 'src/layouts'),
+            '@pages': path.resolve(__dirname, 'src/pages'),
+            '@utils': path.resolve(__dirname, 'src/utils'),
+            '@hooks': path.resolve(__dirname, 'src/hooks'),
+            '@services': path.resolve(__dirname, 'src/services'),
+            '@assets': path.resolve(__dirname, 'src/assets'),
+            '@styles': path.resolve(__dirname, 'src/styles'),
+            '@context': path.resolve(__dirname, 'src/context'),
+        },
         extensions: [".ts", ".tsx", ".js", ".css", ".scss"],
         fallback: {
             fs: false,

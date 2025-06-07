@@ -4,7 +4,7 @@ import { createRoot } from 'react-dom/client';
 import { ChakraProvider, defaultSystem, useDisclosure } from '@chakra-ui/react';
 import { BrowserRouter } from 'react-router-dom';
 import SignIn from './pages/Login';
-import { GapContextProvider } from './contexts/GapContext';
+import { GapContextProvider } from './context/GapContext';
 import ErrorBoundary from './components/ErrorBoundary';
 import store from './store';
 import { Provider } from 'react-redux';
