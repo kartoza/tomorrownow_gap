@@ -9,6 +9,7 @@ import {
     Image,
     IconButton
 } from "@chakra-ui/react";
+import { useNavigate } from "react-router-dom";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Navigation, Pagination, Autoplay } from 'swiper/modules';
 import "swiper/css";
@@ -21,6 +22,7 @@ import { APIDocsURL } from "@/utils/constants";
 
 
 const PartnersSection: React.FC = () => {
+    const navigate = useNavigate();
     return (
         <Box id={"partners"} py={20} bg="white">
             <Container px={{ base: 4, md: 6 }} w="full">
@@ -149,7 +151,7 @@ const PartnersSection: React.FC = () => {
                     </IconButton>
                 </Box>
     
-                <Button visual="solid" size="md" onClick={() => window.location.href = APIDocsURL}>
+                <Button visual="solid" size="md" onClick={() => navigate('/signup')}>
                     Become a Partner
                 </Button>
                 </VStack>

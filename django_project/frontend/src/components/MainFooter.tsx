@@ -11,10 +11,12 @@ import {
     Separator as Divider,
     Flex
 } from '@chakra-ui/react';
+import { useNavigate } from 'react-router-dom';
 import { openInNewTab } from '@/utils/url';
 import { APIDocsURL } from '@/utils/constants';
 
 const MainFooter: React.FC = () => {
+    const navigate = useNavigate();
     return (
         <Box bg="brand.600" color="white" py={12}>
             <Container px={{ base: 4, md: 6 }} w="full" >
@@ -33,7 +35,7 @@ const MainFooter: React.FC = () => {
                     <VStack gap={4} align="start">
                     <Heading as="h4" size="xl">Contact Us</Heading>
                     <VStack gap={2} align="start">
-                        <Link color="text.secondary" fontWeight={"bold"}>Join Our Waitlist</Link>
+                        <Link color="text.secondary" fontWeight={"bold"} onClick={() => navigate('/signup')}>Join Our Waitlist</Link>
                     </VStack>
                     </VStack>
                 </GridItem>

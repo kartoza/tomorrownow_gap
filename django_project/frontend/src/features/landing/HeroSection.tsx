@@ -7,9 +7,11 @@ import {
     Text,
     VStack
 } from "@chakra-ui/react";
+import { useNavigate } from "react-router-dom";
 
 
 const HeroSection: React.FC = () => {
+    const navigate = useNavigate();
     return (
         <Box
             h="100vh"
@@ -35,7 +37,7 @@ const HeroSection: React.FC = () => {
                         <Text fontSize="2xl" fontWeight="extrabold" mt={{ base: 12, md: 5 }}>
                             Unlocking Weather Resilience for Smallholder Farming
                         </Text>
-                        <Button visual="solid" size="md">
+                        <Button visual="solid" size="md" onClick={() => navigate('/signup')}>
                             Join Us
                         </Button>
                     </VStack>

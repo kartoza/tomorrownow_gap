@@ -14,6 +14,18 @@ from django.urls import reverse
 from gap.models.preferences import Preferences
 
 
+def get_base_context(context):
+    """Get base context for views."""
+    preferences = Preferences.load()
+    context.update({
+        'gap_base_context': json.dumps({
+            'api_swagger_url': reverse('api:v1:schema-swagger'),
+            'api_docs_url': preferences.documentation_url
+        })
+    })
+    return context
+
+
 class HomeView(TemplateView):
     """Home page view."""
 
@@ -22,14 +34,7 @@ class HomeView(TemplateView):
     def get_context_data(self, **kwargs):
         """Get context data for Home view."""
         context = super().get_context_data(**kwargs)
-
-        preferences = Preferences.load()
-
-        context['gap_base_context'] = json.dumps({
-            'api_swagger_url': reverse('api:v1:schema-swagger'),
-            'api_docs_url': preferences.documentation_url
-        })
-
+        context = get_base_context(context)
         return context
 
 
@@ -75,12 +80,7 @@ class SignupView(TemplateView):
     def get_context_data(self, **kwargs):
         """Get context data for Signup view."""
         context = super().get_context_data(**kwargs)
-        preferences = Preferences.load()
-
-        context['gap_base_context'] = json.dumps({
-            'api_swagger_url': reverse('api:v1:schema-swagger'),
-            'api_docs_url': preferences.documentation_url
-        })
+        context = get_base_context(context)
 
         return context
 
@@ -93,12 +93,7 @@ class SignupRequestView(TemplateView):
     def get_context_data(self, **kwargs):
         """Get context data for Signup Request view."""
         context = super().get_context_data(**kwargs)
-        preferences = Preferences.load()
-
-        context['gap_base_context'] = json.dumps({
-            'api_swagger_url': reverse('api:v1:schema-swagger'),
-            'api_docs_url': preferences.documentation_url
-        })
+        context = get_base_context(context)
 
         return context
 
@@ -111,12 +106,7 @@ class LoginView(TemplateView):
     def get_context_data(self, **kwargs):
         """Get context data for Login view."""
         context = super().get_context_data(**kwargs)
-        preferences = Preferences.load()
-
-        context['gap_base_context'] = json.dumps({
-            'api_swagger_url': reverse('api:v1:schema-swagger'),
-            'api_docs_url': preferences.documentation_url
-        })
+        context = get_base_context(context)
 
         return context
 
@@ -129,11 +119,6 @@ class EmailCheckView(TemplateView):
     def get_context_data(self, **kwargs):
         """Get context data for Email Check view."""
         context = super().get_context_data(**kwargs)
-        preferences = Preferences.load()
-
-        context['gap_base_context'] = json.dumps({
-            'api_swagger_url': reverse('api:v1:schema-swagger'),
-            'api_docs_url': preferences.documentation_url
-        })
+        context = get_base_context(context)
 
         return context

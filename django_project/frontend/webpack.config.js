@@ -76,6 +76,7 @@ let conf = {
         alias: {
             '@': path.resolve(__dirname, 'src'),
             // Specific folder aliases
+            '@app': path.resolve(__dirname, 'src/app'),
             '@components': path.resolve(__dirname, 'src/components'),
             '@features': path.resolve(__dirname, 'src/features'),
             '@layouts': path.resolve(__dirname, 'src/layouts'),
