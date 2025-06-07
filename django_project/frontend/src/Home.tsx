@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import './styles/App.scss';
-import { useGapContext } from './contexts/GapContext';
+import { useGapContext } from './context/GapContext';
 import { Box } from '@chakra-ui/react';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
-import LandingPage from './pages/LandingPage';
+import LandingPage from './pages/LandingPageOld';
 import { SignupRequest } from './pages/SignupRequest';
+// import GlobalAccessPlatform from './pages/LandingPageOld/Dashboard';
 
 function Home() {
   const [showRequestDialog, setShowRequestDialog] = useState(false);
@@ -41,10 +42,11 @@ function Home() {
   return (
     <Box className="App">
       {/* Navbar */}
-      <Navbar/>
+      {/* <Navbar/> */}
 
       {/* Main content */}
-      <LandingPage />
+      {/* <LandingPage /> */}
+      {/* <GlobalAccessPlatform /> */}
 
       {user && (
         <SignupRequest
@@ -55,7 +57,7 @@ function Home() {
       )}
       
       {/* Footer */}
-      <Footer />
+      {/* <Footer /> */}
     </Box>
   );
 }

@@ -63,6 +63,7 @@ npm-install:
 	@echo "Install frontend dependencies"
 	@echo "------------------------------------------------------------------"
 	@docker compose ${ARGS} exec -T dev npm --prefix /home/web/django_project/frontend install
+	@docker compose ${ARGS} exec -T dev bash -c "cd /home/web/django_project/frontend && npx -y @chakra-ui/cli typegen ./src/theme.ts"
 
 migrate:
 	@echo

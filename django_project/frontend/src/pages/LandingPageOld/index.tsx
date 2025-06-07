@@ -8,7 +8,7 @@ import {
   Stack,
   Text,
 } from '@chakra-ui/react';
-import { useGapContext } from '../../contexts/GapContext';
+import { useGapContext } from '../../context/GapContext';
 import { SignupRequest } from '../SignupRequest';
 
 
