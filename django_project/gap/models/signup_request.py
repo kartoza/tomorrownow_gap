@@ -42,6 +42,8 @@ class SignUpRequest(models.Model):
     )
     organization = models.CharField(
         verbose_name=_('Organization'),
+        blank=True,
+        null=True,
         max_length=200,
         help_text=_("Name of the organization you represent.")
     )
