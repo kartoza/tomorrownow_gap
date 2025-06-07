@@ -81,7 +81,7 @@ const LoginForm: React.FC<LoginFormProps> = () => {
     };
 
     return (
-        <Box p={6} bg={"white"} borderRadius="md" maxW={"75%"} boxShadow="md" mx="auto"  color={"text.primary"}>
+        <Box p={6} bg={"white"} borderRadius="md" maxW={{ base: "full", md: "75%" }} boxShadow="md" mx="auto"  color={"text.primary"}>
             <Heading mb={2} fontSize={"2xl"}>
             {formType === "signin"
                 ? "Welcome Back!"

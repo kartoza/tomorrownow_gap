@@ -86,7 +86,7 @@ const WaitListForm: React.FC<WaitListFormProps> = ({user}) => {
     // }
 
     return (
-        <Box p={6} bg={"white"} borderRadius="md" maxW={"75%"} boxShadow="md" mx="auto"  color={"text.primary"}>
+        <Box p={6} bg={"white"} borderRadius="md" maxW={{ base: "full", md: "75%" }} boxShadow="md" mx="auto"  color={"text.primary"}>
             <Heading mb={2} fontSize={"2xl"}>Join Our Waitlist</Heading>
             <Text mb={4}>Please share your information and we will be in touch within 1 week.</Text>
 
