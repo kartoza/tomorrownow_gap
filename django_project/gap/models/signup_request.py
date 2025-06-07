@@ -40,6 +40,11 @@ class SignUpRequest(models.Model):
         verbose_name=_('Email'),
         unique=True
     )
+    organization = models.CharField(
+        verbose_name=_('Organization'),
+        max_length=200,
+        help_text=_("Name of the organization you represent.")
+    )
     description = models.TextField(
         help_text=_("Describe your request or interest.")
     )

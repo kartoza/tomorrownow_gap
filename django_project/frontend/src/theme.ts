@@ -102,7 +102,7 @@ const config = defineConfig({
         variants: {
           visual: {
             solid: { bg: "brand.500", color: "text.primary", _hover: { boxShadow: "5px 2px 5px 0px rgba(56, 69, 60, 0.35) inset", bg: "brand.500" }, _active: { bg: "brand.600", color: "white" } },
-            outline: { borderWidth: "0.5", borderColor: "brand.500", color: "white", bg: "transparent", _hover: { bg: "brand.100", color: "text.primary", boxShadow: "5px 2px 5px 0px rgba(56, 69, 60, 0.35) inset" }, _active: { bg: "brand.500", color: "text.primary" } },
+            outline: { borderWidth: "2px", borderColor: "brand.500", color: "white", bg: "transparent", _hover: { bg: "brand.100", color: "text.primary", boxShadow: "5px 2px 5px 0px rgba(56, 69, 60, 0.35) inset" }, _active: { bg: "brand.500", color: "text.primary" } },
             circle: {
               pt: "6",
               pb: "6",

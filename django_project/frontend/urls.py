@@ -1,6 +1,6 @@
 """Tomorrow Now GAP."""
 
-from django.urls import path
+from django.urls import path, re_path
 
 from .views import (
     HomeView, SentryProxyView, SignupView,
@@ -8,7 +8,6 @@ from .views import (
 )
 
 urlpatterns = [
-    path('', HomeView.as_view(), name='home'),
     path('sentry-proxy/', SentryProxyView.as_view(), name='sentry-proxy'),
     path('signup/', SignupView.as_view(), name='signup'),
     path(
@@ -18,4 +17,5 @@ urlpatterns = [
         "signup-request/", SignupRequestView.as_view(), name="signup-request"
     ),
     path('login/', LoginView.as_view(), name='login'),
+    re_path(r'', HomeView.as_view(), name='home'),
 ]

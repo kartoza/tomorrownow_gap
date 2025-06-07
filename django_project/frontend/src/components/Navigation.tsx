@@ -2,6 +2,7 @@ import React from 'react';
 import { Box, Button, Container, Flex, HStack, Link, Spacer, Text, useDisclosure, IconButton, Collapsible, VStack } from '@chakra-ui/react';
 import { RxHamburgerMenu } from "react-icons/rx";
 import { RiCloseFill } from "react-icons/ri";
+import { useLocation, useNavigate } from 'react-router-dom';
 
 import { useScrollContext } from '@/context/ScrollContext';
 import { handleSmoothScroll } from '@/utils/scroll';
@@ -16,17 +17,31 @@ interface NavItem {
 const Navigation: React.FC = () => {
     const { open, onToggle } = useDisclosure();
     const { activeSection } = useScrollContext();
+    const location = useLocation();
+    const navigate = useNavigate();
     const navItems: NavItem[] = [
         { label: 'Products', href: '#hub' },
         { label: 'Data Access', href: APIDocsURL },
         { label: 'Our Partners', href: '#partners' },
         { label: 'About Us', href: '#about' }
     ];
+
+    const handleMenuClick = (sectionId: string) => {
+        // Check if we're on the landing page
+        if (location.pathname === '/') {
+            // We're on the same page, just scroll to section
+            handleSmoothScroll(sectionId);
+        } else {
+            // We're on a different page, navigate to landing page
+            navigate(`/${sectionId}`);
+        }
+    };
+
     return (
         <Box as="nav" bg="white" boxShadow="sm" position="sticky" top={0} zIndex={1000} w="full">
             <Container px={{ base: 4, md: 6 }} w="full">
                 <Flex h={16} alignItems="center">
-                    <HStack gap={2} alignItems="center">
+                    <HStack gap={2} alignItems="center" onClick={() => window.location.href = '/'} _hover={{ cursor: 'pointer' }}>
                         <Box w={'23px'} h={'25px'} bgSize={"contain"} bgPos="center" bgImage="url('/static/images/gap.png')" />
                         <Text fontWeight="bold">Global Access Platform</Text>
                     </HStack>
@@ -40,7 +55,7 @@ const Navigation: React.FC = () => {
                             onClick={(e) => {
                                 e.preventDefault();
                                 if (item.href.startsWith('#')) {
-                                    handleSmoothScroll(item.href);
+                                    handleMenuClick(item.href);
                                 } else if (item.href !== '') {
                                     openInNewTab(item.href);
                                 }
@@ -66,7 +81,9 @@ const Navigation: React.FC = () => {
                         ))}
                     </HStack>
                     {/* Login Desktop Navigation */}
-                    <Button visual="solid" size="sm" ml={4} display={{ base: 'none', md: 'flex' }}>
+                    <Button visual="solid" size="sm" ml={4} display={{ base: 'none', md: 'flex' }}
+                        onClick={() => navigate('/signin')} // Redirect to login page
+                    >
                         Log In
                     </Button>
                     {/* Mobile Hamburger Button */}
@@ -108,9 +125,9 @@ const Navigation: React.FC = () => {
                                             e.preventDefault();
                                             onToggle(); // Close menu after clicking
                                             if (item.href.startsWith('#')) {
-                                            handleSmoothScroll(item.href);
+                                                handleMenuClick(item.href);
                                             } else if (item.href !== '') {
-                                            openInNewTab(item.href);
+                                                openInNewTab(item.href);
                                             }
                                         }}
                                         fontWeight={activeSection === item.href && item.href != '' ? "bold" : "medium"}
@@ -126,7 +143,11 @@ const Navigation: React.FC = () => {
                                 ))}
                                 
                                 {/* Mobile Login Button */}
-                                <Button visual="solid" size="md" w="full" mt={2}>
+                                <Button visual="solid" size="md" w="full" mt={2} onClick={() => {
+                                    onToggle(); // Close menu after clicking
+                                    navigate('/signin'); // Redirect to login page
+                                }
+                                }>
                                     Log In
                                 </Button>
                             </VStack>

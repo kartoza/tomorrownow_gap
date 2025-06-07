@@ -1,10 +1,9 @@
 import React from "react";
+import LoginForm from "@/features/auth/LoginForm";
 
 const LoginPage: React.FC = () => {
     return (
-        <div>
-            <h1>Welcome to the Landing Page</h1>
-        </div>
+        <LoginForm />
     );
 };
 
