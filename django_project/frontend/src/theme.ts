@@ -44,6 +44,7 @@ const config = defineConfig({
         body: { value: `Mulish, sans-serif` },
       },
       fontSizes: {
+        'base': { value: '1rem' }, // 16px
         '2base': { value: '2rem' },      // 32px
         'giant': { value: '4rem' }, // 64px
         'subGiant': { value: '2.5rem' }, // 40px
@@ -92,11 +93,53 @@ const config = defineConfig({
       }
     },
     recipes: {
+      container: {
+        base: {
+          maxW: "100rem"
+        }
+      },
       button: {
         variants: {
           visual: {
             solid: { bg: "brand.500", color: "text.primary", _hover: { boxShadow: "5px 2px 5px 0px rgba(56, 69, 60, 0.35) inset", bg: "brand.500" }, _active: { bg: "brand.600", color: "white" } },
             outline: { borderWidth: "0.5", borderColor: "brand.500", color: "white", bg: "transparent", _hover: { bg: "brand.100", color: "text.primary", boxShadow: "5px 2px 5px 0px rgba(56, 69, 60, 0.35) inset" }, _active: { bg: "brand.500", color: "text.primary" } },
+            circle: {
+              pt: "6",
+              pb: "6",
+              pl: "4",
+              pr: "4",
+              borderRadius: "full",
+              fontSize: "base",
+              boxShadow: "5px 5px 10px 0px rgba(16, 55, 92, 0.25)",
+              _hover: { bg: "gray.50" },
+              _active: { bg: "gray.100" },
+              _disabled: { bg: "gray.200", color: "gray.500", cursor: "not-allowed" },
+              color: "text.primary",
+              bg: "white",
+              w: "3rem",
+              h: "3rem",
+              minW: "fit-content",
+              minH: "fit-content",
+            },
+            plain: {
+              pt: "1",
+              pb: "1",
+              pl: "1",
+              pr: "1",
+              fontSize: "base",
+              _hover: { color: "gray.50" },
+              _active: { color: "gray.100" },
+              _disabled: { color: "gray.500", cursor: "not-allowed" },
+              color: "text.primary",
+              w: "3rem",
+              h: "3rem",
+              minW: "fit-content",
+              minH: "fit-content",
+              bg: "transparent",
+              border: "none",
+              boxShadow: "none",
+              borderRadius: "0",
+            }
           },
           size: {
             sm: { padding: "2.5", borderRadius: "buttonSm", fontSize: "base", fontWeight: "bold", minW: "minWSm", minH: "10", lineHeight: "moderate", letterSpacing: "default" },
@@ -129,8 +172,8 @@ const config = defineConfig({
   globalCss: {
     body: {
       bg: 'white',
-      color: '{text.primary}',
-      fontSize: 'base',
+      color: '{colors.text.primary}',
+      fontSize: '{fontSizes.base}',
       fontFamily: '{fonts.body}',
       letterSpacing: '{letterSpacings.default}',
       lineHeight: 'moderate'

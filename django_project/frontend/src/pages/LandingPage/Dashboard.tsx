@@ -22,8 +22,10 @@ import {
   VStack,
   Separator as Divider,
   Icon,
-  IconButton
+  IconButton,
+  useBreakpointValue
 } from '@chakra-ui/react';
+import { FiArrowLeft, FiArrowRight, FiChevronLeft, FiChevronRight } from "react-icons/fi";
 
 interface NavItem {
   label: string;
@@ -34,6 +36,7 @@ interface PartnerLogo {
   name: string;
   logo: string;
   website: string;
+  mt?: string; // Optional margin-top for spacing
 }
 
 interface ServiceCard {
@@ -57,6 +60,20 @@ const handleSmoothScroll = (href: string) => {
   }
 };
 
+const openInNewTab = (url: string) => {
+  window.open(url, '_blank', 'noopener,noreferrer');
+};
+
+const ArrowNavResponsiveIcon = (pos: "left" | "right") => {
+  if (pos === "left") {
+    const LeftIcon = useBreakpointValue({ base: FiChevronLeft, md: FiArrowLeft });
+    return <LeftIcon/>;
+  }
+
+  const Icon = useBreakpointValue({ base: FiChevronRight, md: FiArrowRight });
+  return <Icon/>;
+};
+
 const APIDocsURL = '/api/v1/docs/';
 
 const GlobalAccessPlatform: React.FC = () => {
@@ -70,19 +87,19 @@ const GlobalAccessPlatform: React.FC = () => {
   ];
 
   const partners: PartnerLogo[] = [
-    { name: 'CGIAR', logo: '/static/images/cgiar.webp', website: 'https://microsoft.com' },
-    { name: 'ONE ACRE FUND', logo: '/static/images/oneacrelogo.png', website: 'https://google.com' },
-    { name: 'Regen Organics', logo: '/static/images/regen_organics.webp', website: 'https://amazon.com' },
-    { name: 'Rhiza Research', logo: '/static/images/rhiza_v5.png', website: 'https://ibm.com' },
-    { name: 'Salient', logo: '/static/images/salient.webp', website: 'https://oracle.com' },
-    { name: 'Tahmo', logo: '/static/images/tahmo.webp', website: 'https://salesforce.com' },
-    { name: 'Tomorrow.io', logo: '/static/images/tomorrow.io.png', website: 'https://salesforce.com' },
+    { name: 'CGIAR', logo: '/static/images/cgiar.webp', website: 'https://www.cgiar.org' },
+    { name: 'ONE ACRE FUND', logo: '/static/images/oneacrefund.webp', website: 'https://oneacrefund.org' },
+    { name: 'Regen Organics', logo: '/static/images/regen_organics.webp', website: 'https://www.regenorganics.co', mt: '1.5rem' },
+    { name: 'Rhiza Research', logo: '/static/images/rhiza_v5.webp', website: 'https://rhizaresearch.org' },
+    { name: 'Salient', logo: '/static/images/salient.webp', website: 'https://www.salientpredictions.com', mt: '0.2rem' },
+    { name: 'Tahmo', logo: '/static/images/tahmo.webp', website: 'https://tahmo.org', mt: '-2rem' },
+    { name: 'Tomorrow.io', logo: '/static/images/tomorrow.io.webp', website: 'https://www.tomorrow.io', mt: '1rem' },
   ];
 
   const aboutPartners: PartnerLogo[] = [
-    { name: 'TomorrowNow', logo: '/static/images/tomorrownow.webp', website: 'https://salesforce.com' },
-    { name: 'Kartoza', logo: '/static/images/kartoza.webp', website: 'https://salesforce.com' },
-    { name: 'Gates Foundation', logo: '/static/images/gates_foundation.webp', website: 'https://salesforce.com' }
+    { name: 'TomorrowNow', logo: '/static/images/tomorrownow.webp', website: 'https://tomorrownow.org' },
+    { name: 'Kartoza', logo: '/static/images/kartoza.webp', website: 'https://kartoza.com' },
+    { name: 'Gates Foundation', logo: '/static/images/gates_foundation.webp', website: 'https://www.gatesfoundation.org' }
   ];
 
   const services: ServiceCard[] = [
@@ -179,7 +196,7 @@ const GlobalAccessPlatform: React.FC = () => {
                     if (item.href.startsWith('#')) {
                       handleSmoothScroll(item.href);
                     } else if (item.href !== '') {
-                      window.location.href = item.href;
+                      openInNewTab(item.href);
                     }
                   }}
                   fontWeight={activeSection === item.href && item.href != '' ? "bold" : "medium"}
@@ -268,7 +285,7 @@ const GlobalAccessPlatform: React.FC = () => {
         id="hub"
         py={20}
         bgImage="url('/static/images/bg_hub.webp')"
-        bgSize="100% auto"
+        bgSize="cover"
         bgPos="top"
         color="white"
       >
@@ -283,9 +300,9 @@ const GlobalAccessPlatform: React.FC = () => {
               </Text>
             </VStack>
 
-            <SimpleGrid columns={{ base: 1, md: 3 }} gap={{ base: 6, md: 8 }} w="full">
+            <SimpleGrid columns={{ base: 1, md: 3 }} gap={{ base: 6, md: 8 }} maxW={{base: "full", md: "70%"}}>
               {services.map((service, index) => (
-                <Box key={index} bg="white"  border="1px solid" p={7.5} borderRadius="lg">
+                <Box key={index} bg="white"  p={7.5} borderRadius="lg" boxShadow="5px 5px 10px 0px rgba(16, 55, 92, 0.25)">
                   <VStack gap={4} align="start">
                     <HStack align="center" w="full" justify={"center"}>
                       <Box w={'55px'} h={'55px'} bgSize={"contain"} bgPos="center" bgImage={`url('${service.icon}')`} />
@@ -297,7 +314,7 @@ const GlobalAccessPlatform: React.FC = () => {
                       {service.items.map((item, itemIndex) => (
                         <HStack key={itemIndex} gap={2} align="start">
                           <Box w={2} h={2} bg="brand.600" borderRadius="full" mt={2} flexShrink={0} />
-                          <Text fontSize="sm" color="text.primary" lineHeight={"alignBulletPoint"}>
+                          <Text fontSize="sm" color="text.primary" lineHeight={"alignBulletPoint"} textAlign={"start"}>
                             {item}
                           </Text>
                         </HStack>
@@ -309,7 +326,7 @@ const GlobalAccessPlatform: React.FC = () => {
             </SimpleGrid>
 
             <VStack gap={4} textAlign="center">
-              <Button visual="solid" size="md" onClick={() => window.location.href = APIDocsURL}>
+              <Button visual="solid" size="md" onClick={() => openInNewTab(APIDocsURL)}>
                 See API Docs
               </Button>
             </VStack>
@@ -398,71 +415,74 @@ const GlobalAccessPlatform: React.FC = () => {
             </VStack>
             
             {/* Swiper Carousel */}
-            <Box position="relative" w="full" maxW="4xl">
+            <Box position="relative" w="full">
               <Swiper
                 modules={[Navigation, Pagination, Autoplay]}
-                spaceBetween={30}
+                spaceBetween={100}
                 slidesPerView={1}
                 navigation={{
                   nextEl: '.swiper-button-next-custom',
                   prevEl: '.swiper-button-prev-custom',
                 }}
                 pagination={{
-                  clickable: true,
-                  el: '.swiper-pagination-custom',
+                  clickable: true
                 }}
-                autoplay={{
-                  delay: 3000,
-                  disableOnInteraction: false,
-                }}
+                // autoplay={{
+                //   delay: 3000,
+                //   disableOnInteraction: false,                  
+                // }}
                 breakpoints={{
-                  640: {
-                    slidesPerView: 2,
+                  480: {
+                    slidesPerView: 1,
                     spaceBetween: 20,
                   },
+                  640: {
+                    slidesPerView: 2,
+                    spaceBetween: 100,
+                  },
                   768: {
-                    slidesPerView: 3,
-                    spaceBetween: 30,
+                    slidesPerView: 2,
+                    spaceBetween: 100,
+                  },
+                  1024: {
+                    slidesPerView: 4,
+                    spaceBetween: 100,
                   },
                 }}
                 style={{
-                  paddingBottom: '50px', // Space for pagination
-                  paddingLeft: '50px',   // Space for navigation
-                  paddingRight: '50px',  // Space for navigation
+                  paddingBottom: '3.5rem', // Space for pagination
+                  paddingLeft: '3.125rem',   // Space for navigation
+                  paddingRight: '3.125rem',  // Space for navigation
                 }}
               >
                 {partners.map((partner, index) => (
-                  <SwiperSlide key={index}>
+                  <SwiperSlide key={index} >
                     <Box
-                      as="a"
-                      // href={partner.website}
-                      // target="_blank"
-                      rel="noopener noreferrer"
-                      display="block"
-                      opacity={0.7}
+                      onClick={() => openInNewTab(partner.website)}
+                      opacity={0.8}
                       _hover={{ 
                         opacity: 1, 
                         transform: 'scale(1.05)',
                         cursor: 'pointer'
                       }}
                       transition="all 0.3s ease"
-                      p={6}
-                      bg="white"
-                      borderRadius="lg"
-                      boxShadow="md"
-                      border="1px solid"
-                      borderColor="gray.200"
-                      h="120px"
-                      // display="flex"
+                      p={2}
+                      h="140px"
+                      maxH="140px"
+                      display="flex"
                       alignItems="center"
                       justifyContent="center"
                     >
                       <Image 
                         src={partner.logo} 
                         alt={partner.name} 
-                        h={12} 
-                        maxW="120px"
+                        maxH="120px"
+                        maxW="280px"
+                        w="auto"
+                        h="auto"
                         objectFit="contain"
+                        objectPosition="center"
+                        mt={partner.mt || '0'} // Use optional margin-top if provided
                       />
                     </Box>
                   </SwiperSlide>
@@ -474,64 +494,39 @@ const GlobalAccessPlatform: React.FC = () => {
                 className="swiper-button-prev-custom"
                 aria-label="Previous partners"
                 position="absolute"
-                left={0}
-                top="50%"
-                transform="translateY(-50%)"
-                bg="white"
-                border="1px solid"
-                borderColor="gray.300"
-                borderRadius="full"
-                size="lg"
-                _hover={{ bg: 'gray.50' }}
-                boxShadow="md"
+                left="-0.625rem"
+                top="40%"
+                transform="translate(0.625rem, -40%)"
                 zIndex={10}
+                visual={{ base: "plain", md: "circle" }}
+                 css={{
+                  "& > svg": {
+                    width:  {base: "1.75rem", md: "1.5rem"},
+                    height:  {base: "1.75rem", md: "1.5rem"},
+                  }
+                }}
               >
-                <Box as="span" fontSize="20px">‹</Box>
+                {ArrowNavResponsiveIcon("left")}
               </IconButton>
 
               <IconButton
                 className="swiper-button-next-custom"
                 aria-label="Next partners"
                 position="absolute"
-                right={0}
-                top="50%"
-                transform="translateY(-50%)"
-                bg="white"
-                border="1px solid"
-                borderColor="gray.300"
-                borderRadius="full"
-                size="lg"
-                _hover={{ bg: 'gray.50' }}
-                boxShadow="md"
+                right="0"
+                top="40%"
+                transform="translate(0, -40%)"
                 zIndex={10}
-              >
-                <Box as="span" fontSize="20px">›</Box>
-              </IconButton>
-
-              {/* Custom Pagination */}
-              <Box 
-                className="swiper-pagination-custom" 
-                position="absolute"
-                bottom={0}
-                left="50%"
-                transform="translateX(-50%)"
-                display="flex"
-                gap={2}
-                css={{
-                  '& .swiper-pagination-bullet': {
-                    width: '12px',
-                    height: '12px',
-                    backgroundColor: 'gray.300',
-                    opacity: 1,
-                    borderRadius: 'full',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                  },
-                  '& .swiper-pagination-bullet-active': {
-                    backgroundColor: 'brand.500',
+                visual={{ base: "plain", md: "circle" }}
+                 css={{
+                  "& > svg": {
+                    width:  {base: "1.75rem", md: "1.5rem"},
+                    height: {base: "1.75rem", md: "1.5rem"},
                   }
                 }}
-              />
+              >
+                {ArrowNavResponsiveIcon("right")}
+              </IconButton>
             </Box>
 
             <Button visual="solid" size="md" onClick={() => window.location.href = APIDocsURL}>
@@ -563,7 +558,18 @@ const GlobalAccessPlatform: React.FC = () => {
 
             <SimpleGrid columns={{ base: 1, md: 3 }} gap={{ base: 6, md: 8 }} w="full">
               {aboutPartners.map((partner, index) => (
-                <Box key={index} textAlign="center" alignSelf={"center"}>
+                <Box
+                  key={index}
+                  textAlign="center"
+                  alignSelf={"center"}
+                  onClick={() => openInNewTab(partner.website)}
+                  _hover={{ 
+                    opacity: 1, 
+                    transform: 'scale(1.05)',
+                    cursor: 'pointer'
+                  }}
+                  transition="all 0.3s ease"
+                >
                   <Image src={partner.logo} alt={partner.name} mx="auto" mb={6} objectFit={"contain"} />
                 </Box>
               ))}
