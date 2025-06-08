@@ -32,6 +32,7 @@ const LoginForm: React.FC<LoginFormProps> = () => {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [confirmPw, setConfirmPw] = useState("");
+    const [confirmedEmail, setConfirmedEmail] = useState(false);
 
 
     const dispatch = useDispatch<AppDispatch>();
@@ -42,6 +43,9 @@ const LoginForm: React.FC<LoginFormProps> = () => {
         const params = new URLSearchParams(search);
         if (params.get("uid") && params.get("token")) {
             setFormType("resetPassword");
+        } else if (params.get("confirmed") === "true") {
+            setConfirmedEmail(true);
+            setFormType("signin");
         }
     }, [search]);
 
@@ -91,6 +95,9 @@ const LoginForm: React.FC<LoginFormProps> = () => {
                 ? "Reset Password"
                 : "Sign Up"}
             </Heading>
+            {confirmedEmail && (
+                <Text color="green.600">Your email has been confirmed successfully.</Text>
+            )}
             <Text mb={4}>
             {formType === "signin"
                 ? "Please sign into your profile."
