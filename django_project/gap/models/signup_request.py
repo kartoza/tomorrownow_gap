@@ -93,7 +93,6 @@ class SignUpRequest(models.Model):
 @receiver(post_save, sender=SignUpRequest)
 def notify_user_managers_on_signup(sender, instance, created, **kwargs):
     """Notify user managers on sign up."""
-
     email_verified = False
     # check if the user's email has already been verified
     if User.objects.filter(email=instance.email).exists():
