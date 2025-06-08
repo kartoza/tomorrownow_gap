@@ -3,7 +3,7 @@ import { ChakraProvider } from '@chakra-ui/react';
 import { GapContextProvider } from './context/GapContext';
 import { ScrollProvider } from './context/ScrollContext';
 import ErrorBoundary from './components/ErrorBoundary';
-import store from './store';
+import store from './app/store';
 import system from './theme';
 import { Provider } from 'react-redux';
 import { RouterProvider } from 'react-router-dom';
