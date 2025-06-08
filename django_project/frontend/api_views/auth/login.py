@@ -18,7 +18,7 @@ class LoginView(APIView):
 
     def post(self, request):
         """Handle POST requests for login."""
-        username = request.data.get("username")
+        username = request.data.get("email")
         password = request.data.get("password")
 
         user = authenticate(request, username=username, password=password)
@@ -28,10 +28,26 @@ class LoginView(APIView):
                 return Response(
                     {
                         "detail": "Login successful",
-                        "redirect_url": "/api/v1/docs/"
+                        "redirect_url": "/",
+                        "user": {
+                            "id": user.id,
+                            "username": user.username,
+                            "email": user.email,
+                            "first_name": user.first_name,
+                            "last_name": user.last_name,
+                            "is_staff": user.is_staff,
+                            "is_superuser": user.is_superuser
+                        }
                     },
                     status=status.HTTP_200_OK
                 )
+            # check email_verified in user profile
+            if user.userprofile:
+                if not user.userprofile.email_verified:
+                    return Response(
+                        {"detail": "Email not verified."},
+                        status=status.HTTP_403_FORBIDDEN
+                    )
             return Response(
                 {"detail": "User account is disabled."},
                 status=status.HTTP_403_FORBIDDEN

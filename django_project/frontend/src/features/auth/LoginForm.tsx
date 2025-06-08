@@ -9,15 +9,15 @@ import {
   Text,
   Link,
   Input,
-  Image,
   Field
 } from "@chakra-ui/react";
+import { toaster } from "@/components/ui/toaster"
 import { FormType } from "./type";
 import {
   loginUser,
   registerUser,
   resetPasswordRequest,
-  resetPasswordConfirm,
+  resetPasswordConfirm
 } from "./authSlice";
 import { RootState, AppDispatch } from "@app/store";
 
@@ -34,7 +34,6 @@ const LoginForm: React.FC<LoginFormProps> = () => {
     const [confirmPw, setConfirmPw] = useState("");
     const [confirmedEmail, setConfirmedEmail] = useState(false);
 
-
     const dispatch = useDispatch<AppDispatch>();
     const { loading, token, message,error } = useSelector((s: RootState) => s.auth);
     const { search } = useLocation();
@@ -49,20 +48,20 @@ const LoginForm: React.FC<LoginFormProps> = () => {
         }
     }, [search]);
 
-    useEffect(() => {
-        if (token) {
-            setFormType("signin");
-
-            // Redirect to Swagger docs
-            window.location.href = "/";
-        }
-    }, [token]);
-    
-
-    const handleSubmit = () => {
+    const handleSubmit = async (e: any) => {
+        e.preventDefault();
         switch (formType) {
         case "signin":
-            dispatch(loginUser(email, password));
+            const resultAction = await dispatch(loginUser({email, password}));
+            if (loginUser.fulfilled.match(resultAction)) {
+                toaster.create({
+                    title: "Welcome Back!",
+                    description: "You have successfully logged in.",
+                    type: "success"
+                });
+                // login successful, redirect to home
+                navigate("/");
+            }
             break;
         case "signup":
             dispatch(registerUser(email, password, confirmPw));
@@ -85,7 +84,8 @@ const LoginForm: React.FC<LoginFormProps> = () => {
     };
 
     return (
-        <Box p={6} bg={"white"} borderRadius="md" maxW={{ base: "full", md: "75%" }} boxShadow="md" mx="auto"  color={"text.primary"}>
+        <Box p={6} bg={"white"} borderRadius="md" maxW={{ base: "full", md: "75%" }} boxShadow="md" mx="auto" color={"text.primary"}
+            as="form" onSubmit={handleSubmit}>
             <Heading mb={2} fontSize={"2xl"}>
             {formType === "signin"
                 ? "Welcome Back!"
@@ -187,10 +187,10 @@ const LoginForm: React.FC<LoginFormProps> = () => {
                 w="full"
                 visual={"solid"}
                 size={"md"}
+                type="submit"
                 fontWeight="bold"
                 mb={4}
                 loading={loading}
-                onClick={handleSubmit}
             >
             {formType === "signin"
                 ? "Sign In"

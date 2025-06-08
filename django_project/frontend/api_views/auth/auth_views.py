@@ -4,7 +4,7 @@ Tomorrow Now GAP.
 .. note:: authentication views.
 """
 from knox.models import AuthToken
-from knox.views import LogoutView as KnoxLogoutView, LogoutAllView
+from knox.views import LogoutView, LogoutAllView
 from allauth.account.utils import complete_signup
 from allauth.account import app_settings as allauth_settings
 from allauth.socialaccount.providers.google.views import GoogleOAuth2Adapter
@@ -13,6 +13,8 @@ from dj_rest_auth.views import LoginView
 from dj_rest_auth.registration.views import RegisterView, SocialLoginView
 from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError
+
+from gap_api.serializers.user import UserInfoSerializer
 
 
 # --- login ---
@@ -29,7 +31,7 @@ class KnoxLoginView(LoginView):
         # create token for self.user set in LoginView.login()
         _, token = AuthToken.objects.create(self.user)
         return Response(
-            {"key": token, "user": self.get_serializer(self.user).data}
+            {"key": token, "user": UserInfoSerializer(self.user).data}
         )
 
 
@@ -61,7 +63,7 @@ class KnoxRegisterView(RegisterView):
 
 
 # --- logout (single token & all tokens) ---
-class KnoxLogoutView(KnoxLogoutView):
+class KnoxLogoutView(LogoutView):
     """POST → revoke current token."""
 
     pass

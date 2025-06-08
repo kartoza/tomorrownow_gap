@@ -7,7 +7,8 @@
     "jsx": "react-jsx",
     "allowJs": true,
     "sourceMap": true,
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
+    "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "lib": [
       "ES2021.String",

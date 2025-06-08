@@ -1,11 +1,7 @@
-import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import { createSlice, PayloadAction, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios';
 import { setCSRFToken } from '../../utils/csrfUtils'
-
-interface User {
-  username: string;
-  email: string;
-}
+import { User } from '../../types';
 
 interface AuthState {
   user: User | null;
@@ -15,6 +11,7 @@ interface AuthState {
   message: string | null;
   isAuthenticated: boolean;
   isAdmin: boolean;
+  hasInitialized: boolean;
 }
 
 const initialState: AuthState = {
@@ -24,8 +21,52 @@ const initialState: AuthState = {
   error: null,
   message: null,
   isAuthenticated: false,
-  isAdmin: false
+  isAdmin: false,
+  hasInitialized: false, // Track if user info has been fetched
 };
+
+// Async thunk for user logs in
+export const loginUser = createAsyncThunk(
+  'auth/loginUser',
+  async ({ email, password }: { email: string; password: string }, { dispatch, rejectWithValue }) => {
+    try {
+      setCSRFToken();
+      const response = await axios.post('/auth/login/', { email, password });
+      return response.data;
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.['detail'] || 'Error logging in';
+      return rejectWithValue(errorMessage);
+    }
+  }
+);
+
+// Async thunk to fetch user info and check authentication status
+export const fetchUserInfo = createAsyncThunk(
+  'auth/fetchUserInfo',
+  async ({}, { dispatch, rejectWithValue }) => {
+    try {
+      const response = await axios.get(`/api/v1/user/me`);
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data['detail'] || 'Failed to fetch status');
+    }
+  }
+);
+
+export const logoutUser = createAsyncThunk(
+  'auth/logoutUser',
+  async (_, { dispatch, rejectWithValue }) => {
+    localStorage.clear();
+    try {
+      setCSRFToken();
+      await axios.post('/auth/logout/', {}, { withCredentials: true });
+      return true; // Indicate successful logout
+    } catch (e) {
+      console.error(e);
+      return rejectWithValue(e.response?.data['detail'] || 'Failed to logout');
+    }
+  }
+)
 
 const authSlice = createSlice({
   name: 'auth',
@@ -43,6 +84,7 @@ const authSlice = createSlice({
       state.isAuthenticated = true;
       state.isAdmin = action.payload.is_admin;
       state.message = 'Login successful';
+      state.hasInitialized = true; // Mark as initialized after successful login
     },
     loginFailure: (state, action: PayloadAction<string>) => {
       state.loading = false;
@@ -68,62 +110,88 @@ const authSlice = createSlice({
       state.error = null;
     },
   },
+  extraReducers: (builder) => {
+    builder
+      .addCase(fetchUserInfo.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+        state.hasInitialized = false; // Reset initialization state on fetch
+      })
+      .addCase(fetchUserInfo.fulfilled, (state, action) => {
+        state.loading = false;
+        state.user = action.payload;
+        state.isAuthenticated = true;
+        state.isAdmin = action.payload.is_superuser || false; // Assuming is_superuser indicates admin status
+        state.hasInitialized = true; // Mark as initialized after fetching user info
+      })
+      .addCase(fetchUserInfo.rejected, (state, action) => {
+        state.loading = false;
+        state.error = null;
+        state.isAuthenticated = false;
+        state.user = null;
+        state.hasInitialized = true; // Still mark as initialized even if fetch fails
+      })
+      .addCase(logoutUser.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+        state.message = null;
+      })
+      .addCase(logoutUser.fulfilled, (state) => {
+        state.loading = false;
+        state.user = null;
+        state.token = null;
+        state.isAuthenticated = false;
+        state.isAdmin = false;
+        state.message = 'Logout successful';
+        state.hasInitialized = true; // Mark as initialized after logout
+      }
+      )
+      .addCase(logoutUser.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+        state.message = null;
+        state.hasInitialized = false; // refetch user info on next login attempt
+      }
+      )
+      .addCase(loginUser.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+        state.message = null;
+      })
+      .addCase(loginUser.fulfilled, (state, action) => {
+        state.loading = false;
+        state.user = action.payload.user;
+        state.token = null; // Assuming token is not returned in this case
+        state.isAuthenticated = true;
+        state.isAdmin = action.payload.user.is_superuser || false; // Assuming is_superuser indicates admin status
+        state.message = 'Login successful';
+        state.hasInitialized = true; // Mark as initialized after successful login
+      }
+      )
+      .addCase(loginUser.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+        state.message = null;
+        state.isAuthenticated = false;
+        state.user = null;
+        state.hasInitialized = true; // Still mark as initialized even if login fails
+      }
+      );
+  },
 });
 
-export const { loginStart, loginSuccess, loginFailure, logout, setUser, setMessage } = authSlice.actions;
+export const { setUser, setMessage } = authSlice.actions;
 
-export const loginUser = (email: string, password: string) => async (dispatch: any) => {
-  dispatch(loginStart());
-  try {
-    setCSRFToken();
-    const response = await axios.post('/auth/login/', { email, password});
-    const token = response.data.key;
-    localStorage.setItem('auth_token', token);
-    axios.defaults.headers['Authorization'] = `Token ${token}`;
-    dispatch(loginSuccess({ user: response.data.user, token, is_admin: response.data.is_admin }));
-  } catch (error: any) {
-    dispatch(loginFailure(error.response?.data?.non_field_errors[0] || 'Error logging in'));
-  }
-};
-
-export const checkLoginStatus = () => async (dispatch: any) => {
-  const token = localStorage.getItem('auth_token');
-  if (token) {
-    axios.defaults.headers['Authorization'] = `Token ${token}`;
-    try {
-      const response = await axios.get('/api/auth/check-token/');
-      dispatch(loginSuccess({ user: response.data.user, token, is_admin: response.data.is_admin }));
-      return;
-    } catch {
-      console.warn("Token validation failed, falling back to user info check.");
-    }
-  }
-  try {
-    setCSRFToken();
-    const response = await axios.post("/auth/user/", { credentials: "include" });
-    if (response.data.is_authenticated) {
-      dispatch(loginSuccess({ user: response.data.user, token: null, is_admin: response.data.is_admin }));
-    } else {
-      await dispatch(logoutUser());
-    }
-  } catch (error) {
-    console.error("User info validation failed:", error);
-    await dispatch(logoutUser());
-  }
-};
-
-export const logoutUser = () => async (dispatch: any) => {
-  localStorage.clear();
-  try {
-    await axios.post('/api/logout/', {}, { withCredentials: true });
-    axios.defaults.headers['Authorization'] = '';
-    setCSRFToken();
-    dispatch(logout());
-    window.location.href = '/';
-  } catch (e) {
-    console.error(e);
-  }
-};
+// export const loginUser = (email: string, password: string) => async (dispatch: any) => {
+//   dispatch(loginStart());
+//   try {
+//     setCSRFToken();
+//     const response = await axios.post('/auth/login/', { email, password});
+//     dispatch(loginSuccess({ user: response.data.user, token: null, is_admin: response.data.user.is_superuser }));
+//   } catch (error: any) {
+//     dispatch(loginFailure(error.response?.data?.non_field_errors[0] || 'Error logging in'));
+//   }
+// };
 
 export const resetPasswordRequest = (email: string) => async (dispatch: any) => {
   try {
@@ -202,5 +270,5 @@ export const registerUser = (email: string, password: string, repeatPassword: st
 // export const selectUserEmail = (state: RootState) => state.auth.user?.email;
 // export const selectUsername = (state: RootState) => state.auth.user?.username;
 
-export const {} = authSlice.actions;
+export const {loginFailure, loginStart} = authSlice.actions;
 export default authSlice.reducer;

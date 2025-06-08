@@ -2,6 +2,7 @@ import { Outlet } from 'react-router-dom'
 import { Flex, Box } from '@chakra-ui/react'
 import Navigation from '@/components/Navigation'
 import HeroSection from '@/features/auth/HeroSection'
+import { Toaster } from "@/components/ui/toaster"
 
 
 export const AuthLayout = () => {

@@ -8,6 +8,7 @@ import system from './theme';
 import { Provider } from 'react-redux';
 import { RouterProvider } from 'react-router-dom';
 import {router} from './app/router';
+import { Toaster } from './components/ui/toaster';
 
 const App = () => (
   <React.StrictMode>
@@ -17,6 +18,7 @@ const App = () => (
           <ScrollProvider>
             <ErrorBoundary>
               <RouterProvider router={router} />
+              <Toaster />
             </ErrorBoundary>
           </ScrollProvider>
         </GapContextProvider>

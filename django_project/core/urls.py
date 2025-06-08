@@ -8,6 +8,12 @@ from django.urls import path, include, re_path
 from core.views import (
     PreferencesRedirectView, FlowerProxyView
 )
+from frontend.api_views.auth import (
+    KnoxLoginView, KnoxRegisterView,
+    KnoxLogoutView, KnoxLogoutAllView,
+    KnoxSocialLoginView
+)
+from frontend.api_views.auth.login import LoginView as CustomLoginView, LogoutView as CustomLogoutView
 
 
 urlpatterns = [
@@ -19,6 +25,32 @@ urlpatterns = [
         name='index'
     ),
     FlowerProxyView.as_url(),
+    path(
+        "auth/login/", CustomLoginView.as_view(),
+        name="app_login"
+    ),
+    path(
+        "auth/logout/", CustomLogoutView.as_view(),
+        name="app_logout"
+    ),
+    # Knox token endpoints
+    path(
+        "auth/registration/", KnoxRegisterView.as_view(),
+        name="knox_signup"
+    ),
+    path(
+        "auth/logout/", KnoxLogoutView.as_view(),
+        name="knox_logout"
+    ),
+    path(
+        "auth/logoutall/", KnoxLogoutAllView.as_view(),
+        name="knox_logoutall"
+    ),
+    # dj-rest-auth endpoints
+    path(
+        "auth/social/login/", KnoxSocialLoginView.as_view(),
+        name='social_login'
+    ),
     path(
         "auth/social/", include("allauth.socialaccount.urls")
     ),
