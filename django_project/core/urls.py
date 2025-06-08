@@ -9,11 +9,13 @@ from core.views import (
     PreferencesRedirectView, FlowerProxyView
 )
 from frontend.api_views.auth import (
-    KnoxLoginView, KnoxRegisterView,
+    KnoxRegisterView,
     KnoxLogoutView, KnoxLogoutAllView,
     KnoxSocialLoginView
 )
-from frontend.api_views.auth.login import LoginView as CustomLoginView, LogoutView as CustomLogoutView
+from frontend.api_views.auth.login import (
+    LoginView as CustomLoginView, LogoutView as CustomLogoutView
+)
 
 
 urlpatterns = [
