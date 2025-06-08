@@ -29,7 +29,7 @@ const WaitListForm: React.FC<WaitListFormProps> = ({user}) => {
         first_name: user?.first_name || '',
         last_name: user?.last_name || '',
         email: user?.email,
-        organisation: "",
+        organization: "",
         description: "",
     });
     const [loading, setLoading] = useState(false);
@@ -66,11 +66,25 @@ const WaitListForm: React.FC<WaitListFormProps> = ({user}) => {
             body: JSON.stringify(formData),
           });
     
-          if (res.status === 403) {
-            setError("Please verify your email before submitting this request.");
-          } else if (res.ok) {
-            setSuccess("Request submitted successfully.");
-            setFormData(prev => ({ ...prev, description: "" }));
+          if (res.ok) {
+            const data = await res.json();
+            // check email_verified
+            if (data.email_verified) {
+              // show success message
+              setSuccess("Request submitted successfully. We will be in touch within 1 week.");
+            } else {
+              // show success message and display email verification instructions
+              setSuccess("Request submitted successfully. Please check your email to verify your account.");
+            }
+            
+            // Reset form data
+            setFormData({
+              first_name: user?.first_name || '',
+              last_name: user?.last_name || '',
+              email: user?.email || '',
+              organization: "",
+              description: "",
+            });
           } else {
             setError("Submission failed. Please try again.");
           }
@@ -113,6 +127,7 @@ const WaitListForm: React.FC<WaitListFormProps> = ({user}) => {
                     <Input
                     name="email"
                     value={formData.email}
+                    onChange={handleChange}
                     type="email"
                     placeholder="email@example.com"
                     />
@@ -120,10 +135,10 @@ const WaitListForm: React.FC<WaitListFormProps> = ({user}) => {
 
                 <Field.Root required>
                     <Input
-                    name="organisation"
-                    value={formData.organisation}
+                    name="organization"
+                    value={formData.organization}
                     onChange={handleChange}
-                    placeholder="Enter your organisation"
+                    placeholder="Enter your organization"
                     />
                 </Field.Root>
 
@@ -141,6 +156,9 @@ const WaitListForm: React.FC<WaitListFormProps> = ({user}) => {
                     <Text fontSize="sm" color="red.600">{error}</Text>
                 )}
 
+                {success && (
+                    <Text fontSize="sm" color="green.600">{success}</Text>
+                )}
                 <Button
                     w="full"
                     visual={"solid"}

@@ -6,6 +6,9 @@ from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from django.contrib.auth import get_user_model
 from django.utils.http import urlsafe_base64_decode
+from django.utils import timezone
+from allauth.account.utils import send_email_confirmation
+
 from core.serializers import SignUpRequestSerializer
 from gap.models import UserProfile, SignUpRequest
 
@@ -30,33 +33,69 @@ class SignUpRequestView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Lookup user by email and ensure their email is verified
-        try:
-            user = User.objects.get(email=email)
-            profile = UserProfile.objects.get(user=user)
-        except (User.DoesNotExist, UserProfile.DoesNotExist):
+        # Check if request already exists
+        existing_request = SignUpRequest.objects.filter(email=email).first()
+        if existing_request:
             return Response(
-                {"detail": "Invalid user or profile."},
-                status=status.HTTP_403_FORBIDDEN
+                {"detail": "A sign-up request for this email already exists."},
+                status=status.HTTP_400_BAD_REQUEST
             )
-
-        if not profile.email_verified:
-            message = (
-                "Your email is not verified. "
-                "Please verify your email before submitting this request."
-            )
+        # Validate and save the sign-up request
+        if not data.get('first_name') or not data.get('last_name'):
             return Response(
-                {
-                    "detail": message,
-                },
-                status=status.HTTP_403_FORBIDDEN
+                {"detail": "First name and last name are required."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        if not data.get('organization'):
+            return Response(
+                {"detail": "Organization is required."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        if not data.get('description'):
+            return Response(
+                {"detail": "Description is required."},
+                status=status.HTTP_400_BAD_REQUEST
             )
 
         serializer = SignUpRequestSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
+            # Create the user if it does not exist
+            email_verified = False
+            verified_at = None
+            if not User.objects.filter(email=email).exists():
+                user = User.objects.create_user(
+                    email=email,
+                    username=email,
+                    first_name=data.get('first_name'),
+                    last_name=data.get('last_name'),
+                    is_active=False  # User needs to verify email
+                )
+            elif UserProfile.objects.filter(user__email=email).exists():
+                user = User.objects.get(email=email)
+                email_verified = user.userprofile.email_verified
+                verified_at = user.userprofile.verified_at
+            else:
+                # create UserProfile
+                user = User.objects.get(email=email)
+                UserProfile.objects.create(
+                    user=user,
+                    email_verified=True,
+                    verified_at=timezone.now()
+                )
+                email_verified = True
+                verified_at = timezone.now()
+
+            if not email_verified:
+                # send email verification
+                send_email_confirmation(request, user)
+
             return Response(
-                {"detail": "Request submitted successfully."},
+                {
+                    "detail": "Request submitted successfully.",
+                    "email_verified": email_verified,
+                    "verified_at": verified_at,
+                },
                 status=status.HTTP_200_OK
             )
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

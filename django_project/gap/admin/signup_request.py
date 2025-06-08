@@ -46,7 +46,8 @@ class SignUpRequestAdmin(admin.ModelAdmin):
     list_display = (
         'first_name', 'last_name',
         'email', 'status',
-        'submitted_at', 'approved_by', 'approved_at'
+        'get_email_verified', 'organization',
+        'submitted_at', 'approved_at'
     )
     search_fields = ('first_name', 'last_name', 'email')
     list_filter = ('status', 'submitted_at', ApprovedByManagerFilter)
@@ -58,3 +59,16 @@ class SignUpRequestAdmin(admin.ModelAdmin):
         if db_field.name == 'approved_by':
             kwargs["queryset"] = User.objects.filter(is_staff=True)
         return super().formfield_for_foreignkey(db_field, request, **kwargs)
+
+    def get_email_verified(self, obj):
+        """Return email verified status."""
+        # find the user by email
+        try:
+            user = User.objects.get(email=obj.email)
+            if user.userprofile:
+                return user.userprofile.email_verified
+            return "-"
+        except User.DoesNotExist:
+            return "-"
+
+    get_email_verified.short_description = _('Email Verified')
