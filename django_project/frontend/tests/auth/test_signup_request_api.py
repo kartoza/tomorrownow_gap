@@ -1,3 +1,10 @@
+# coding=utf-8
+"""
+Tomorrow Now GAP.
+
+.. note:: Unit tests for SignUpRequest API.
+"""
+
 import mock
 from django.urls import reverse
 from rest_framework import status
