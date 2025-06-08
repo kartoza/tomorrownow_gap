@@ -11,6 +11,8 @@ from allauth.account.utils import send_email_confirmation
 
 from core.serializers import SignUpRequestSerializer
 from gap.models import UserProfile, SignUpRequest
+from django.core.validators import validate_email
+from django.core.exceptions import ValidationError
 
 
 User = get_user_model()
@@ -30,6 +32,14 @@ class SignUpRequestView(APIView):
         if not email:
             return Response(
                 {"detail": "Email is required."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        # Validate email format
+        try:
+            validate_email(email)
+        except ValidationError:
+            return Response(
+                {"detail": "Invalid email format."},
                 status=status.HTTP_400_BAD_REQUEST
             )
 

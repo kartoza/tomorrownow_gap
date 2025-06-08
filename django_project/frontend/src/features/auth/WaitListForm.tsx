@@ -86,7 +86,9 @@ const WaitListForm: React.FC<WaitListFormProps> = ({user}) => {
               description: "",
             });
           } else {
-            setError("Submission failed. Please try again.");
+            const data = await res.json();
+            const error = data.detail || "An error occurred. Please try again.";
+            setError(error);
           }
         } catch {
           setError("Server error occurred.");
