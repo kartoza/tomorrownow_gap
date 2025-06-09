@@ -21,7 +21,8 @@ def get_base_context(context):
         'gap_base_context': json.dumps({
             'api_swagger_url': reverse('api:v1:schema-swagger'),
             'api_docs_url': preferences.documentation_url
-        })
+        }),
+        'ga_measurement_id': preferences.google_analytics_id,
     })
     return context
 

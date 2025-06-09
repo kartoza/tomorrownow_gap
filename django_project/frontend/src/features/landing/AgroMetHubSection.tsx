@@ -17,7 +17,7 @@ import { APIDocsURL } from "@/utils/constants";
 const AgroMetHubSection: React.FC = () => {
     return (
         <Box
-            id="hub"
+            id="products"
             py={20}
             bgImage="url('/static/images/bg_hub.webp')"
             bgSize="cover"

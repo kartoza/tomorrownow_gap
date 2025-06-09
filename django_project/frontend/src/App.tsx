@@ -10,7 +10,8 @@ import { RouterProvider } from 'react-router-dom';
 import {router} from './app/router';
 import { Toaster } from './components/ui/toaster';
 
-const App = () => (
+const App = () => {
+  return (
   <React.StrictMode>
     <ChakraProvider value={system}>
       <Provider store={store}>
@@ -25,6 +26,7 @@ const App = () => (
       </Provider>
     </ChakraProvider>
   </React.StrictMode>
-);
+  )
+};
 
 export default App;

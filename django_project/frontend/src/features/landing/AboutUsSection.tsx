@@ -31,7 +31,7 @@ const AboutUsSection: React.FC = () => {
                         key={index}
                         textAlign="center"
                         alignSelf={"center"}
-                        onClick={() => openInNewTab(partner.website)}
+                        onClick={() => openInNewTab(partner.website, partner.name)}
                         _hover={{ 
                         opacity: 1, 
                         transform: 'scale(1.05)',

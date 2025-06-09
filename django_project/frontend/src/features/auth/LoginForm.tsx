@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import {
   Box,
   Button,
@@ -20,6 +20,8 @@ import {
   resetPasswordConfirm
 } from "./authSlice";
 import { RootState, AppDispatch } from "@app/store";
+import { loginEvent } from "@/utils/analytics";
+import { useNavigateWithEvent } from "@/hooks/useNavigateWithEvent";
 
 
 interface LoginFormProps {
@@ -27,7 +29,7 @@ interface LoginFormProps {
 }
 
 const LoginForm: React.FC<LoginFormProps> = () => {
-    const navigate = useNavigate();
+    const navigate = useNavigateWithEvent();
     const [formType, setFormType] = useState<FormType>("signin");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
@@ -52,6 +54,7 @@ const LoginForm: React.FC<LoginFormProps> = () => {
         e.preventDefault();
         switch (formType) {
         case "signin":
+            loginEvent();
             const resultAction = await dispatch(loginUser({email, password}));
             if (loginUser.fulfilled.match(resultAction)) {
                 toaster.create({
@@ -60,7 +63,7 @@ const LoginForm: React.FC<LoginFormProps> = () => {
                     type: "success"
                 });
                 // login successful, redirect to home
-                navigate("/");
+                navigate("/", null, true);
             }
             break;
         case "signup":
@@ -96,7 +99,7 @@ const LoginForm: React.FC<LoginFormProps> = () => {
                 : "Sign Up"}
             </Heading>
             {confirmedEmail && (
-                <Text color="green.600">Your email has been confirmed successfully.</Text>
+                <Text color="green.600">Your email has been confirmed successfully. We will be in touch within 1 week</Text>
             )}
             <Text mb={4}>
             {formType === "signin"
@@ -175,13 +178,13 @@ const LoginForm: React.FC<LoginFormProps> = () => {
             )}
 
             {/* Forgot */}
-            {formType === "signin" && (
+            {/* {formType === "signin" && (
             <Flex mb={4} justify="space-between" align="center">
                 <Link color="green.600" onClick={() => setFormType("forgotPassword")}>
                 Forgot Password?
                 </Link>
             </Flex>
-            )}
+            )} */}
 
             <Button
                 w="full"
@@ -222,7 +225,7 @@ const LoginForm: React.FC<LoginFormProps> = () => {
             {formType === "signin" ? (
                 <Text fontSize="sm">
                 Don’t have an account?{" "}
-                <Link color="green.600" onClick={() => navigate("/signup")}>
+                <Link color="green.600" onClick={() => navigate("/signup", 'login_form_sign_up')}>
                     Sign Up
                 </Link>
                 </Text>

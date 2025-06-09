@@ -10,10 +10,10 @@ import AboutUsSection from "@/features/landing/AboutUsSection";
 import { useScrollSpy } from "@/hooks/useScrollSpy";
 import { handleSmoothScroll } from "@/utils/scroll";
 
+const sectionIds = ['hero', 'bridging', 'products', 'impact', 'partners', 'about'];
 
 const LandingPage: React.FC = () => {
     // Scroll spy for active section highlighting
-    const sectionIds = ['hub', 'partners', 'about'];
     useScrollSpy(sectionIds);
 
     const location = useLocation();

@@ -9,8 +9,6 @@ import {
     GridItem,
     Image
 } from "@chakra-ui/react";
-import { openInNewTab } from "@/utils/url";
-import { APIDocsURL } from "@/utils/constants";
 
 
 const GLobalImpactSection: React.FC = () => {
