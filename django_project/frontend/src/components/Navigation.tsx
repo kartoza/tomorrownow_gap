@@ -14,6 +14,8 @@ import { APIDocsURL } from '@/utils/constants';
 import { RootState, AppDispatch } from '@/app/store';
 import ProfileDropdown from './ProfileDropdown';
 import { logoutUser, fetchUserInfo } from '@/features/auth/authSlice';
+import { useNavigateWithEvent } from '@/hooks/useNavigateWithEvent';
+import { logoutEvent } from '@/utils/analytics';
 
 
 interface NavItem {
@@ -27,9 +29,9 @@ const Navigation: React.FC = () => {
     const { activeSection } = useScrollContext();
     const dispatch = useDispatch<AppDispatch>();
     const location = useLocation();
-    const navigate = useNavigate();
+    const navigate = useNavigateWithEvent();
     const navItems: NavItem[] = [
-        { label: 'Products', href: '#hub' },
+        { label: 'Products', href: '#products' },
         { label: 'Data Access', href: APIDocsURL },
         { label: 'Our Partners', href: '#partners' },
         { label: 'About Us', href: '#about' }
@@ -49,11 +51,12 @@ const Navigation: React.FC = () => {
             handleSmoothScroll(sectionId);
         } else {
             // We're on a different page, navigate to landing page
-            navigate(`/${sectionId}`);
+            navigate(`/${sectionId}`, `navbar_${sectionId.replace('#', '')}`);
         }
     };
 
     const handleLogout = async () => {
+        logoutEvent();
         const resultAction = await dispatch(logoutUser());
         if (logoutUser.fulfilled.match(resultAction)) {
             toaster.create({
@@ -62,7 +65,7 @@ const Navigation: React.FC = () => {
                 type: "success"
             });
             // logout successful, redirect to signin
-            navigate('/signin');
+            navigate('/signin', null, true);
         }
     }
 

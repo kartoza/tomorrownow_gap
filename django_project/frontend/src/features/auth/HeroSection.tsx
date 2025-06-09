@@ -8,14 +8,14 @@ import {
     VStack,
     Flex
 } from "@chakra-ui/react";
-import { useNavigate } from "react-router-dom";
+import { useNavigateWithEvent } from "@/hooks/useNavigateWithEvent";
 
 interface HeroSectionProps {
     children?: React.ReactNode;
 }
 
 const HeroSection: React.FC<HeroSectionProps> = ({ children }) => {
-    const navigate = useNavigate();
+    const navigate = useNavigateWithEvent();
     return (
         <Flex
             alignItems="center"
@@ -40,7 +40,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({ children }) => {
                         <Text fontSize="2xl" fontWeight="extrabold" mt={{ base: 12, md: 5 }}>
                             Validated and localized agromet products, trusted by leading farmer-facing organisations.
                         </Text>
-                        <Button visual="outline" size="md" onClick={() => navigate('/signup')}>
+                        <Button visual="outline" size="md" onClick={() => navigate('/signup', 'auth_hero_section_join_us')}>
                             Join Us
                         </Button>
                     </VStack>

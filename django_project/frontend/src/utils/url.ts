@@ -1,4 +1,5 @@
+import { trackAndRedirect } from './analytics';
 
-export const openInNewTab = (url: string) => {
-  window.open(url, '_blank', 'noopener,noreferrer');
+export const openInNewTab = (url: string, name?: string) => {
+  trackAndRedirect(name || 'external_link', url);
 };

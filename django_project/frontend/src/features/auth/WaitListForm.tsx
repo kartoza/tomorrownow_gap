@@ -11,7 +11,8 @@ import {
   Flex,
   Link
 } from "@chakra-ui/react";
-import { useNavigate } from "react-router-dom";
+import { useNavigateWithEvent } from "@/hooks/useNavigateWithEvent";
+import { signUpEvent } from "@/utils/analytics";
 
 
 interface WaitListFormProps {
@@ -24,7 +25,7 @@ interface WaitListFormProps {
 
 
 const WaitListForm: React.FC<WaitListFormProps> = ({user}) => {
-    const navigate = useNavigate();
+    const navigate = useNavigateWithEvent();
     const [formData, setFormData] = useState({
         first_name: user?.first_name || '',
         last_name: user?.last_name || '',
@@ -68,6 +69,7 @@ const WaitListForm: React.FC<WaitListFormProps> = ({user}) => {
     
           if (res.ok) {
             const data = await res.json();
+            signUpEvent("website", formData.organization, true);
             // check email_verified
             if (data.email_verified) {
               // show success message
@@ -86,6 +88,7 @@ const WaitListForm: React.FC<WaitListFormProps> = ({user}) => {
               description: "",
             });
           } else {
+            signUpEvent("website", formData.organization, false);
             const data = await res.json();
             const error = data.detail || "An error occurred. Please try again.";
             setError(error);
@@ -176,7 +179,7 @@ const WaitListForm: React.FC<WaitListFormProps> = ({user}) => {
                 <Flex justify="center">
                     <Text fontSize="sm">
                         Already have an account?{" "}
-                        <Link color="green.600" onClick={() => navigate("/signin")}>
+                        <Link color="green.600" onClick={() => navigate("/signin", 'waitlist_form_log_in')}>
                             Log In
                         </Link>
                     </Text>

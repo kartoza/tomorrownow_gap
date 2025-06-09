@@ -18,11 +18,11 @@ import "swiper/css/pagination";
 import { ArrowNavResponsiveIcon } from "./ArrowNavResponsiveIcon";
 import { openInNewTab } from "@/utils/url";
 import { partners } from "./types";
-import { APIDocsURL } from "@/utils/constants";
+import { useNavigateWithEvent } from "@/hooks/useNavigateWithEvent";
 
 
 const PartnersSection: React.FC = () => {
-    const navigate = useNavigate();
+    const navigate = useNavigateWithEvent();
     return (
         <Box id={"partners"} py={20} bg="white">
             <Container px={{ base: 4, md: 6 }} w="full">
@@ -80,7 +80,7 @@ const PartnersSection: React.FC = () => {
                     {partners.map((partner, index) => (
                         <SwiperSlide key={index} >
                         <Box
-                            onClick={() => openInNewTab(partner.website)}
+                            onClick={() => openInNewTab(partner.website, partner.name)}
                             opacity={0.8}
                             _hover={{ 
                             opacity: 1, 
@@ -151,7 +151,7 @@ const PartnersSection: React.FC = () => {
                     </IconButton>
                 </Box>
     
-                <Button visual="solid" size="md" onClick={() => navigate('/signup')}>
+                <Button visual="solid" size="md" onClick={() => navigate('/signup', 'partners_section_become_partner')}>
                     Become a Partner
                 </Button>
                 </VStack>

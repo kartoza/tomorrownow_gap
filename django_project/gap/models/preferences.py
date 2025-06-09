@@ -201,6 +201,15 @@ class Preferences(SingletonModel):
         )
     )
 
+    # Google Analytics
+    google_analytics_id = models.CharField(
+        max_length=255,
+        default='',
+        blank=True,
+        null=True,
+        help_text='Google Analytics ID for tracking.'
+    )
+
     @property
     def enable_message_filtering(self) -> bool:
         """Check if message filtering should be enabled."""

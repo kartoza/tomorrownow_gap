@@ -78,4 +78,11 @@ class PreferencesAdmin(admin.ModelAdmin):
                 )
             }
         ),
+        (
+            'User Interface', {
+                'fields': (
+                    'google_analytics_id',
+                )
+            }
+        )
     )

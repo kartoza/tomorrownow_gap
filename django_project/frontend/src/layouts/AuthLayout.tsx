@@ -2,10 +2,10 @@ import { Outlet } from 'react-router-dom'
 import { Flex, Box } from '@chakra-ui/react'
 import Navigation from '@/components/Navigation'
 import HeroSection from '@/features/auth/HeroSection'
-import { Toaster } from "@/components/ui/toaster"
-
+import usePageTracking from '@/hooks/usePageTracking'
 
 export const AuthLayout = () => {
+  usePageTracking()
   return (
     <Flex direction="column" minH="100vh" w="full">
       <Navigation />
