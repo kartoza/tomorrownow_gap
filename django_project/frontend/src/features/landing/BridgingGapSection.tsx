@@ -1,6 +1,6 @@
 import React from "react";
 import { Box, Container, Heading, Text, VStack } from "@chakra-ui/react";
-import { CropPlanImage } from "./CropPlanImage";
+import { CropPlanImage } from "./Images";
 
 const BridgingGapSection: React.FC = () => {
     return (

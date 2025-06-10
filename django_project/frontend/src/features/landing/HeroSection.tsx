@@ -8,6 +8,7 @@ import {
     VStack
 } from "@chakra-ui/react";
 import { useNavigateWithEvent } from "@/hooks/useNavigateWithEvent";
+import { HeroBgImageUrl } from "./Images";
 
 const HeroSection: React.FC = () => {
     const navigate = useNavigateWithEvent();
@@ -19,7 +20,7 @@ const HeroSection: React.FC = () => {
             alignItems="center"
             color="white"
             position={'relative'}
-            bgImage="url('/static/images/home.webp')"
+            bgImage={`url('${HeroBgImageUrl()}')`}
             bgSize="cover"
             bgPos="center"
             bgAttachment="fixed"

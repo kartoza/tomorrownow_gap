@@ -13,3 +13,8 @@ export const CropPlanImage = () => {
     />
   );
 }
+
+export const HeroBgImageUrl = () => {
+  const isMobile = useBreakpointValue({ base: true, md: false });
+  return isMobile ? "/static/images/home_mobile.webp" : "/static/images/home.webp";
+}
