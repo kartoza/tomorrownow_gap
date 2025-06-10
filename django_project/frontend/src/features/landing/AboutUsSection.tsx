@@ -20,7 +20,7 @@ const AboutUsSection: React.FC = () => {
                     About Us
                     </Heading>
                     <Text variant={"subTitle"}>
-                    The Global Access Platform is built and managed by <span style={{fontWeight: "bold"}}>Tomorrow.io</span> and <span style={{fontWeight: "bold"}}>Kartoza </span> 
+                    The Global Access Platform is built and managed by <span style={{fontWeight: "bold"}}>Kartoza </span> 
                     with funding generously provided by <span style={{fontWeight: "bold"}}>The Gates Foundation</span>.
                     </Text>
                 </VStack>

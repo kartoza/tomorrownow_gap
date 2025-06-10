@@ -67,7 +67,7 @@ const GLobalImpactSection: React.FC = () => {
                                 Our Solution
                             </Heading>
                             <Text color="text.primary" textAlign={"start"} fontStyle={"italic"}>
-                                Agro-Met intelligence - localized, accessible, affordable
+                                AgroMet intelligence - localized, accessible, affordable
                             </Text>
                             <Text color="text.primary" textAlign={"start"}>
                                 GAP bridges the first-mile technology with last-mile impact by making advanced weather products accessible and useful for organizations supporting smallholder farmers through more open data, localized products, and  community partnerships.

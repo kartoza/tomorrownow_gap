@@ -11,7 +11,7 @@ const BridgingGapSection: React.FC = () => {
                     One Platform. Every Weather-Resilient Decision.
                 </Heading>
                 <Text variant={"subTitle"}>
-                    From localized Agro-Met data to trusted insights, help your farmers grow more weather resilient and increase productivity.
+                    From localized AgroMet data to trusted insights, help your farmers grow more weather resilient and increase productivity.
                 </Text>
                 <Box w="full">
                     {CropPlanImage()}

@@ -32,7 +32,7 @@ const HeroSection: React.FC = () => {
                             Global Access Platform
                         </Heading>
                         <Text fontSize={{ base: "3xl", md: "subGiant" }} fontWeight="extrabold" lineHeight="moderate">
-                            For Agro-Met Intelligence
+                            For AgroMet Intelligence
                         </Text>
                         <Text fontSize="2xl" fontWeight="extrabold" mt={{ base: 12, md: 5 }}>
                             Unlocking Weather Resilience for Smallholder Farming
