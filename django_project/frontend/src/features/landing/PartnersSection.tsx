@@ -31,7 +31,7 @@ const PartnersSection: React.FC = () => {
                         Meet Our Partners
                     </Heading>
                     <Text variant={"subTitle"}>
-                        Collaborating with world-leading organizations to drive innovation in agro-met intelligence.
+                        Collaborating with world-leading organizations to drive innovation in AgroMet intelligence.
                     </Text>
                 </VStack>
                 

@@ -28,7 +28,7 @@ const AgroMetHubSection: React.FC = () => {
                 <VStack gap={12}>
                     <VStack gap={4} textAlign="center">
                         <Heading as="h2" size={{ base: "md", md: "lg" }} variant={"default"}>
-                        Agro-Met Intelligence Hub
+                        AgroMet Intelligence Hub
                         </Heading>
                         <Text variant={"subTitle"}>
                         Trusted, localized insights for organizations on the front lines of helping farmers increase productivity and resilience.
