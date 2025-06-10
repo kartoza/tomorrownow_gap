@@ -9,7 +9,6 @@ import {
     Image,
     IconButton
 } from "@chakra-ui/react";
-import { useNavigate } from "react-router-dom";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Navigation, Pagination, Autoplay } from 'swiper/modules';
 import "swiper/css";
@@ -39,7 +38,7 @@ const PartnersSection: React.FC = () => {
                 {/* Swiper Carousel */}
                 <Box position="relative" w="full">
                     <Swiper
-                    modules={[Navigation, Pagination, Autoplay]}
+                    modules={[Navigation, Pagination, Autoplay ]}
                     spaceBetween={100}
                     slidesPerView={1}
                     navigation={{
@@ -67,6 +66,14 @@ const PartnersSection: React.FC = () => {
                         spaceBetween: 100,
                         },
                         1024: {
+                        slidesPerView: 2,
+                        spaceBetween: 100,
+                        },
+                        1280: {
+                        slidesPerView: 3,
+                        spaceBetween: 100,
+                        },
+                        1536: {
                         slidesPerView: 4,
                         spaceBetween: 100,
                         },
@@ -81,7 +88,6 @@ const PartnersSection: React.FC = () => {
                         <SwiperSlide key={index} >
                         <Box
                             onClick={() => openInNewTab(partner.website, partner.name)}
-                            opacity={0.8}
                             _hover={{ 
                             opacity: 1, 
                             transform: 'scale(1.05)',

@@ -142,9 +142,9 @@ const config = defineConfig({
             }
           },
           size: {
-            sm: { padding: "2.5", borderRadius: "buttonSm", fontSize: "base", fontWeight: "bold", minW: "minWSm", minH: "10", lineHeight: "moderate", letterSpacing: "default" },
-            md: { padding: "4", fontSize: "base", borderRadius: "buttonLg", minW: "minWLg", minH: "minHlg", gap: "2.5", fontWeight: "bold", lineHeight: "moderate", letterSpacing: "empty" },
-            lg: { padding: "pLg", fontSize: "base", borderRadius: "buttonLg", minW: "minWLg", minH: "minHlg", gap: "2.5", fontWeight: "bold", lineHeight: "moderate", letterSpacing: "empty" },
+            sm: { padding: "2.5", borderRadius: "buttonSm", fontSize: "base", fontWeight: "extrabold", minW: "minWSm", minH: "10", lineHeight: "moderate", letterSpacing: "default" },
+            md: { padding: "4", fontSize: "base", borderRadius: "buttonLg", minW: "minWLg", minH: "minHlg", gap: "2.5", fontWeight: "extrabold", lineHeight: "moderate", letterSpacing: "empty" },
+            lg: { padding: "pLg", fontSize: "base", borderRadius: "buttonLg", minW: "minWLg", minH: "minHlg", gap: "2.5", fontWeight: "extrabold", lineHeight: "moderate", letterSpacing: "empty" },
           }
         }
       },

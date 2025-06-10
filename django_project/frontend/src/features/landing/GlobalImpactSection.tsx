@@ -26,13 +26,17 @@ const GLobalImpactSection: React.FC = () => {
                 </VStack>
     
                 <Grid templateColumns={{ base: '1fr', lg: '1fr 1fr' }} gap={12} alignItems="center">
-                    <GridItem alignSelf={"stretch"} display={"flex"}>
-                    <Image
-                        src="/static/images/map_africa.webp"
-                        alt="Africa map showing global impact"
-                        w="full"
-                        borderRadius="lg"
-                    />
+                    <GridItem alignSelf={"stretch"} display={"flex"}
+                        boxShadow={"5px 5px 10px 2px rgba(16, 55, 92, 0.25)"}
+                        borderRadius={"2lg"}
+                    >
+                        <Image
+                            src="/static/images/map_africa.webp"
+                            alt="Africa map showing global impact"
+                            w="full"
+                            borderRadius="lg"
+                            objectFit={"contain"}
+                        />
                     </GridItem>
                     <GridItem>
                     <VStack gap={8} align="stretch">

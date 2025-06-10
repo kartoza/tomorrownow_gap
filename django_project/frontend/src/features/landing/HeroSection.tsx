@@ -26,7 +26,7 @@ const HeroSection: React.FC = () => {
             w="full"
         >
             <Box h='100vh' w="full" display="flex" alignItems="center" position="relative" backdropFilter={'blur(2px)'} bgColor="rgba(0, 213, 142, 0.05)">
-                <Container px={{ base: 9, md: 16 }} w="full">
+                <Container px={{ base: 9, md: 6 }} w="full">
                     <VStack gap={6} w="full" alignItems={{ base: "center", md: "start" }} textAlign={{ base: "center", md: "start" }}>
                         <Heading as="h1" size={{ base: "md", md: "lg" }} variant={"mainTitle"}>
                             Global Access Platform
