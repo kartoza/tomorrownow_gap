@@ -136,7 +136,7 @@ const Navigation: React.FC = () => {
                             border="1px"
                             borderColor="gray.200"
                             zIndex={999}
-                            display={{ md: 'none' }}
+                            display={{ lg: 'none' }}
                             mx={4}
                             mt={2}
                         >
