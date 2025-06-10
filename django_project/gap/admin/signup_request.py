@@ -10,7 +10,7 @@ from django.contrib import admin
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.utils.translation import gettext_lazy as _
-from gap.models import SignUpRequest
+from gap.models import SignUpRequest, UserProfile
 
 
 User = get_user_model()
@@ -65,7 +65,7 @@ class SignUpRequestAdmin(admin.ModelAdmin):
         # find the user by email
         try:
             user = User.objects.get(email=obj.email)
-            if user.userprofile:
+            if UserProfile.objects.filter(user=user).exists():
                 return user.userprofile.email_verified
             return "-"
         except User.DoesNotExist:
