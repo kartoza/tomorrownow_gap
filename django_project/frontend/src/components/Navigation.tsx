@@ -75,11 +75,11 @@ const Navigation: React.FC = () => {
                 <Flex h={16} alignItems="center">
                     <HStack gap={2} alignItems="center" onClick={() => window.location.href = '/'} _hover={{ cursor: 'pointer' }}>
                         <Box w={'23px'} h={'25px'} bgSize={"contain"} bgPos="center" bgImage="url('/static/images/gap.png')" />
-                        <Text fontWeight="bold">Global Access Platform</Text>
+                        <Text fontWeight="extrabold">Global Access Platform</Text>
                     </HStack>
                     <Spacer />
                     {/* Desktop Navigation */}
-                    <HStack gap={8} display={{ base: 'none', md: 'flex' }}>
+                    <HStack gap={8} display={{ base: 'none', lg: 'flex' }}>
                         {navItems.map((item) => (
                         <Link
                             key={item.label}
@@ -92,28 +92,18 @@ const Navigation: React.FC = () => {
                                     openInNewTab(item.href);
                                 }
                             }}
-                            fontWeight={activeSection === item.href && item.href != '' ? "bold" : "medium"}
+                            fontWeight={"extrabold"}
                             color={activeSection === item.href && item.href != '' ? "brand.500" : "text.primary"}
-                            _hover={{ color: 'brand.500' }}
+                            _hover={{ color: 'brand.500', textDecoration: 'none' }}
                             position="relative"
-                            transition="all 0.2s ease"
-                            _after={activeSection === item.href && item.href != '' ? {
-                            content: '""',
-                            position: 'absolute',
-                            bottom: '-4px',
-                            left: '0',
-                            right: '0',
-                            height: '2px',
-                            bg: 'brand.500',
-                            borderRadius: 'full',
-                            } : {}}
+                            transition="all 0.2s ease"  
                         >
                             {item.label}
                         </Link>
                         ))}
                     </HStack>
                     {/* Login Desktop Navigation */}
-                    { !isAuthenticated && <Button visual="solid" size="sm" ml={4} display={{ base: 'none', md: 'flex' }}
+                    { !isAuthenticated && <Button visual="solid" size="sm" ml={4} display={{ base: 'none', lg: 'flex' }}
                         onClick={() => navigate('/signin')} // Redirect to login page
                     >
                         Log In
@@ -122,7 +112,7 @@ const Navigation: React.FC = () => {
                     {isAuthenticated && <ProfileDropdown ml={4} user={user} onLogout={handleLogout} />}
                     {/* Mobile Hamburger Button */}
                     <IconButton
-                        display={{ base: 'flex', md: 'none' }}
+                        display={{ base: 'flex', lg: 'none' }}
                         onClick={onToggle}
                         variant="ghost"
                         aria-label="Toggle Navigation"
@@ -164,9 +154,9 @@ const Navigation: React.FC = () => {
                                                 openInNewTab(item.href);
                                             }
                                         }}
-                                        fontWeight={activeSection === item.href && item.href != '' ? "bold" : "medium"}
+                                        fontWeight={"extrabold"}
                                         color={activeSection === item.href && item.href != '' ? "brand.500" : "text.primary"}
-                                        _hover={{ color: 'brand.500' }}
+                                        _hover={{ color: 'brand.500', textDecoration: 'none' }}
                                         fontSize="lg"
                                         py={1}
                                         w="full"

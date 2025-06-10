@@ -34,15 +34,15 @@ const AgroMetHubSection: React.FC = () => {
                         Trusted, localized insights for organizations on the front lines of helping farmers increase productivity and resilience.
                         </Text>
                     </VStack>
-        
-                    <SimpleGrid columns={{ base: 1, md: 3 }} gap={{ base: 6, md: 8 }} maxW={{base: "full", md: "70%", lg: "85%"}}>
+
+                    <SimpleGrid columns={{ base: 1, md: 3 }} gap={{ base: 6, md: 5 }} maxW={{base: "full"}}>
                         {services.map((service, index) => (
                         <Box key={index} bg="white"  p={7.5} borderRadius="lg" boxShadow="5px 5px 10px 0px rgba(16, 55, 92, 0.25)">
                             <VStack gap={4} align="start">
                                 <HStack align="center" w="full" justify={"center"}>
                                     <Box w={'55px'} h={'55px'} bgSize={"contain"} bgPos="center" bgImage={`url('${service.icon}')`} />
                                 </HStack>
-                                <Heading as="h3" fontSize={'xl'} color="text.primary" alignItems={"center"} textAlign={"center"} w={"full"}>
+                                <Heading as="h3" fontSize={'xl'} fontWeight={"extrabold"} color="text.primary" alignItems={"center"} textAlign={"center"} w={"full"}>
                                     {service.title}
                                 </Heading>
                                 <VStack gap={2} align="start" w="full">

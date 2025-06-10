@@ -8,10 +8,10 @@ const BridgingGapSection: React.FC = () => {
             <Container px={{ base: 4, md: 6 }} w="full">
                 <VStack gap={12}>
                 <Heading as="h2" size={{ base: "md", md: "lg" }} variant={"default"}>
-                    Bridging The Gap
+                    One Platform. Every Weather-Resilient Decision.
                 </Heading>
                 <Text variant={"subTitle"}>
-                    Agro-Met intelligence is the integration of weather, climate, and agronomic data with advanced analytics to provide actionable insights that optimise farming, boost productivity, and manage agricultural risks.
+                    From localized Agro-Met data to trusted insights, help your farmers grow more weather resilient and increase productivity.
                 </Text>
                 <Box w="full">
                     {CropPlanImage()}
