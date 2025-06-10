@@ -20,8 +20,8 @@ const AboutUsSection: React.FC = () => {
                     About Us
                     </Heading>
                     <Text variant={"subTitle"}>
-                    The Global Access Platform is built and managed by <span style={{fontWeight: "bold"}}>Kartoza </span> 
-                    with funding generously provided by <span style={{fontWeight: "bold"}}>The Gates Foundation</span>.
+                    TomorrowNow is an accelerator transforming Africa's small-scale farming landscape through Digital Agromet Intelligence. 
+                    We bridge the gap between cutting-edge science and on-farm decisions - enabling access to quality weather and climate data and enabling actionable agronomic advisories through strategic partnerships, digital platforms, and product innovation.
                     </Text>
                 </VStack>
     
