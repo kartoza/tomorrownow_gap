@@ -52,6 +52,9 @@ const LoginForm: React.FC<LoginFormProps> = () => {
 
     const handleSubmit = async (e: any) => {
         e.preventDefault();
+        const params = new URLSearchParams(search);
+        const uid = params.get("uid")!;
+        const token = params.get("token")!;
         switch (formType) {
         case "signin":
             loginEvent();
@@ -71,18 +74,36 @@ const LoginForm: React.FC<LoginFormProps> = () => {
             break;
         case "forgotPassword":
             dispatch(resetPasswordRequest(email));
+            toaster.create({
+                title: "Check your email",
+                description: "You will receive a reset link.",
+                type: "success"
+            });
             break;
         case "resetPassword": {
-            const params = new URLSearchParams(search);
-            dispatch(
-                resetPasswordConfirm(
-                    params.get("uid") as string,
-                    params.get("token") as string,
-                    password
-                )
+            // Dispatch the reset-password-confirm thunk
+            const result = await dispatch(
+                resetPasswordConfirm({ uid, token, password })
             );
+        
+            if (resetPasswordConfirm.fulfilled.match(result)) {
+                toaster.create({
+                title: "Password changed",
+                description: result.payload,
+                type: "success",
+                });
+                // send them back to sign-in
+                setFormType("signin");
+                navigate("/signin", null, true);
+            } else {
+                toaster.create({
+                title: "Error",
+                description: result.payload as string,
+                type: "error",
+                });
+            }
             break;
-        }
+            }
         }
     };
 
@@ -178,13 +199,13 @@ const LoginForm: React.FC<LoginFormProps> = () => {
             )}
 
             {/* Forgot */}
-            {/* {formType === "signin" && (
+            {formType === "signin" && (
             <Flex mb={4} justify="space-between" align="center">
                 <Link color="green.600" onClick={() => setFormType("forgotPassword")}>
                 Forgot Password?
                 </Link>
             </Flex>
-            )} */}
+            )}
 
             <Button
                 w="full"

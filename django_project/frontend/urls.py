@@ -8,7 +8,8 @@ from .views import (
 from frontend.api_views import (
     UserFromUIDView, SignUpRequestView,
     SignUpRequestStatusView, CurrentUserView,
-    MySignUpRequestView
+    MySignUpRequestView, ForgotPasswordView,
+    ResetPasswordConfirmView
 )
 
 
@@ -27,6 +28,15 @@ urlpatterns = [
     path(
         'api/signup-request/',
         SignUpRequestView.as_view(), name='signup-request'
+    ),
+    path(
+        'password-reset/',
+        ForgotPasswordView.as_view(), name='password-reset'
+    ),
+    path(
+        'password-reset/confirm/<uidb64>/<token>/',
+        ResetPasswordConfirmView.as_view(),
+        name='password-reset-confirm'
     ),
     path(
         'api/user-uid/<str:uid>/',
