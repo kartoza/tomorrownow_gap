@@ -50,6 +50,12 @@ class SignUpRequestView(APIView):
                 {"detail": "A sign-up request for this email already exists."},
                 status=status.HTTP_400_BAD_REQUEST
             )
+        # Check if user already exists and is active
+        if User.objects.filter(email=email, is_active=True).exists():
+            return Response(
+                {"detail": "User with this email already exists."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
         # Validate and save the sign-up request
         if not data.get('first_name') or not data.get('last_name'):
             return Response(

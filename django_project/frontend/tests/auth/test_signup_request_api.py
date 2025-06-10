@@ -130,3 +130,30 @@ class SignUpRequestAPITests(APITestCase):
             "A sign-up request for this email already exists.",
             response.data['detail']
         )
+
+    def test_signup_request_existing_user(self):
+        """Test that a request cannot be created for an existing user."""
+        User = get_user_model()
+        User.objects.create_user(
+            username="existinguser",
+            email="test@test.com",
+            password="password",
+            is_active=True
+        )
+        url = reverse('signup-request')
+        data = {
+            "first_name": "Test",
+            "last_name": "User",
+            "email": "test@test.com",
+            "organization": "Test Organization",
+            "description": "Requesting access to the platform.",
+        }
+        response = self.client.post(url, data, format='json')
+        self.assertIn(
+            response.status_code,
+            [status.HTTP_400_BAD_REQUEST, status.HTTP_409_CONFLICT]
+        )
+        self.assertIn(
+            "User with this email already exists.",
+            response.data['detail']
+        )

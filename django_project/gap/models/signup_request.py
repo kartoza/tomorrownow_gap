@@ -18,6 +18,8 @@ from django.core.mail import send_mail
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 
+from gap.models.user_profile import UserProfile
+
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -97,7 +99,7 @@ def notify_user_managers_on_signup(sender, instance, created, **kwargs):
     # check if the user's email has already been verified
     if User.objects.filter(email=instance.email).exists():
         user = User.objects.get(email=instance.email)
-        if user.userprofile:
+        if UserProfile.objects.filter(user=user).exists():
             email_verified = user.userprofile.email_verified
 
     if not email_verified:
@@ -145,7 +147,7 @@ def send_approval_email_and_activate_user(sender, instance, created, **kwargs):
 
             email_verified = False
             # Check if the user's email has already been verified
-            if user.userprofile:
+            if UserProfile.objects.filter(user=user).exists():
                 email_verified = user.userprofile.email_verified
             if not email_verified:
                 # log that the email is not verified

@@ -10,6 +10,8 @@ from rest_framework.permissions import (
     AllowAny, IsAuthenticated
 )
 
+from gap.models import UserProfile
+
 
 class LoginView(APIView):
     """Login a user."""
@@ -42,7 +44,7 @@ class LoginView(APIView):
                     status=status.HTTP_200_OK
                 )
             # check email_verified in user profile
-            if user.userprofile:
+            if UserProfile.objects.filter(user=user).exists():
                 if not user.userprofile.email_verified:
                     return Response(
                         {"detail": "Email not verified."},
