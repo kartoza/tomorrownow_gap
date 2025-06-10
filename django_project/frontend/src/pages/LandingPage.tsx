@@ -10,7 +10,7 @@ import AboutUsSection from "@/features/landing/AboutUsSection";
 import { useScrollSpy } from "@/hooks/useScrollSpy";
 import { handleSmoothScroll } from "@/utils/scroll";
 
-const sectionIds = ['hero', 'bridging', 'products', 'impact', 'partners', 'about'];
+const sectionIds = ['hero', 'products', 'bridging', 'impact', 'partners', 'about'];
 
 const LandingPage: React.FC = () => {
     // Scroll spy for active section highlighting
@@ -31,8 +31,8 @@ const LandingPage: React.FC = () => {
     return (
         <Flex direction="column" w="full">
             <HeroSection />
-            <BridgingGapSection />
             <AgroMetHubSection />
+            <BridgingGapSection />
             <GLobalImpactSection />
             <PartnersSection />
             <AboutUsSection />
