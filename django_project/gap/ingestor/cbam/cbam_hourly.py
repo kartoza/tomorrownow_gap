@@ -641,6 +641,11 @@ class CBAMHourlyIngestor(BaseZarrIngestor):
             if not self._is_date_in_zarr(file_date):
                 self._append_new_forecast_date(file_date, self.created)
 
+            # check if cancelled
+            if self.is_cancelled():
+                logger.info('Ingestor CBAM Hourly cancelled!')
+                break
+
             self._process_netcdf_file(source_file)
             total_files += 1
             files.append(source_file.start_date_time.isoformat())
