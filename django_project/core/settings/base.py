@@ -161,3 +161,4 @@ LANGUAGES = (
     ("en", gettext_noop("English")),
     ("sw", gettext_noop("Swahili")),
 )
+DEV_USE_BUNDLE_BUILD = False
