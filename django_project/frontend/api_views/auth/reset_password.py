@@ -1,3 +1,5 @@
+"""Reset Password API Views."""
+
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
@@ -15,9 +17,12 @@ from rest_framework.permissions import AllowAny
 
 
 class ForgotPasswordView(APIView):
+    """View to handle password reset requests."""
+
     permission_classes = [AllowAny]
 
     def post(self, request, *args, **kwargs):
+        """Handle password reset request."""
         email = request.data.get('email')
 
         try:
@@ -74,9 +79,12 @@ class ForgotPasswordView(APIView):
 
 
 class ResetPasswordConfirmView(APIView):
+    """View to handle password reset confirmation."""
+
     permission_classes = [AllowAny]
 
     def post(self, request, uidb64, token, *args, **kwargs):
+        """Reset password confirmation view."""
         try:
             uid = urlsafe_base64_decode(uidb64).decode()
             user = get_user_model().objects.get(pk=uid)

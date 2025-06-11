@@ -13,7 +13,6 @@ from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-from django.contrib.sites.shortcuts import get_current_site
 from django.core.mail import send_mail
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
@@ -130,82 +129,3 @@ def notify_user_managers_on_signup(sender, instance, created, **kwargs):
             )
     except Group.DoesNotExist:
         pass
-
-
-@receiver(post_save, sender=SignUpRequest)
-def send_approval_email_and_activate_user(sender, instance, created, **kwargs):
-    """Activate user and send email if sign-up request is approved."""
-    if created:
-        return  # Skip newly created SignUpRequests
-
-    if instance.status == RequestStatus.APPROVED and instance.email:
-        User = get_user_model()
-
-        try:
-            # Activate the corresponding user
-            user = User.objects.get(email=instance.email)
-
-            email_verified = False
-            # Check if the user's email has already been verified
-            if UserProfile.objects.filter(user=user).exists():
-                email_verified = user.userprofile.email_verified
-            if not email_verified:
-                # log that the email is not verified
-                logger.info(
-                    f"Email {instance.email} is not verified, "
-                    "skipping activation and approval email."
-                )
-                return
-
-            if not user.is_active:
-                user.is_active = True
-                user.save()
-
-            # Send approval email
-            site = get_current_site(None)  # Get the current site
-            send_mail(
-                subject="Your Account Signup Has Been Approved",
-                message=(
-                    f"Hello {instance.first_name},\n\n"
-                    "Your sign-up request has been approved. "
-                    "You can now log in to the platform.\n\n"
-                    f"Homepage: {site.domain}\n\n"
-                    "Best regards,\n"
-                    "Global Access Platform Team"
-                ),
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                recipient_list=[instance.email],
-                fail_silently=False,
-            )
-        except User.DoesNotExist:
-            # Optionally log if no user was found for this email
-            pass
-    elif instance.status == RequestStatus.REJECTED and instance.email:
-        User = get_user_model()
-
-        try:
-            # Ensure user is not active
-            user = User.objects.get(email=instance.email)
-            if not user.is_active:
-                user.save()
-            else:
-                user.is_active = False
-                user.save()
-
-            # Send approval email
-            send_mail(
-                subject="Your Account Signup Has Been Rejected",
-                message=(
-                    f"Hello {instance.first_name},\n\n"
-                    "Your sign-up request has been rejected. "
-                    "You cannot log in to the platform.\n\n"
-                    "Best regards,\n"
-                    "Tomorrow Now GAP Team"
-                ),
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                recipient_list=[instance.email],
-                fail_silently=False,
-            )
-        except User.DoesNotExist:
-            # Optionally log if no user was found for this email
-            pass
