@@ -487,7 +487,7 @@ class CBAMHourlyIngestor(BaseZarrIngestor):
         file_date = source_file.start_date_time.date()
         time_idx = source_file.start_date_time.hour
         progress = self._add_progress(
-            f'Processing {file_date.isoformat()}'
+            f'Processing {file_date.isoformat()}--{time_idx}'
         )
         start_time = time.time()
 
