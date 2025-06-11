@@ -16,7 +16,15 @@ class UserInfoSerializer(serializers.ModelSerializer):
 
     class Meta:  # noqa
         model = User
-        fields = ['username', 'email', 'first_name', 'last_name']
+        fields = [
+            'id',
+            'username',
+            'email',
+            'first_name',
+            'last_name',
+            'is_staff',
+            'is_superuser',
+        ]
         swagger_schema_fields = {
             'title': 'User Info',
             'example': {

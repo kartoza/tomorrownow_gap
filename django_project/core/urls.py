@@ -6,13 +6,15 @@ from django.contrib import admin
 from django.urls import path, include, re_path
 
 from core.views import (
-    PreferencesRedirectView, FlowerProxyView,
-    UserFromUIDView, SignUpRequestView,
-    SignUpRequestStatusView, CurrentUserView,
-    MySignUpRequestView,
-    KnoxLoginView, KnoxRegisterView,
-    KnoxLogoutAllView, KnoxLogoutView,
+    PreferencesRedirectView, FlowerProxyView
+)
+from frontend.api_views.auth import (
+    KnoxRegisterView,
+    KnoxLogoutView, KnoxLogoutAllView,
     KnoxSocialLoginView
+)
+from frontend.api_views.auth.login import (
+    LoginView as CustomLoginView, LogoutView as CustomLogoutView
 )
 
 
@@ -25,11 +27,15 @@ urlpatterns = [
         name='index'
     ),
     FlowerProxyView.as_url(),
-    # Knox token endpoints
     path(
-        "auth/login/", KnoxLoginView.as_view(),
-        name="knox_login"
+        "auth/login/", CustomLoginView.as_view(),
+        name="app_login"
     ),
+    path(
+        "auth/logout/", CustomLogoutView.as_view(),
+        name="app_logout"
+    ),
+    # Knox token endpoints
     path(
         "auth/registration/", KnoxRegisterView.as_view(),
         name="knox_signup"
@@ -53,21 +59,6 @@ urlpatterns = [
     path("auth/", include("dj_rest_auth.registration.urls")),
     path("auth/", include("dj_rest_auth.urls")),
     path("accounts/", include("allauth.urls")),
-    path("api/signup-request/me/", MySignUpRequestView.as_view()),
-    path("api/me/", CurrentUserView.as_view(), name="current-user"),
-    path(
-        "api/signup-request-check/",
-        SignUpRequestStatusView.as_view(),
-        name="signup-request-check"
-    ),
-    path(
-        'api/signup-request/',
-        SignUpRequestView.as_view(), name='signup-request'
-    ),
-    path(
-        'api/user-uid/<str:uid>/',
-        UserFromUIDView.as_view(), name='user-uid'
-    ),
     path('admin/', admin.site.urls),
     path('', include('frontend.urls')),
 ]

@@ -69,7 +69,7 @@ class TestSignUpRequestSignal(TestCase):
         self.manager.groups.add(self.manager_group)
 
     @patch("gap.models.signup_request.send_mail")
-    def test_email_sent_on_signup_request(self, mock_send_mail):
+    def test_email_not_sent_on_signup_request(self, mock_send_mail):
         """Test email is sent to managers on sign-up request."""
         SignUpRequest.objects.create(
             first_name="Test",
@@ -77,12 +77,32 @@ class TestSignUpRequestSignal(TestCase):
             email="testuser@example.com",
             description="Requesting access.",
         )
+        # user does not exists or have email_verified set to True
+        mock_send_mail.assert_not_called()
+
+    @patch("gap.models.signup_request.send_mail")
+    def test_email_sent_on_signup_request(self, mock_send_mail):
+        """Test email is sent to managers on sign-up request."""
+        user = User.objects.create_user(
+            username="user1",
+            email="user1@example.com",
+            password="password",
+            is_active=False
+        )
+        user.userprofile.email_verified = True
+        user.userprofile.save()
+        SignUpRequest.objects.create(
+            first_name="Test",
+            last_name="User",
+            email="user1@example.com",
+            description="Requesting access.",
+        )
 
         mock_send_mail.assert_called_once()
         args, kwargs = mock_send_mail.call_args
 
         assert "New Sign Up Request" in kwargs["subject"]
-        assert "testuser@example.com" in kwargs["message"]
+        assert "user1@example.com" in kwargs["message"]
         assert self.manager.email in kwargs["recipient_list"]
 
 
@@ -105,8 +125,22 @@ class TestApprovalSignal(TestCase):
         )
 
     @patch("gap.models.signup_request.send_mail")
+    def test_user_not_activated(self, mock_send_mail):
+        """Test user gets activated and receives email upon approval."""
+        self.signup_request.status = RequestStatus.APPROVED
+        self.signup_request.save()
+
+        self.user.refresh_from_db()
+        self.assertFalse(self.user.is_active)
+
+        mock_send_mail.assert_not_called()
+
+    @patch("gap.models.signup_request.send_mail")
     def test_user_activated_and_email_sent_on_approval(self, mock_send_mail):
         """Test user gets activated and receives email upon approval."""
+        # set email_verified to True
+        self.user.userprofile.email_verified = True
+        self.user.userprofile.save()
         self.signup_request.status = RequestStatus.APPROVED
         self.signup_request.save()
 

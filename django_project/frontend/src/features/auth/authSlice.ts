@@ -1,0 +1,274 @@
+import { createSlice, PayloadAction, createAsyncThunk } from '@reduxjs/toolkit';
+import axios from 'axios';
+import { setCSRFToken } from '../../utils/csrfUtils'
+import { User } from '../../types';
+
+interface AuthState {
+  user: User | null;
+  token: string | null;
+  loading: boolean;
+  error: string | null;
+  message: string | null;
+  isAuthenticated: boolean;
+  isAdmin: boolean;
+  hasInitialized: boolean;
+}
+
+const initialState: AuthState = {
+  user: null,
+  token: null,
+  loading: false,
+  error: null,
+  message: null,
+  isAuthenticated: false,
+  isAdmin: false,
+  hasInitialized: false, // Track if user info has been fetched
+};
+
+// Async thunk for user logs in
+export const loginUser = createAsyncThunk(
+  'auth/loginUser',
+  async ({ email, password }: { email: string; password: string }, { dispatch, rejectWithValue }) => {
+    try {
+      setCSRFToken();
+      const response = await axios.post('/auth/login/', { email, password });
+      return response.data;
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.['detail'] || 'Error logging in';
+      return rejectWithValue(errorMessage);
+    }
+  }
+);
+
+// Async thunk to fetch user info and check authentication status
+export const fetchUserInfo = createAsyncThunk(
+  'auth/fetchUserInfo',
+  async ({}, { dispatch, rejectWithValue }) => {
+    try {
+      const response = await axios.get(`/api/v1/user/me`);
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data['detail'] || 'Failed to fetch status');
+    }
+  }
+);
+
+export const logoutUser = createAsyncThunk(
+  'auth/logoutUser',
+  async (_, { dispatch, rejectWithValue }) => {
+    localStorage.clear();
+    try {
+      setCSRFToken();
+      await axios.post('/auth/logout/', {}, { withCredentials: true });
+      return true; // Indicate successful logout
+    } catch (e) {
+      console.error(e);
+      return rejectWithValue(e.response?.data['detail'] || 'Failed to logout');
+    }
+  }
+)
+
+const authSlice = createSlice({
+  name: 'auth',
+  initialState,
+  reducers: {
+    loginStart: (state) => {
+      state.loading = true;
+      state.error = null;
+      state.message = null;
+    },
+    loginSuccess: (state, action: PayloadAction<{ is_admin: boolean; user: User; token: string }>) => {
+      state.loading = false;
+      state.user = action.payload.user;
+      state.token = action.payload.token;
+      state.isAuthenticated = true;
+      state.isAdmin = action.payload.is_admin;
+      state.message = 'Login successful';
+      state.hasInitialized = true; // Mark as initialized after successful login
+    },
+    loginFailure: (state, action: PayloadAction<string>) => {
+      state.loading = false;
+      state.error = action.payload;
+      state.message = null;
+      state.isAuthenticated = false;
+    },
+    logout: (state) => {
+      state.user = null;
+      state.token = null;
+      state.loading = false;
+      state.error = null;
+      state.isAuthenticated = false;
+    },
+    setAuthenticationStatus: (state, action: PayloadAction<boolean>) => {
+      state.isAuthenticated = action.payload;
+    },
+    setUser: (state, action: PayloadAction<User>) => {
+      state.user = action.payload;
+    },
+    setMessage: (state, action: PayloadAction<string>) => {
+      state.message = action.payload;
+      state.error = null;
+    },
+  },
+  extraReducers: (builder) => {
+    builder
+      .addCase(fetchUserInfo.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+        state.hasInitialized = false; // Reset initialization state on fetch
+      })
+      .addCase(fetchUserInfo.fulfilled, (state, action) => {
+        state.loading = false;
+        state.user = action.payload;
+        state.isAuthenticated = true;
+        state.isAdmin = action.payload.is_superuser || false; // Assuming is_superuser indicates admin status
+        state.hasInitialized = true; // Mark as initialized after fetching user info
+      })
+      .addCase(fetchUserInfo.rejected, (state, action) => {
+        state.loading = false;
+        state.error = null;
+        state.isAuthenticated = false;
+        state.user = null;
+        state.hasInitialized = true; // Still mark as initialized even if fetch fails
+      })
+      .addCase(logoutUser.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+        state.message = null;
+      })
+      .addCase(logoutUser.fulfilled, (state) => {
+        state.loading = false;
+        state.user = null;
+        state.token = null;
+        state.isAuthenticated = false;
+        state.isAdmin = false;
+        state.message = 'Logout successful';
+        state.hasInitialized = true; // Mark as initialized after logout
+      }
+      )
+      .addCase(logoutUser.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+        state.message = null;
+        state.hasInitialized = false; // refetch user info on next login attempt
+      }
+      )
+      .addCase(loginUser.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+        state.message = null;
+      })
+      .addCase(loginUser.fulfilled, (state, action) => {
+        state.loading = false;
+        state.user = action.payload.user;
+        state.token = null; // Assuming token is not returned in this case
+        state.isAuthenticated = true;
+        state.isAdmin = action.payload.user.is_superuser || false; // Assuming is_superuser indicates admin status
+        state.message = 'Login successful';
+        state.hasInitialized = true; // Mark as initialized after successful login
+      }
+      )
+      .addCase(loginUser.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+        state.message = null;
+        state.isAuthenticated = false;
+        state.user = null;
+        state.hasInitialized = true; // Still mark as initialized even if login fails
+      }
+      );
+  },
+});
+
+export const { setUser, setMessage } = authSlice.actions;
+
+// export const loginUser = (email: string, password: string) => async (dispatch: any) => {
+//   dispatch(loginStart());
+//   try {
+//     setCSRFToken();
+//     const response = await axios.post('/auth/login/', { email, password});
+//     dispatch(loginSuccess({ user: response.data.user, token: null, is_admin: response.data.user.is_superuser }));
+//   } catch (error: any) {
+//     dispatch(loginFailure(error.response?.data?.non_field_errors[0] || 'Error logging in'));
+//   }
+// };
+
+export const resetPasswordRequest = (email: string) => async (dispatch: any) => {
+  try {
+    setCSRFToken();
+    await axios.post('/password-reset/', { email });
+  } catch (error: any) {
+    const errorMessage = error.response?.data?.error || 'Error sending password reset email';
+    dispatch(loginFailure(errorMessage));
+  }
+};
+
+export const resetPasswordConfirm = (uid: string, token: string, newPassword: string) => async (dispatch: any) => {
+  dispatch(loginStart());
+  try {
+    setCSRFToken();
+    const url = `/password-reset/confirm/${uid}/${token}/`;
+    const response = await axios.post(url, { new_password: newPassword });
+    if (response.data?.message) {
+      dispatch(loginFailure(response.data.message));
+    } else {
+      dispatch(loginFailure(response.data?.error));
+    }
+  } catch (error: any) {
+    dispatch(loginFailure(error.response?.data?.error || 'Error resetting password'));
+  }
+};
+
+export const registerUser = (email: string, password: string, repeatPassword: string) => async (dispatch: any) => {
+  dispatch(loginStart());
+  const errorMessages = [];
+  if (password !== repeatPassword) errorMessages.push("Passwords do not match.");
+  if (password.length < 6) errorMessages.push("Password must be at least 6 characters.");
+  if (errorMessages.length > 0) {
+    dispatch(loginFailure(errorMessages.join(' ')));
+    return;
+  }
+  try {
+    setCSRFToken();
+    const response = await axios.post('/auth/registration/', {
+      email,
+      password1: password,
+      password2: repeatPassword
+    });
+    if (response.data?.errors) {
+      dispatch(loginFailure(response.data.errors.join(' ')));
+    } else if (response.data?.detail) {
+      dispatch(setMessage(response.data.detail || "Verification email sent."));
+    }
+  } catch (error: any) {
+    if (error.response) {
+      const { data, status } = error.response;
+  
+      if (status === 400) {
+        // Handle specific form field errors
+        if (data.email && Array.isArray(data.email)) {
+          dispatch(loginFailure(data.email.join(' ')));
+          return;
+        }
+  
+        if (data.errors) {
+          dispatch(loginFailure(data.errors.join(' ')));
+          return;
+        }
+      }
+  
+      dispatch(loginFailure('An unexpected error occurred during registration.'));
+    } else {
+      dispatch(loginFailure('An unexpected error occurred during registration.'));
+    }
+  }
+};
+
+// export const selectIsLoggedIn = (state: RootState) => state.auth.isAuthenticated;
+// export const isAdmin = (state: RootState) => state.auth.isAdmin;
+// export const selectAuthLoading = (state: RootState) => state.auth.loading;
+// export const selectUserEmail = (state: RootState) => state.auth.user?.email;
+// export const selectUsername = (state: RootState) => state.auth.user?.username;
+
+export const {loginFailure, loginStart} = authSlice.actions;
+export default authSlice.reducer;

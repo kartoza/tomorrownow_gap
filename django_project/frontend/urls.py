@@ -1,21 +1,36 @@
 """Tomorrow Now GAP."""
 
-from django.urls import path
+from django.urls import path, re_path
 
 from .views import (
-    HomeView, SentryProxyView, SignupView,
-    SignupRequestView, LoginView, EmailCheckView
+    HomeView, SentryProxyView, EmailCheckView
+)
+from frontend.api_views import (
+    UserFromUIDView, SignUpRequestView,
+    SignUpRequestStatusView, CurrentUserView,
+    MySignUpRequestView
 )
 
+
 urlpatterns = [
-    path('', HomeView.as_view(), name='home'),
     path('sentry-proxy/', SentryProxyView.as_view(), name='sentry-proxy'),
-    path('signup/', SignupView.as_view(), name='signup'),
     path(
         'signup/check_email/', EmailCheckView.as_view(), name='check_email'
     ),
+    path("api/signup-request/me/", MySignUpRequestView.as_view()),
+    path("api/me/", CurrentUserView.as_view(), name="current-user"),
     path(
-        "signup-request/", SignupRequestView.as_view(), name="signup-request"
+        "api/signup-request-check/",
+        SignUpRequestStatusView.as_view(),
+        name="signup-request-check"
     ),
-    path('login/', LoginView.as_view(), name='login'),
+    path(
+        'api/signup-request/',
+        SignUpRequestView.as_view(), name='signup-request'
+    ),
+    path(
+        'api/user-uid/<str:uid>/',
+        UserFromUIDView.as_view(), name='user-uid'
+    ),
+    re_path(r'', HomeView.as_view(), name='home'),
 ]
