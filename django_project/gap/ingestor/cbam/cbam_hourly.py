@@ -605,6 +605,23 @@ class CBAMHourlyIngestor(BaseZarrIngestor):
         progress.status = IngestorSessionStatus.SUCCESS
         progress.save()
 
+    def _is_date_in_zarr(self, date: datetime.date) -> bool:
+        """Check whether a date has been added to zarr file.
+
+        :param date: date to check
+        :type date: date
+        :return: True if date exists in zarr file.
+        :rtype: bool
+        """
+        if self.created:
+            return False
+        ds = self._open_zarr_dataset(self.variables)
+        # always refetch dates values
+        existing_dates = ds[self.DATE_VARIABLE].values
+        ds.close()
+        np_date = np.datetime64(f'{date.isoformat()}')
+        return np_date in existing_dates
+
     def _run(self):
         """Process the tio shortterm data into Zarr."""
         collector = self.session.collectors.first()
