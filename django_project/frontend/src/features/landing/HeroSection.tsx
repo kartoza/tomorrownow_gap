@@ -23,7 +23,8 @@ const HeroSection: React.FC = () => {
             bgImage={`url('${HeroBgImageUrl()}')`}
             bgSize="cover"
             bgPos="center"
-            bgAttachment="fixed"
+            // disable fixed bg on mobile because ios bug with fixed backgrounds
+            bgAttachment={{ base: "unset", lg: "fixed" }}
             w="full"
         >
             <Box h='100vh' w="full" display="flex" alignItems="center" position="relative" backdropFilter={'blur(2px)'} bgColor="rgba(0, 213, 142, 0.05)">
