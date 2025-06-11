@@ -52,5 +52,15 @@
         },
         "problemMatcher": []
       },
+      {
+        "label": "React: Build UI Bundle",
+        "type": "shell",
+        "command": "bash",
+        "args": [
+          "${workspaceFolder}/django_project/build_ui_bundle.sh"
+        ],
+        "group": "build",
+        "problemMatcher": []
+      },
     ]
 }

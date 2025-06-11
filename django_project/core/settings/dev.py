@@ -60,7 +60,13 @@ LOGGING = {
     }
 }
 
-WEBPACK_LOADER['DEFAULT']['CACHE'] = DEBUG
-WEBPACK_LOADER['DEFAULT']['STATS_FILE'] = absolute_path(
-    'frontend', 'webpack-stats.dev.json'
-)
+if os.environ.get('DEV_USE_BUNDLE_BUILD', 'False').lower() == 'true':
+    DEV_USE_BUNDLE_BUILD = True
+    # Disable webpack if using bundle build
+    # Useful for testing with VSCode devtunnel
+else:
+    DEV_USE_BUNDLE_BUILD = False
+    WEBPACK_LOADER['DEFAULT']['CACHE'] = DEBUG
+    WEBPACK_LOADER['DEFAULT']['STATS_FILE'] = absolute_path(
+        'frontend', 'webpack-stats.dev.json'
+    )

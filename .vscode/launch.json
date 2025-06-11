@@ -16,7 +16,7 @@
         },
         {
             "name": "Django: Run server",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/django_project/manage.py",
             "args": [
@@ -35,6 +35,22 @@
             "type": "node-terminal",
             "cwd": "${workspaceFolder}/django_project/frontend",
         },
+        {
+            "name": "Django: Run with UI Bundle",
+            "type": "debugpy",
+            "request": "launch",
+            "preLaunchTask": "React: Build UI Bundle",
+            "program": "${workspaceFolder}/django_project/manage.py",
+            "args": [
+                "runserver", "8000"
+            ],
+            "django": true,
+            "justMyCode": true,
+            "env": {
+                "DJANGO_SETTINGS_MODULE": "core.settings.dev",
+                "DEV_USE_BUNDLE_BUILD": "True"
+            }
+        }
     ], 
     "compounds": [
         {
