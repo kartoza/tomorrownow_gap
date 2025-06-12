@@ -10,7 +10,7 @@ from django.utils import timezone
 from allauth.account.utils import send_email_confirmation
 
 from core.serializers import SignUpRequestSerializer
-from gap.models import UserProfile, SignUpRequest
+from gap.models import UserProfile, SignUpRequest, RequestStatus
 from django.core.validators import validate_email
 from django.core.exceptions import ValidationError
 
@@ -43,13 +43,6 @@ class SignUpRequestView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Check if request already exists
-        existing_request = SignUpRequest.objects.filter(email=email).first()
-        if existing_request:
-            return Response(
-                {"detail": "A sign-up request for this email already exists."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
         # Check if user already exists and is active
         if User.objects.filter(email=email, is_active=True).exists():
             return Response(
@@ -75,46 +68,53 @@ class SignUpRequestView(APIView):
 
         serializer = SignUpRequestSerializer(data=request.data)
         if serializer.is_valid():
-            serializer.save()
-            # Create the user if it does not exist
-            email_verified = False
-            verified_at = None
-            if not User.objects.filter(email=email).exists():
-                user = User.objects.create_user(
-                    email=email,
-                    username=email,
-                    first_name=data.get('first_name'),
-                    last_name=data.get('last_name'),
-                    is_active=False  # User needs to verify email
-                )
-            elif UserProfile.objects.filter(user__email=email).exists():
-                user = User.objects.get(email=email)
-                email_verified = user.userprofile.email_verified
-                verified_at = user.userprofile.verified_at
-            else:
-                # create UserProfile
-                user = User.objects.get(email=email)
-                UserProfile.objects.create(
-                    user=user,
-                    email_verified=True,
-                    verified_at=timezone.now()
-                )
-                email_verified = True
-                verified_at = timezone.now()
+            valid = serializer.validated_data
 
+            # upsert the SignUpRequest so duplicate submits just update it
+            req, created = SignUpRequest.objects.update_or_create(
+                email=valid["email"],
+                defaults={
+                    "first_name": valid["first_name"],
+                    "last_name": valid["last_name"],
+                    "organization": valid["organization"],
+                    "description": valid["description"],
+                    "status": RequestStatus.PENDING,
+                    "submitted_at": timezone.now(),
+                },
+            )
+
+            # ensure there’s a User record (inactive until they verify)
+            user, _ = User.objects.get_or_create(
+                email=valid["email"],
+                defaults={
+                    "username": valid["email"],
+                    "first_name": valid["first_name"],
+                    "last_name": valid["last_name"],
+                    "is_active": False,
+                },
+            )
+
+            # check if their email is already verified
+            profile, _ = UserProfile.objects.get_or_create(user=user)
+            email_verified = bool(profile and profile.email_verified)
+
+            # if not, kick off allauth’s confirmation email
             if not email_verified:
-                # send email verification
                 send_email_confirmation(request, user)
 
             return Response(
                 {
                     "detail": "Request submitted successfully.",
                     "email_verified": email_verified,
-                    "verified_at": verified_at,
                 },
-                status=status.HTTP_200_OK
+                status=status.HTTP_200_OK,
             )
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        # validation errors
+        return Response(
+            serializer.errors,
+            status=status.HTTP_400_BAD_REQUEST
+        )
 
 
 class UserFromUIDView(APIView):

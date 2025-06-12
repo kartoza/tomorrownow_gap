@@ -41,19 +41,6 @@ export const loginUser = createAsyncThunk(
   }
 );
 
-// Async thunk to fetch user info and check authentication status
-export const fetchUserInfo = createAsyncThunk(
-  'auth/fetchUserInfo',
-  async ({}, { dispatch, rejectWithValue }) => {
-    try {
-      const response = await axios.get(`/api/v1/user/me`);
-      return response.data;
-    } catch (error: any) {
-      return rejectWithValue(error.response?.data['detail'] || 'Failed to fetch status');
-    }
-  }
-);
-
 export const logoutUser = createAsyncThunk(
   'auth/logoutUser',
   async (_, { dispatch, rejectWithValue }) => {
@@ -146,25 +133,6 @@ const authSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-      .addCase(fetchUserInfo.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-        state.hasInitialized = false; // Reset initialization state on fetch
-      })
-      .addCase(fetchUserInfo.fulfilled, (state, action) => {
-        state.loading = false;
-        state.user = action.payload;
-        state.isAuthenticated = true;
-        state.isAdmin = action.payload.is_superuser || false; // Assuming is_superuser indicates admin status
-        state.hasInitialized = true; // Mark as initialized after fetching user info
-      })
-      .addCase(fetchUserInfo.rejected, (state, action) => {
-        state.loading = false;
-        state.error = null;
-        state.isAuthenticated = false;
-        state.user = null;
-        state.hasInitialized = true; // Still mark as initialized even if fetch fails
-      })
       .addCase(logoutUser.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -220,7 +188,6 @@ const authSlice = createSlice({
         (state, action: PayloadAction<string>) => {
           state.loading = false;
           state.error = null;
-          // you might store a message in state.message if you have one
         }
       )
       .addCase(resetPasswordConfirm.rejected, (state, action) => {

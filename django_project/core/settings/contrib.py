@@ -101,18 +101,12 @@ ACCOUNT_EMAIL_CONFIRMATION_EXPIRE_DAYS = 3
 SOCIALACCOUNT_LOGIN_ON_GET = True
 SOCIALACCOUNT_EMAIL_VERIFICATION = True
 SOCIALACCOUNT_AUTO_SIGNUP = True
+SOCIALACCOUNT_ADAPTER = 'frontend.adapters.SocialSignupAdapter'
 
 # For users who are already logged in when confirming
 ACCOUNT_EMAIL_CONFIRMATION_AUTHENTICATED_REDIRECT_URL = '/'
 # For users who are not logged in when confirming
 ACCOUNT_EMAIL_CONFIRMATION_ANONYMOUS_REDIRECT_URL = '/signin/?confirmed=true'
-ACCOUNT_FORMS = {
-    "reset_password_from_key": "frontend.forms.MyResetPasswordKeyForm",
-}
-HEADLESS_FRONTEND_URLS = {
-    "account_reset_password_from_key":
-        "/signin/reset-password/{uid}/{token}",
-}
 
 SOCIALACCOUNT_PROVIDERS = {
     "google": {

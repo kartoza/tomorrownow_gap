@@ -17,6 +17,7 @@ from django.utils.http import urlsafe_base64_encode
 from django.utils.encoding import force_bytes
 from django.contrib.auth.tokens import default_token_generator
 from django.contrib import messages
+from allauth.socialaccount.models import SocialAccount
 from gap.models.signup_request import RequestStatus
 from gap.models import SignUpRequest, UserProfile
 
@@ -101,25 +102,40 @@ class SignUpRequestAdmin(admin.ModelAdmin):
             user.is_active = True
             user.save()
 
-            # Build UID and token
-            uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
-            token = default_token_generator.make_token(user)
+            if SocialAccount.objects.filter(user=user).exists():
+                subject = "Your Global Access Platform account is now active"
+                message = (
+                    f"Hello {req.first_name},\n\n"
+                    "Your account is approved and active!\n"
+                    "Just sign in with your social provider (Google/GitHub) "
+                    "as usual.\n\n"
+                    "If you didn’t expect this, "
+                    "you can ignore this message.\n\n"
+                    "Welcome aboard,\n"
+                    "Global Access Platform Team"
+                )
+            else:
+                # Build UID and token
+                uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
+                token = default_token_generator.make_token(user)
 
-            # Build absolute link to your reset page
-            relative = f"/signin?uid={uidb64}&token={token}"
-            setup_url = request.build_absolute_uri(relative)
+                # Build absolute link to your reset page
+                relative = f"/signin?uid={uidb64}&token={token}"
+                setup_url = request.build_absolute_uri(relative)
 
-            # Send the email
-            subject = "Set up your Global Access Platform password"
-            message = (
-                f"Hello {req.first_name},\n\n"
-                "Your sign-up request has been approved!\n\n"
-                "To set your password and access the platform, click here:\n"
-                f"{setup_url}\n\n"
-                "If you did not request this, please ignore this email.\n\n"
-                "Welcome aboard,\n"
-                "Global Access Platform Team"
-            )
+                # Send the email
+                subject = "Set up your Global Access Platform password"
+                message = (
+                    f"Hello {req.first_name},\n\n"
+                    "Your sign-up request has been approved!\n\n"
+                    "To set your password and access the platform, "
+                    "click here:\n"
+                    f"{setup_url}\n\n"
+                    "If you did not request this, "
+                    "please ignore this email.\n\n"
+                    "Welcome aboard,\n"
+                    "Global Access Platform Team"
+                )
             send_mail(
                 subject=subject,
                 message=message,

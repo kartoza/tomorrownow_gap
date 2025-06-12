@@ -4,17 +4,16 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import path, include, re_path
+from django.views.generic import RedirectView
 
 from core.views import (
     PreferencesRedirectView, FlowerProxyView
 )
-from frontend.api_views.auth import (
-    KnoxRegisterView,
-    KnoxLogoutView, KnoxLogoutAllView,
-    KnoxSocialLoginView
-)
 from frontend.api_views.auth.login import (
     LoginView as CustomLoginView, LogoutView as CustomLogoutView
+)
+from frontend.api_views.auth.auth_views import (
+    DeferredSocialLoginView
 )
 
 
@@ -35,29 +34,27 @@ urlpatterns = [
         "auth/logout/", CustomLogoutView.as_view(),
         name="app_logout"
     ),
-    # Knox token endpoints
     path(
-        "auth/registration/", KnoxRegisterView.as_view(),
-        name="knox_signup"
+        "auth/social/<str:provider>/",
+        DeferredSocialLoginView.as_view(),
+        name="rest_social_login",
     ),
     path(
-        "auth/logout/", KnoxLogoutView.as_view(),
-        name="knox_logout"
-    ),
-    path(
-        "auth/logoutall/", KnoxLogoutAllView.as_view(),
-        name="knox_logoutall"
+        "auth/social/<str:provider>/login/",
+        DeferredSocialLoginView.as_view(),
+        name="rest_social_login_login",
     ),
     # dj-rest-auth endpoints
     path(
-        "auth/social/login/", KnoxSocialLoginView.as_view(),
-        name='social_login'
-    ),
-    path(
         "auth/social/", include("allauth.socialaccount.urls")
     ),
-    path("auth/", include("dj_rest_auth.registration.urls")),
+    path("auth/registration/", include("dj_rest_auth.registration.urls")),
     path("auth/", include("dj_rest_auth.urls")),
+    re_path(
+        r'^accounts/inactive/$',
+        RedirectView.as_view(url='/signup', permanent=False),
+        name='account_incomplete'
+    ),
     path("accounts/", include("allauth.urls")),
     path('admin/', admin.site.urls),
     path('', include('frontend.urls')),

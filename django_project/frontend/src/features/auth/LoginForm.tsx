@@ -9,7 +9,8 @@ import {
   Text,
   Link,
   Input,
-  Field
+  Field,
+  Image
 } from "@chakra-ui/react";
 import { toaster } from "@/components/ui/toaster"
 import { FormType } from "./type";
@@ -17,7 +18,7 @@ import {
   loginUser,
   registerUser,
   resetPasswordRequest,
-  resetPasswordConfirm
+  resetPasswordConfirm,
 } from "./authSlice";
 import { RootState, AppDispatch } from "@app/store";
 import { loginEvent } from "@/utils/analytics";
@@ -39,9 +40,9 @@ const LoginForm: React.FC<LoginFormProps> = () => {
     const dispatch = useDispatch<AppDispatch>();
     const { loading, token, message,error } = useSelector((s: RootState) => s.auth);
     const { search } = useLocation();
+    const params = new URLSearchParams(search);
 
     useEffect(() => {
-        const params = new URLSearchParams(search);
         if (params.get("uid") && params.get("token")) {
             setFormType("resetPassword");
         } else if (params.get("confirmed") === "true") {
@@ -52,7 +53,6 @@ const LoginForm: React.FC<LoginFormProps> = () => {
 
     const handleSubmit = async (e: any) => {
         e.preventDefault();
-        const params = new URLSearchParams(search);
         const uid = params.get("uid")!;
         const token = params.get("token")!;
         switch (formType) {
@@ -88,7 +88,7 @@ const LoginForm: React.FC<LoginFormProps> = () => {
         
             if (resetPasswordConfirm.fulfilled.match(result)) {
                 toaster.create({
-                title: "Password changed",
+                title: "Password set successfully",
                 description: result.payload,
                 type: "success",
                 });
@@ -116,7 +116,7 @@ const LoginForm: React.FC<LoginFormProps> = () => {
                 : formType === "forgotPassword"
                 ? "Forgot Password"
                 : formType === "resetPassword"
-                ? "Reset Password"
+                ? "Set Password"
                 : "Sign Up"}
             </Heading>
             {confirmedEmail && (
@@ -221,11 +221,11 @@ const LoginForm: React.FC<LoginFormProps> = () => {
                 : formType === "forgotPassword"
                 ? "Send Email"
                 : formType === "resetPassword"
-                ? "Reset Password"
+                ? "Set Password"
                 : "Sign Up"}
             </Button>
 
-            {/* <Box textAlign="center" mb={4}>
+            <Box textAlign="center" mb={4}>
             <Text fontSize="sm" color="gray.500" mb={2}>
                 or continue with
             </Text>
@@ -236,11 +236,11 @@ const LoginForm: React.FC<LoginFormProps> = () => {
                 <Link href="/accounts/github/login/" aria-label="Login with GitHub">
                 <Image src="/static/images/github_icon.svg" alt="GitHub login" boxSize={6} />
                 </Link>
-                <Link href="/accounts/apple/login/" aria-label="Login with Apple">
+                {/*<Link href="/accounts/apple/login/" aria-label="Login with Apple">
                 <Image src="/static/images/apple_icon.svg" alt="Apple login" boxSize={6} />
-                </Link>
+                </Link>*/}
             </Flex>
-            </Box> */}
+            </Box>
 
             <Flex justify="center">
             {formType === "signin" ? (
