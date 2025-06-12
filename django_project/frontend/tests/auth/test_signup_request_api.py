@@ -157,7 +157,7 @@ class SignUpRequestAPITests(APITestCase):
         )
 
     def test_signup_request_duplicate_non_pending_blocked(self):
-        """Test earlier request for this email is APPROVED/REJECTED """
+        """Test earlier request for this email is APPROVED/REJECTED."""
         # existing inactive user record (optional – not active)
         User = get_user_model()
         User.objects.create_user(
