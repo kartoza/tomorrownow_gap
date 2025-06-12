@@ -11,11 +11,10 @@ from rest_framework.response import Response
 
 
 class DeferredSocialLoginView(BaseSocialLoginView):
-    """
-    If the user is inactive (new social signup), incomplete_signup flag.
-    """
+    """If the user is inactive (new social signup), incomplete_signup flag."""
 
     def get_response(self):
+        """Override to handle new social users."""
         user = self.user
         # new social users have been marked inactive by our adapter
         if not user.is_active:

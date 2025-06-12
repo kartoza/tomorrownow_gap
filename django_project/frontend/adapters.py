@@ -1,4 +1,4 @@
-# frontend/adapters.py
+"""frontend/adapters.py"""
 from allauth.socialaccount.adapter import DefaultSocialAccountAdapter
 from django.contrib.auth import get_user_model
 from gap.models import SignUpRequest, RequestStatus
@@ -8,11 +8,14 @@ User = get_user_model()
 
 class SocialSignupAdapter(DefaultSocialAccountAdapter):
     """
-    After a successful social login/signup:
-    - mark the user inactive (they’ll set a password later or fill in details)
+    After a successful social login/signup.
+
+    - mark the user inactive
     - create or update a SignUpRequest in PENDING state
     """
+
     def save_user(self, request, sociallogin, form=None):
+        """Save the user after social login/signup."""
         user = super().save_user(request, sociallogin, form)
         if sociallogin.is_new:
             user.is_active = False

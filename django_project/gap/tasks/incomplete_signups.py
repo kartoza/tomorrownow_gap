@@ -1,4 +1,4 @@
-# gap/tasks.py
+"""# gap/tasks.py"""
 from core.celery import app
 from django.utils import timezone
 from datetime import timedelta
