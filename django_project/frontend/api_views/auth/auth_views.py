@@ -3,29 +3,31 @@ Tomorrow Now GAP.
 
 .. note:: authentication views.
 """
-from dj_rest_auth.registration.views import (
-    SocialLoginView as BaseSocialLoginView
-)
+from django.core import signing
+from rest_framework.views import APIView
+from rest_framework.permissions import AllowAny
 from rest_framework import status
 from rest_framework.response import Response
+import logging
+logger = logging.getLogger(__name__)
 
 
-class DeferredSocialLoginView(BaseSocialLoginView):
-    """If the user is inactive (new social signup), incomplete_signup flag."""
+class DecodeSocialSignupTokenView(APIView):
+    """View to decode social signup token."""
 
-    def get_response(self):
-        """Override to handle new social users."""
-        user = self.user
-        # new social users have been marked inactive by our adapter
-        if not user.is_active:
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        """Decode the social signup token."""
+        token = request.query_params.get("token")
+        if not token:
+            return Response({}, status=204)
+
+        try:
+            data = signing.loads(token, salt="social-signup")
+            return Response(data)
+        except signing.BadSignature:
             return Response(
-                {
-                    "incomplete_signup": True,
-                    "email": user.email,
-                    "first_name": user.first_name,
-                    "last_name": user.last_name,
-                },
-                status=status.HTTP_202_ACCEPTED,
+                {"detail": "Invalid token"},
+                status=status.HTTP_400_BAD_REQUEST
             )
-        # otherwise, do the normal login response
-        return super().get_response()
