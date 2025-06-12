@@ -13,7 +13,7 @@ import { openInNewTab } from '@/utils/url';
 import { APIDocsURL } from '@/utils/constants';
 import { RootState, AppDispatch } from '@/app/store';
 import ProfileDropdown from './ProfileDropdown';
-import { logoutUser } from '@/features/auth/authSlice';
+import { logoutUser, fetchUserInfo } from '@/features/auth/authSlice';
 import { useNavigateWithEvent } from '@/hooks/useNavigateWithEvent';
 import { logoutEvent } from '@/utils/analytics';
 
@@ -24,7 +24,7 @@ interface NavItem {
 }
 
 const Navigation: React.FC = () => {
-    const { user, isAuthenticated } = useSelector((s: RootState) => s.auth);
+    const { loading, user, isAuthenticated, hasInitialized } = useSelector((s: RootState) => s.auth);
     const { open, onToggle } = useDisclosure();
     const { activeSection } = useScrollContext();
     const dispatch = useDispatch<AppDispatch>();
@@ -37,6 +37,12 @@ const Navigation: React.FC = () => {
         { label: 'About Us', href: '#about' }
     ];
     const fullName = user ? `${user.first_name} ${user.last_name}`.trim() : null;
+
+    useEffect(() => {
+        if (!hasInitialized && !loading) {
+            dispatch(fetchUserInfo())
+        }
+    }, [loading, hasInitialized, dispatch]);
 
     const handleMenuClick = (sectionId: string) => {
         // Check if we're on the landing page
@@ -130,7 +136,7 @@ const Navigation: React.FC = () => {
                             border="1px"
                             borderColor="gray.200"
                             zIndex={999}
-                            display={{ md: 'none' }}
+                            display={{ lg: 'none' }}
                             mx={4}
                             mt={2}
                         >

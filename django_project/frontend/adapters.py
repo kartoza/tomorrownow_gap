@@ -17,7 +17,7 @@ class SocialSignupAdapter(DefaultSocialAccountAdapter):
     def save_user(self, request, sociallogin, form=None):
         """Save the user after social login/signup."""
         user = super().save_user(request, sociallogin, form)
-        if sociallogin.is_new:
+        if sociallogin.is_existing:
             user.is_active = False
             user.save(update_fields=["is_active"])
             SignUpRequest.objects.update_or_create(
