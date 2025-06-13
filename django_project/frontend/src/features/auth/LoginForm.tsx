@@ -23,6 +23,7 @@ import {
 import { RootState, AppDispatch } from "@app/store";
 import { loginEvent } from "@/utils/analytics";
 import { useNavigateWithEvent } from "@/hooks/useNavigateWithEvent";
+import { useGapContext } from "@/context/GapContext";
 
 
 interface LoginFormProps {
@@ -41,6 +42,10 @@ const LoginForm: React.FC<LoginFormProps> = () => {
     const { loading, token, message,error } = useSelector((s: RootState) => s.auth);
     const { search } = useLocation();
     const params = new URLSearchParams(search);
+
+    // Get context data
+    const { social_auth_providers } = useGapContext();
+    const hasSocialLogin = Object.values(social_auth_providers).some(Boolean);
 
     useEffect(() => {
         if (params.get("uid") && params.get("token")) {
@@ -225,22 +230,26 @@ const LoginForm: React.FC<LoginFormProps> = () => {
                 : "Sign Up"}
             </Button>
 
-            <Box textAlign="center" mb={4}>
-            <Text fontSize="sm" color="gray.500" mb={2}>
-                or continue with
-            </Text>
-            <Flex justify="center" gap={6}>
-                <Link href="/accounts/google/login/" aria-label="Login with Google">
-                <Image src="/static/images/google_icon.svg" alt="Google login" boxSize={6} />
-                </Link>
-                <Link href="/accounts/github/login/" aria-label="Login with GitHub">
-                <Image src="/static/images/github_icon.svg" alt="GitHub login" boxSize={6} />
-                </Link>
-                {/*<Link href="/accounts/apple/login/" aria-label="Login with Apple">
-                <Image src="/static/images/apple_icon.svg" alt="Apple login" boxSize={6} />
-                </Link>*/}
-            </Flex>
-            </Box>
+            {hasSocialLogin && (
+                <Box textAlign="center" mb={4}>
+                <Text fontSize="sm" color="gray.500" mb={2}>
+                    or continue with
+                </Text>
+
+                <Flex justify="center" gap={6}>
+                    {social_auth_providers.google && (
+                    <Link href="/accounts/google/login/" aria-label="Login with Google">
+                        <Image src="/static/images/google_icon.svg" alt="Google" boxSize={6} />
+                    </Link>
+                    )}
+                    {social_auth_providers.github && (
+                    <Link href="/accounts/github/login/" aria-label="Login with GitHub">
+                        <Image src="/static/images/github_icon.svg" alt="GitHub" boxSize={6} />
+                    </Link>
+                    )}
+                </Flex>
+                </Box>
+            )}
 
             <Flex justify="center">
             {formType === "signin" ? (

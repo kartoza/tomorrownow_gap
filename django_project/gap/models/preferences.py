@@ -10,6 +10,7 @@ from datetime import datetime, tzinfo
 
 from django.contrib.gis.db import models
 from django.contrib.gis.geos import Polygon
+from django.utils.translation import gettext_lazy as _
 from boto3.s3.transfer import TransferConfig
 
 from core.models.singleton import SingletonModel
@@ -81,6 +82,11 @@ def default_dcas_config() -> dict:
         'store_csv_to_minio': False,
         'store_csv_to_sftp': False,
     }
+
+
+def social_auth_providers_default() -> dict:
+    """Default flags for social-auth buttons in the front-end."""
+    return {"google": True, "github": False}
 
 
 class Preferences(SingletonModel):
@@ -209,6 +215,19 @@ class Preferences(SingletonModel):
         null=True,
         help_text='Google Analytics ID for tracking.'
     )
+
+    # Social Auth Providers
+    social_auth_providers = models.JSONField(
+        default=social_auth_providers_default,
+        help_text=_(
+            "Enables / disables each social-auth provider in the UI. "
+            'Example: {"google": true, "github": false}'
+        ),
+    )
+
+    def social_auth_enabled(self, provider: str) -> bool:
+        """Return True if the given provider should be shown in the UI."""
+        return bool(self.social_auth_providers.get(provider, False))
 
     @property
     def enable_message_filtering(self) -> bool:
