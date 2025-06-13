@@ -85,7 +85,7 @@ def default_dcas_config() -> dict:
 
 
 def social_auth_providers_default() -> dict:
-    """Default flags for social-auth buttons in the front-end."""
+    """Return flags for social-auth links."""
     return {"google": True, "github": False}
 
 
