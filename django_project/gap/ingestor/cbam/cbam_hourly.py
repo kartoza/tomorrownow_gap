@@ -654,7 +654,6 @@ class CBAMHourlyIngestor(BaseZarrIngestor):
                 self.created = False
         self.metadata = {
             'total_files': total_files,
-            'files': files
         }
 
     def run(self):
