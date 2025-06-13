@@ -1,4 +1,4 @@
-"""frontend/tests/auth/test_auth_views.py"""
+"""frontend/tests/auth/test_auth_views.py."""
 from django.core import signing
 from django.urls import reverse
 from rest_framework import status

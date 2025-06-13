@@ -1,4 +1,4 @@
-"""frontend/tests/test_social_signup_adapter.py"""
+"""frontend/tests/test_social_signup_adapter.py."""
 from types import SimpleNamespace
 from urllib.parse import urlparse, parse_qs
 

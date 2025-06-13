@@ -1,4 +1,4 @@
-"""frontend/tests/test_reset_password_api.py"""
+"""frontend/tests/test_reset_password_api.py."""
 from django.contrib.auth import get_user_model
 from django.test import override_settings
 from django.urls import reverse
