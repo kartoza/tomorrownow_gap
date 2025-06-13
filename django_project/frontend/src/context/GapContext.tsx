@@ -4,11 +4,16 @@ import React, { createContext, useContext, useState, useEffect} from 'react';
 interface GapContextInterface {
     api_swagger_url: string;
     api_docs_url: string;
+    social_auth_providers: Record<string, boolean>;
 }
 
 const defaultContext: GapContextInterface = {
     'api_swagger_url': '/api/v1/docs/',
-    'api_docs_url': ''
+    'api_docs_url': '',
+    'social_auth_providers': {
+        'google': true,
+        'github': false,
+    }
 }
 
 const GapContext = createContext(defaultContext)
