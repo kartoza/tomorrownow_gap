@@ -11,7 +11,7 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 from django.contrib.auth import get_user_model
 
-from gap.models import SignUpRequest
+from gap.models import SignUpRequest, RequestStatus
 
 
 class SignUpRequestAPITests(APITestCase):
@@ -97,13 +97,14 @@ class SignUpRequestAPITests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("Invalid email format", response.data['detail'])
 
-    def test_signup_request_duplicate_email(self):
-        """Test that a request cannot be created for an existing email."""
+    def test_signup_request_resubmission_allowed(self):
+        """Second POST on same email (pending) succeeds with 200."""
         User = get_user_model()
         User.objects.create_user(
             username="existinguser",
             email="existing@example.com",
-            password="password"
+            password="password",
+            is_active=False
         )
         # create a sign-up request for the existing email
         SignUpRequest.objects.create(
@@ -122,13 +123,10 @@ class SignUpRequestAPITests(APITestCase):
             "description": "Requesting access to the platform.",
         }
         response = self.client.post(url, data, format='json')
-        self.assertIn(
-            response.status_code,
-            [status.HTTP_400_BAD_REQUEST, status.HTTP_409_CONFLICT]
-        )
-        self.assertIn(
-            "A sign-up request for this email already exists.",
-            response.data['detail']
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            response.data["detail"],
+            "Request submitted successfully."
         )
 
     def test_signup_request_existing_user(self):
@@ -156,4 +154,52 @@ class SignUpRequestAPITests(APITestCase):
         self.assertIn(
             "User with this email already exists.",
             response.data['detail']
+        )
+
+    def test_signup_request_duplicate_non_pending_blocked(self):
+        """Test earlier request for this email is APPROVED/REJECTED."""
+        # existing inactive user record (optional – not active)
+        User = get_user_model()
+        User.objects.create_user(
+            username="olduser",
+            email="dup@example.com",
+            password="password",
+            is_active=False,
+        )
+
+        # existing APPROVED request
+        SignUpRequest.objects.create(
+            first_name="Old",
+            last_name="User",
+            email="dup@example.com",
+            organization="Org",
+            description="Earlier request",
+            status=RequestStatus.APPROVED,
+        )
+
+        url = reverse("signup-request")
+        data = {
+            "first_name": "New",
+            "last_name": "User",
+            "email": "dup@example.com",
+            "organization": "New Org",
+            "description": "Trying again",
+        }
+        response = self.client.post(url, data, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn(
+            "Request has already been approved.",
+            response.data["detail"],
+        )
+
+        # database still has exactly one request, still APPROVED
+        self.assertEqual(
+            SignUpRequest.objects.filter(
+                email="dup@example.com"
+            ).count(), 1
+        )
+        self.assertEqual(
+            SignUpRequest.objects.get(email="dup@example.com").status,
+            RequestStatus.APPROVED,
         )

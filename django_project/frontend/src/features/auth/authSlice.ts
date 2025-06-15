@@ -2,6 +2,7 @@ import { createSlice, PayloadAction, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios';
 import { setCSRFToken } from '../../utils/csrfUtils'
 import { User } from '../../types';
+import { AppDispatch } from '../../app/store';
 
 interface AuthState {
   user: User | null;
@@ -68,6 +69,40 @@ export const logoutUser = createAsyncThunk(
   }
 )
 
+// Request to reset password
+export const resetPasswordRequest = (email: string) => async (dispatch: AppDispatch) => {
+  try {
+    setCSRFToken();
+    const res = await axios.post('/password-reset/', { email });
+    dispatch(setMessage(res.data.message));
+  } catch (message) {
+    const errorMessage = message.response?.data?.message || 'Error sending password reset email';
+    dispatch(setMessage(errorMessage));
+  }
+};
+
+// Request to confirm password reset
+export const resetPasswordConfirm = createAsyncThunk<
+  string,
+  { uid: string; token: string; password: string },
+  { rejectValue: string }
+>(
+  "auth/resetPasswordConfirm",
+  async ({ uid, token, password }, { rejectWithValue }) => {
+    try {
+      setCSRFToken();
+      await axios.post(`/password-reset/confirm/${uid}/${token}/`, {
+        new_password: password,
+      });
+      return "Password reset successfully.";
+    } catch (err: any) {
+      return rejectWithValue(
+        err.response?.data?.detail || "Error resetting password."
+      );
+    }
+  }
+);
+
 const authSlice = createSlice({
   name: 'auth',
   initialState,
@@ -107,6 +142,10 @@ const authSlice = createSlice({
     },
     setMessage: (state, action: PayloadAction<string>) => {
       state.message = action.payload;
+      state.error = null;
+    },
+    clearFeedback(state) {
+      state.message = null;
       state.error = null;
     },
   },
@@ -176,11 +215,26 @@ const authSlice = createSlice({
         state.user = null;
         state.hasInitialized = true; // Still mark as initialized even if login fails
       }
-      );
+      )
+      .addCase(resetPasswordConfirm.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(
+        resetPasswordConfirm.fulfilled,
+        (state, action: PayloadAction<string>) => {
+          state.loading = false;
+          state.error = null;
+        }
+      )
+      .addCase(resetPasswordConfirm.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload || action.error.message || null;
+      });
   },
 });
 
-export const { setUser, setMessage } = authSlice.actions;
+export const { setUser, setMessage, clearFeedback } = authSlice.actions;
 
 // export const loginUser = (email: string, password: string) => async (dispatch: any) => {
 //   dispatch(loginStart());
@@ -192,32 +246,6 @@ export const { setUser, setMessage } = authSlice.actions;
 //     dispatch(loginFailure(error.response?.data?.non_field_errors[0] || 'Error logging in'));
 //   }
 // };
-
-export const resetPasswordRequest = (email: string) => async (dispatch: any) => {
-  try {
-    setCSRFToken();
-    await axios.post('/password-reset/', { email });
-  } catch (error: any) {
-    const errorMessage = error.response?.data?.error || 'Error sending password reset email';
-    dispatch(loginFailure(errorMessage));
-  }
-};
-
-export const resetPasswordConfirm = (uid: string, token: string, newPassword: string) => async (dispatch: any) => {
-  dispatch(loginStart());
-  try {
-    setCSRFToken();
-    const url = `/password-reset/confirm/${uid}/${token}/`;
-    const response = await axios.post(url, { new_password: newPassword });
-    if (response.data?.message) {
-      dispatch(loginFailure(response.data.message));
-    } else {
-      dispatch(loginFailure(response.data?.error));
-    }
-  } catch (error: any) {
-    dispatch(loginFailure(error.response?.data?.error || 'Error resetting password'));
-  }
-};
 
 export const registerUser = (email: string, password: string, repeatPassword: string) => async (dispatch: any) => {
   dispatch(loginStart());

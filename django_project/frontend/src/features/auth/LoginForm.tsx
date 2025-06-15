@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useLocation } from "react-router-dom";
 import {
@@ -9,7 +9,8 @@ import {
   Text,
   Link,
   Input,
-  Field
+  Field,
+  Image
 } from "@chakra-ui/react";
 import { toaster } from "@/components/ui/toaster"
 import { FormType } from "./type";
@@ -17,11 +18,13 @@ import {
   loginUser,
   registerUser,
   resetPasswordRequest,
-  resetPasswordConfirm
+  resetPasswordConfirm,
+  clearFeedback
 } from "./authSlice";
 import { RootState, AppDispatch } from "@app/store";
 import { loginEvent } from "@/utils/analytics";
 import { useNavigateWithEvent } from "@/hooks/useNavigateWithEvent";
+import { useGapContext } from "@/context/GapContext";
 
 
 interface LoginFormProps {
@@ -39,9 +42,14 @@ const LoginForm: React.FC<LoginFormProps> = () => {
     const dispatch = useDispatch<AppDispatch>();
     const { loading, token, message,error } = useSelector((s: RootState) => s.auth);
     const { search } = useLocation();
+    const params = new URLSearchParams(search);
+    const prevType = useRef<FormType>(formType);
+
+    // Get context data
+    const { social_auth_providers } = useGapContext();
+    const hasSocialLogin = Object.values(social_auth_providers).some(Boolean);
 
     useEffect(() => {
-        const params = new URLSearchParams(search);
         if (params.get("uid") && params.get("token")) {
             setFormType("resetPassword");
         } else if (params.get("confirmed") === "true") {
@@ -50,8 +58,24 @@ const LoginForm: React.FC<LoginFormProps> = () => {
         }
     }, [search]);
 
+    useEffect(() => {
+        if (message || error) {
+          const id = setTimeout(() => dispatch(clearFeedback()), 5000);
+          return () => clearTimeout(id);
+        }
+      }, [message, error, dispatch]);
+
+    useEffect(() => {
+        if (prevType.current !== formType) {
+            dispatch(clearFeedback());
+            prevType.current = formType;
+          }
+    }, [formType, dispatch]);
+
     const handleSubmit = async (e: any) => {
         e.preventDefault();
+        const uid = params.get("uid")!;
+        const token = params.get("token")!;
         switch (formType) {
         case "signin":
             loginEvent();
@@ -71,18 +95,36 @@ const LoginForm: React.FC<LoginFormProps> = () => {
             break;
         case "forgotPassword":
             dispatch(resetPasswordRequest(email));
+            toaster.create({
+                title: "Check your email",
+                description: "You will receive a reset link.",
+                type: "success"
+            });
             break;
         case "resetPassword": {
-            const params = new URLSearchParams(search);
-            dispatch(
-                resetPasswordConfirm(
-                    params.get("uid") as string,
-                    params.get("token") as string,
-                    password
-                )
+            // Dispatch the reset-password-confirm thunk
+            const result = await dispatch(
+                resetPasswordConfirm({ uid, token, password })
             );
+        
+            if (resetPasswordConfirm.fulfilled.match(result)) {
+                toaster.create({
+                title: "Password set successfully",
+                description: result.payload,
+                type: "success",
+                });
+                // send them back to sign-in
+                setFormType("signin");
+                navigate("/signin", null, true);
+            } else {
+                toaster.create({
+                title: "Error",
+                description: result.payload as string,
+                type: "error",
+                });
+            }
             break;
-        }
+            }
         }
     };
 
@@ -95,7 +137,7 @@ const LoginForm: React.FC<LoginFormProps> = () => {
                 : formType === "forgotPassword"
                 ? "Forgot Password"
                 : formType === "resetPassword"
-                ? "Reset Password"
+                ? "Set Password"
                 : "Sign Up"}
             </Heading>
             {confirmedEmail && (
@@ -178,13 +220,13 @@ const LoginForm: React.FC<LoginFormProps> = () => {
             )}
 
             {/* Forgot */}
-            {/* {formType === "signin" && (
+            {formType === "signin" && (
             <Flex mb={4} justify="space-between" align="center">
                 <Link color="green.600" onClick={() => setFormType("forgotPassword")}>
                 Forgot Password?
                 </Link>
             </Flex>
-            )} */}
+            )}
 
             <Button
                 w="full"
@@ -200,26 +242,30 @@ const LoginForm: React.FC<LoginFormProps> = () => {
                 : formType === "forgotPassword"
                 ? "Send Email"
                 : formType === "resetPassword"
-                ? "Reset Password"
+                ? "Set Password"
                 : "Sign Up"}
             </Button>
 
-            {/* <Box textAlign="center" mb={4}>
-            <Text fontSize="sm" color="gray.500" mb={2}>
-                or continue with
-            </Text>
-            <Flex justify="center" gap={6}>
-                <Link href="/accounts/google/login/" aria-label="Login with Google">
-                <Image src="/static/images/google_icon.svg" alt="Google login" boxSize={6} />
-                </Link>
-                <Link href="/accounts/github/login/" aria-label="Login with GitHub">
-                <Image src="/static/images/github_icon.svg" alt="GitHub login" boxSize={6} />
-                </Link>
-                <Link href="/accounts/apple/login/" aria-label="Login with Apple">
-                <Image src="/static/images/apple_icon.svg" alt="Apple login" boxSize={6} />
-                </Link>
-            </Flex>
-            </Box> */}
+            {hasSocialLogin && (
+                <Box textAlign="center" mb={4}>
+                <Text fontSize="sm" color="gray.500" mb={2}>
+                    or continue with
+                </Text>
+
+                <Flex justify="center" gap={6}>
+                    {social_auth_providers.google && (
+                    <Link href="/accounts/google/login/" aria-label="Login with Google">
+                        <Image src="/static/images/google_icon.svg" alt="Google" boxSize={6} />
+                    </Link>
+                    )}
+                    {social_auth_providers.github && (
+                    <Link href="/accounts/github/login/" aria-label="Login with GitHub">
+                        <Image src="/static/images/github_icon.svg" alt="GitHub" boxSize={6} />
+                    </Link>
+                    )}
+                </Flex>
+                </Box>
+            )}
 
             <Flex justify="center">
             {formType === "signin" ? (
