@@ -73,10 +73,11 @@ export const logoutUser = createAsyncThunk(
 export const resetPasswordRequest = (email: string) => async (dispatch: AppDispatch) => {
   try {
     setCSRFToken();
-    await axios.post('/password-reset/', { email });
-  } catch (error) {
-    const errorMessage = error.response?.data?.error || 'Error sending password reset email';
-    dispatch(loginFailure(errorMessage));
+    const res = await axios.post('/password-reset/', { email });
+    dispatch(setMessage(res.data.message));
+  } catch (message) {
+    const errorMessage = message.response?.data?.message || 'Error sending password reset email';
+    dispatch(setMessage(errorMessage));
   }
 };
 
@@ -141,6 +142,10 @@ const authSlice = createSlice({
     },
     setMessage: (state, action: PayloadAction<string>) => {
       state.message = action.payload;
+      state.error = null;
+    },
+    clearFeedback(state) {
+      state.message = null;
       state.error = null;
     },
   },
@@ -229,7 +234,7 @@ const authSlice = createSlice({
   },
 });
 
-export const { setUser, setMessage } = authSlice.actions;
+export const { setUser, setMessage, clearFeedback } = authSlice.actions;
 
 // export const loginUser = (email: string, password: string) => async (dispatch: any) => {
 //   dispatch(loginStart());

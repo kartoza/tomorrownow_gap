@@ -68,9 +68,15 @@ class SignUpRequestView(APIView):
         existing_req = SignUpRequest.objects.filter(
             email=email
         ).first()
-        if existing_req and existing_req.status != RequestStatus.PENDING:
+        if existing_req and existing_req.status not in [
+            RequestStatus.INCOMPLETE,
+            RequestStatus.PENDING
+        ]:
             return Response(
-                {"detail": "An approved/rejected request already exists."},
+                {
+                    "detail":
+                    f"Request has already been {existing_req.status.lower()}."
+                },
                 status=status.HTTP_400_BAD_REQUEST,
             )
         serializer = SignUpRequestSerializer(
@@ -83,10 +89,10 @@ class SignUpRequestView(APIView):
             # upsert the SignUpRequest so duplicate submits just update it
             req, created = SignUpRequest.objects.update_or_create(
                 email=valid["email"],
-                status=RequestStatus.PENDING,
                 defaults={
                     "first_name": valid["first_name"],
                     "last_name": valid["last_name"],
+                    "status": RequestStatus.PENDING,
                     "organization": valid["organization"],
                     "description": valid["description"],
                     "submitted_at": timezone.now(),

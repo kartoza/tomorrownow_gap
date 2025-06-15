@@ -47,26 +47,13 @@ class ForgotPasswordAPITests(APITestCase):
         mock_email_cls.return_value.send.assert_called_once()
 
     def test_forgot_password_email_not_found(self):
-        """Non-existent email → 400 with error message."""
+        """Non-existent email → 200 with error message."""
         payload = {"email": "missing@example.com"}
         response = self.client.post(self.url, payload, format="json")
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(response.data["error"], "Email not found")
-
-    def test_forgot_password_multiple_users(self):
-        """Multiple users with same email, 400 with error message."""
-        self.User.objects.create_user(
-            username="alt",
-            email="test@example.com",
-            password="pass",
-            is_active=False,
-        )
-        payload = {"email": "test@example.com"}
-        response = self.client.post(self.url, payload, format="json")
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(
-            response.data["error"],
-            "Multiple users with this email address"
+            response.data["message"],
+            "Password reset link sent to your email"
         )
 
 

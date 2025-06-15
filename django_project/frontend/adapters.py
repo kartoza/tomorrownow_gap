@@ -18,7 +18,7 @@ class SocialSignupAdapter(DefaultSocialAccountAdapter):
     After a successful social login/signup.
 
     - mark the user inactive
-    - create or update a SignUpRequest in PENDING state
+    - create or update a SignUpRequest in INCOMPLETE state
     """
 
     def save_user(self, request, sociallogin, form=None):
@@ -35,7 +35,7 @@ class SocialSignupAdapter(DefaultSocialAccountAdapter):
             defaults={
                 "first_name": user.first_name or "",
                 "last_name": user.last_name or "",
-                "status": RequestStatus.PENDING,
+                "status": RequestStatus.INCOMPLETE,
             },
         )
 

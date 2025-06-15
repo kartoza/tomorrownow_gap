@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useLocation } from "react-router-dom";
 import {
@@ -19,6 +19,7 @@ import {
   registerUser,
   resetPasswordRequest,
   resetPasswordConfirm,
+  clearFeedback
 } from "./authSlice";
 import { RootState, AppDispatch } from "@app/store";
 import { loginEvent } from "@/utils/analytics";
@@ -42,6 +43,7 @@ const LoginForm: React.FC<LoginFormProps> = () => {
     const { loading, token, message,error } = useSelector((s: RootState) => s.auth);
     const { search } = useLocation();
     const params = new URLSearchParams(search);
+    const prevType = useRef<FormType>(formType);
 
     // Get context data
     const { social_auth_providers } = useGapContext();
@@ -55,6 +57,20 @@ const LoginForm: React.FC<LoginFormProps> = () => {
             setFormType("signin");
         }
     }, [search]);
+
+    useEffect(() => {
+        if (message || error) {
+          const id = setTimeout(() => dispatch(clearFeedback()), 5000);
+          return () => clearTimeout(id);
+        }
+      }, [message, error, dispatch]);
+
+    useEffect(() => {
+        if (prevType.current !== formType) {
+            dispatch(clearFeedback());
+            prevType.current = formType;
+          }
+    }, [formType, dispatch]);
 
     const handleSubmit = async (e: any) => {
         e.preventDefault();

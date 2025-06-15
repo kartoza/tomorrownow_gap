@@ -3,7 +3,6 @@
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
-from django.core.exceptions import MultipleObjectsReturned
 from django.contrib.auth import get_user_model
 from django.utils.http import (
     urlsafe_base64_decode,
@@ -25,25 +24,13 @@ class ForgotPasswordView(APIView):
         """Handle password reset request."""
         email = request.data.get('email')
 
-        try:
-            users = get_user_model().objects.filter(email=email)
-            if not users.exists():
-                return Response(
-                    {'error': 'Email not found'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-            elif users.count() > 1:
-                return Response(
-                    {'error': 'Multiple users with this email address'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-            user = users.first()
-
-        except MultipleObjectsReturned:
+        users = get_user_model().objects.filter(email=email)
+        if not users.exists():
             return Response(
-                {'error': 'Multiple users with this email address'},
-                status=status.HTTP_400_BAD_REQUEST
+                {'message': 'Password reset link sent to your email'},
+                status=status.HTTP_200_OK
             )
+        user = users.first()
 
         token = default_token_generator.make_token(user)
         uid = urlsafe_base64_encode(str(user.pk).encode())
@@ -53,13 +40,13 @@ class ForgotPasswordView(APIView):
 
         # Send the password reset email
         subject = render_to_string(
-            'account/email/password_reset_subject.txt',
+            'account/email/email_set_password_subject.txt',
             {'user': user}
         ).strip()
         html_message = render_to_string(
-            'account/email/email_confirmation_message.txt', {
+            'account/email/email_set_password_message.txt', {
                 'user': user,
-                'activate_url': reset_password_link,
+                'reset_password_url': reset_password_link,
                 'django_backend_url': '/',
             })
 

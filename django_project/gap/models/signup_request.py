@@ -30,6 +30,7 @@ class RequestStatus(models.TextChoices):
     PENDING = 'PENDING', _('Pending')
     APPROVED = 'APPROVED', _('Approved')
     REJECTED = 'REJECTED', _('Rejected')
+    INCOMPLETE = 'INCOMPLETE', _('Incomplete')
 
 
 class SignUpRequest(models.Model):

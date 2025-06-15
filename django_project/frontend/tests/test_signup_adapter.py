@@ -57,7 +57,7 @@ class SocialSignupAdapterTests(TestCase):
         self.assertFalse(self.user.is_active)
 
         req = SignUpRequest.objects.get(email=self.user.email)
-        self.assertEqual(req.status, RequestStatus.PENDING)
+        self.assertEqual(req.status, RequestStatus.INCOMPLETE)
         self.assertEqual(req.first_name, "New")
         self.assertEqual(req.last_name, "Bie")
 
