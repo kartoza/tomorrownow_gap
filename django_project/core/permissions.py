@@ -22,6 +22,7 @@ class IsKalroUser(BasePermission):
     message = "You must be a KALRO user to access this resource."
 
     def has_permission(self, request, view):  # noqa: D401
+        """Check if the user is a KALRO user."""
         user = request.user
         if not (user and user.is_authenticated):
             return False
@@ -33,5 +34,6 @@ class IsKalroUser(BasePermission):
         return user.groups.filter(name="KALRO").exists()
 
     def has_object_permission(self, request, view, obj):  # noqa: D401
+        """Check if the user has permission for the object."""
         # Re-use the same logic for object-level checks
         return self.has_permission(request, view)

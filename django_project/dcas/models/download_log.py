@@ -1,6 +1,6 @@
 # coding=utf-8
 """
-Tomorrow Now GAP – DCAS
+Tomorrow Now GAP – DCAS.
 
 Audit log capturing every CSV-download action.
 """
@@ -14,6 +14,7 @@ from dcas.models.output import DCASOutput
 
 class DCASDownloadLog(models.Model):
     """Row per user → output download event."""
+
     output = models.ForeignKey(
         DCASOutput,
         on_delete=models.CASCADE,
@@ -31,6 +32,8 @@ class DCASDownloadLog(models.Model):
     )
 
     class Meta:
+        """Meta options for the DCASDownloadLog model."""
+
         db_table = "dcas_download_log"
         ordering = ["-requested_at"]
         verbose_name = _("CSV download")

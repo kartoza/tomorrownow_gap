@@ -1,7 +1,5 @@
 # coding=utf-8
-"""
-Tomorrow Now GAP – DCAS URL routes.
-"""
+"""Tomorrow Now GAP – DCAS URL routes."""
 
 from django.urls import path
 from dcas.views import OutputDownloadView, OutputListView

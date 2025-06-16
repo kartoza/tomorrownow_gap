@@ -18,15 +18,14 @@ from .serializers import OutputSerializer
 
 
 class OutputListView(generics.ListAPIView):
-    """
-    Return recent CSV outputs (last 2 weeks) for KALRO users / admins.
-    """
+    """Return recent CSV outputs (last 2 weeks) for KALRO users/admins."""
 
     permission_classes = [permissions.IsAuthenticated, IsKalroUser]
     serializer_class = OutputSerializer
     pagination_class = None  # client-side pagination in React
 
     def get_queryset(self):
+        """Return queryset of recent DCAS outputs."""
         cutoff = timezone.now() - timedelta(weeks=2)
         return (
             DCASOutput.objects.filter(
@@ -36,12 +35,12 @@ class OutputListView(generics.ListAPIView):
 
 
 class OutputDownloadView(APIView):
-    """ View to generate presigned URL for downloading DCAS output files."""
+    """View to generate presigned URL for downloading DCAS output files."""
 
     permission_classes = [permissions.IsAuthenticated, IsKalroUser]
 
     def get(self, request, pk: int, *args, **kwargs):
-        """ Generate a presigned URL for downloading a DCAS output file."""
+        """Generate a presigned URL for downloading a DCAS output file."""
         output = generics.get_object_or_404(DCASOutput, pk=pk)
         storage = storages["gap_products"]
 

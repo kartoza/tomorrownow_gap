@@ -1,7 +1,5 @@
 # coding=utf-8
-"""
-Tomorrow Now GAP – tests for IsKalroUser permission.
-"""
+"""Tomorrow Now GAP – tests for IsKalroUser permission."""
 
 from django.test import TestCase
 from django.contrib.auth import get_user_model
@@ -16,6 +14,7 @@ class TestIsKalroUser(TestCase):
 
     @classmethod
     def setUpTestData(cls):
+        """Set up test data for the permission tests."""
         cls.User = get_user_model()
         cls.factory = APIRequestFactory()
 
