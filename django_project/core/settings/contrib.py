@@ -123,7 +123,8 @@ SOCIALACCOUNT_PROVIDERS = {
     },
     'github': {
         'SCOPE': [
-            'user',
+            'read:user',
+            'user:email',
         ],
         'EMAIL_AUTHENTICATION': True,
         'OAUTH_PKCE_ENABLED': True,
