@@ -7,7 +7,7 @@ from .views import (
 )
 from frontend.api_views import (
     UserFromUIDView, SignUpRequestView,
-    SignUpRequestStatusView, CurrentUserView,
+    SignUpRequestStatusView,
     MySignUpRequestView, ForgotPasswordView,
     ResetPasswordConfirmView, DecodeSocialSignupTokenView
 )
@@ -19,7 +19,6 @@ urlpatterns = [
         'signup/check_email/', EmailCheckView.as_view(), name='check_email'
     ),
     path("api/signup-request/me/", MySignUpRequestView.as_view()),
-    path("api/me/", CurrentUserView.as_view(), name="current-user"),
     path(
         "api/signup-request-check/",
         SignUpRequestStatusView.as_view(),

@@ -138,6 +138,7 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({
             {isKalroUser(user) && (
               <Button
                 variant="ghost"
+                size="sm"
                 width="100%"
                 justifyContent="flex-start"
                 padding={3}
@@ -149,7 +150,9 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({
                 }}
               >
                 <HStack gap={3} width="100%">
-                  <Text>DCAS&nbsp;CSV</Text>
+                  <Text fontSize="sm" fontWeight="semibold">
+                    DCAS CSV
+                  </Text>
                 </HStack>
               </Button>
             )}
