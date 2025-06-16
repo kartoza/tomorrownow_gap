@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Box,
   Button,
@@ -29,13 +29,24 @@ const WaitListForm: React.FC<WaitListFormProps> = ({user}) => {
     const [formData, setFormData] = useState({
         first_name: user?.first_name || '',
         last_name: user?.last_name || '',
-        email: user?.email,
+        email: user?.email || '',
         organization: "",
         description: "",
     });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
     const [success, setSuccess] = useState("");
+
+    useEffect(() => {
+      if (user) {
+        setFormData(prev => ({
+          ...prev,
+          first_name: user.first_name || "",
+          last_name:  user.last_name  || "",
+          email:      user.email      || "",
+        }));
+      }
+    }, [user]);
 
     const handleChange = (
         e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>

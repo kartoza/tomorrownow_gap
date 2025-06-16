@@ -111,7 +111,12 @@ app.conf.beat_schedule = {
         'task': 'tio_hourly_collector_session',
         # Run every day at 03:00 UTC
         'schedule': crontab(minute='0', hour='3'),
-    }
+    },
+    'cleanup-incomplete-signup-requests': {
+        'task': 'gap.tasks.cleanup_incomplete_signups',
+        # run once a day at 00:00
+        'schedule': crontab(minute=0, hour=0),
+    },
 }
 
 
