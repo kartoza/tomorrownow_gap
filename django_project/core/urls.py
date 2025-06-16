@@ -60,6 +60,7 @@ urlpatterns = [
     path("auth/", include("dj_rest_auth.urls")),
     path("accounts/", include("allauth.urls")),
     path('admin/', admin.site.urls),
+    path('', include('dcas.urls')),
     path('', include('frontend.urls')),
 ]
 

@@ -176,6 +176,7 @@ class CurrentUserView(APIView):
             "email_verified": getattr(
                 user.userprofile, 'email_verified', False
             ),
+            "groups": [group.name for group in user.groups.all()],
         })
 
 

@@ -14,6 +14,7 @@ import {
 // import { ChevronDownIcon, LogOutIcon, UserIcon, MailIcon } from 'lucide-react';
 import { FiChevronDown, FiLogOut } from "react-icons/fi";
 import { User } from '@/types'; // Adjust the import path as necessary
+import { useNavigate } from 'react-router-dom';
 
 interface ProfileDropdownProps {
   user: User;
@@ -33,6 +34,7 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({
   ml = 0 // Default margin-left to 0
 }) => {
   const { open, setOpen, onToggle } = useDisclosure();
+  const navigate = useNavigate();
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const fullName = `${user.first_name} ${user.last_name}`.trim();
@@ -60,6 +62,13 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({
       console.log('Logging out...');
       // You might want to clear localStorage, redirect, etc.
     }
+  };
+
+  const isKalroUser = (user?: any): boolean => {
+    return !!user && (
+      user.is_superuser ||
+      user.groups?.includes("KALRO") === true
+    );
   };
 
   return (
@@ -124,6 +133,26 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({
             </Box>
 
             <Separator marginY={1} />
+
+            {/* DCAS CSV (KALRO only) */}
+            {isKalroUser(user) && (
+              <Button
+                variant="ghost"
+                width="100%"
+                justifyContent="flex-start"
+                padding={3}
+                height="auto"
+                borderRadius="md"
+                onClick={() => {
+                  setOpen(false);
+                  navigate('/dcas-csv');
+                }}
+              >
+                <HStack gap={3} width="100%">
+                  <Text>DCAS&nbsp;CSV</Text>
+                </HStack>
+              </Button>
+            )}
 
             {/* Logout Menu Item */}
             <Button
