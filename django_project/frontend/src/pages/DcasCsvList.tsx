@@ -7,6 +7,8 @@ import {
   Button,
   Text,
   Table,
+  HStack,
+  Link as ChakraLink,
 } from "@chakra-ui/react";
 import { format } from "date-fns";
 import { toaster } from "@/components/ui/toaster";
@@ -21,6 +23,11 @@ interface Output {
 const DcasCsvList: React.FC = () => {
   const [outputs, setOutputs] = useState<Output[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
+
+  // pagination state
+  const [page, setPage] = useState(1);
+  const perPage = 6;
+  const totalPages = Math.ceil(outputs.length / perPage);
 
   useEffect(() => {
     setLoading(true);
@@ -37,87 +44,101 @@ const DcasCsvList: React.FC = () => {
       .finally(() => setLoading(false));
   }, []);
 
-  const handleDownload = (id: number) => {
-    axios
-      .get<{ url: string }>(`/outputs/${id}/download/`)
-      .then((res) => {
-        window.location.href = res.data.url;
-      })
-      .catch(() =>
-        toaster.create({
-          title: "Error",
-          description: "Could not generate download link.",
-          type: "error",
-        })
-      );
-  };
+  const paginated = outputs.slice((page - 1) * perPage, page * perPage);
 
   return (
     <Box
       as="section"
-      p={6}
+      p="7.5"
       bg="white"
-      borderRadius="md"
+      borderRadius="2lg"
       boxShadow="md"
       maxW={{ base: "full", md: "4xl" }}
       mx="auto"
-      color="text.primary"
+      color="fg"
     >
-      <Heading mb={2} fontSize="2xl">
+      <Heading variant="default" size="md" mb="4">
         DCAS CSV Files
       </Heading>
 
       {loading ? (
-        <Spinner size="lg" mt={4} />
+        <Spinner size="lg" mt="4" />
       ) : (
-        <Table.ScrollArea mt={4}>
-          <Table.Root>
-            <Table.Header>
-              <Table.Row>
-                <Table.ColumnHeader>File name</Table.ColumnHeader>
-                <Table.ColumnHeader textAlign="end">
-                  Size (MB)
-                </Table.ColumnHeader>
-                <Table.ColumnHeader>Created on</Table.ColumnHeader>
-                <Table.ColumnHeader /> {/* empty for action column */}
-              </Table.Row>
-            </Table.Header>
-
-            <Table.Body>
-              {outputs.length > 0 ? (
-                outputs.map((o) => (
-                  <Table.Row key={o.id}>
-                    <Table.Cell>{o.file_name}</Table.Cell>
-                    <Table.Cell textAlign="end">
-                      {(o.size / 1_048_576).toFixed(2)}
-                    </Table.Cell>
-                    <Table.Cell>
-                      {format(
-                        new Date(o.delivered_at),
-                        "yyyy-MM-dd HH:mm"
-                      )}
-                    </Table.Cell>
-                    <Table.Cell>
-                      <Button size="sm" onClick={() => handleDownload(o.id)}>
-                        Download
-                      </Button>
+        <>
+          <Table.ScrollArea>
+            <Table.Root size="sm">
+              <Table.Header>
+                <Table.Row>
+                  <Table.ColumnHeader>File name</Table.ColumnHeader>
+                  <Table.ColumnHeader textAlign="end">
+                    Size (MB)
+                  </Table.ColumnHeader>
+                  <Table.ColumnHeader>Created on</Table.ColumnHeader>
+                  <Table.ColumnHeader />
+                </Table.Row>
+              </Table.Header>
+              <Table.Body>
+                {paginated.length > 0 ? (
+                  paginated.map((o) => (
+                    <Table.Row key={o.id}>
+                      <Table.Cell>{o.file_name}</Table.Cell>
+                      <Table.Cell textAlign="end">
+                        {(o.size / 1_048_576).toFixed(2)}
+                      </Table.Cell>
+                      <Table.Cell>
+                        {format(
+                          new Date(o.delivered_at),
+                          "yyyy-MM-dd HH:mm"
+                        )}
+                      </Table.Cell>
+                      <Table.Cell>
+                        <ChakraLink
+                          href={`/outputs/${o.id}/download/`}
+                          display="inline-block"
+                          _hover={{ textDecoration: "none" }}
+                        >
+                          <Button visual="solid" size="sm">
+                            Download
+                          </Button>
+                        </ChakraLink>
+                      </Table.Cell>
+                    </Table.Row>
+                  ))
+                ) : (
+                  <Table.Row>
+                    <Table.Cell colSpan={4} textAlign="center" py="4">
+                      <Text>No CSV files in the last two weeks.</Text>
                     </Table.Cell>
                   </Table.Row>
-                ))
-              ) : (
-                <Table.Row>
-                  <Table.Cell
-                    colSpan={4}
-                    textAlign="center"
-                    py="4"
-                  >
-                    <Text>No CSV files in the last two weeks.</Text>
-                  </Table.Cell>
-                </Table.Row>
-              )}
-            </Table.Body>
-          </Table.Root>
-        </Table.ScrollArea>
+                )}
+              </Table.Body>
+            </Table.Root>
+          </Table.ScrollArea>
+
+          {outputs.length > perPage && (
+            <HStack justify="space-between" mt="4">
+              <Button
+                visual="solid"
+                size="sm"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page === 1}
+              >
+                Previous
+              </Button>
+              <Text>
+                Page {page} of {totalPages}
+              </Text>
+              <Button
+                visual="solid"
+                size="sm"
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
+              >
+                Next
+              </Button>
+            </HStack>
+          )}
+        </>
       )}
     </Box>
   );

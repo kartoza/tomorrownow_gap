@@ -9,7 +9,8 @@ from django.utils import timezone
 from django.core.files.storage import storages
 from rest_framework import generics, permissions
 from rest_framework.views import APIView
-from rest_framework.response import Response
+from django.shortcuts import redirect
+from django.conf import settings
 
 from core.permissions import IsKalroUser
 from dcas.models.output import DCASOutput
@@ -48,12 +49,14 @@ class OutputDownloadView(APIView):
             name=output.path,
             expire=900,
             parameters={
-                "response-content-disposition":
+                "ResponseContentDisposition":
                 f'attachment; filename="{output.file_name}"',
             },
         )
 
         # **new** – persist audit row
         DCASDownloadLog.objects.create(output=output, user=request.user)
+        if settings.DEBUG:
+            presigned = presigned_url.replace("http://minio:9000", "http://localhost:9010")
 
-        return Response({"url": presigned_url})
+        return redirect(presigned)

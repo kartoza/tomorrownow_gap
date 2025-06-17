@@ -7,7 +7,7 @@ from dcas.views import OutputDownloadView, OutputListView
 app_name = "dcas"   # namespace for reverse("dcas:output-download", args=[pk])
 
 urlpatterns = [
-    # dcas/outputs/<pk>/download/
+    # /outputs/<pk>/download/
     path(
         "outputs/<int:pk>/download/",
         OutputDownloadView.as_view(),
