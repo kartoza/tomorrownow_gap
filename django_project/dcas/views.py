@@ -57,6 +57,8 @@ class OutputDownloadView(APIView):
         # **new** – persist audit row
         DCASDownloadLog.objects.create(output=output, user=request.user)
         if settings.DEBUG:
-            presigned = presigned_url.replace("http://minio:9000", "http://localhost:9010")
+            presigned = presigned_url.replace(
+                "http://minio:9000", "http://localhost:9010"
+            )
 
         return redirect(presigned)
