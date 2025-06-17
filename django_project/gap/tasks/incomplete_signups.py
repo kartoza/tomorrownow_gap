@@ -15,4 +15,4 @@ def cleanup_incomplete_signups():
     )
     count = qs.count()
     qs.delete()
-    return f"Deleted {count} old pending SignUpRequests"
+    return f"Deleted {count} old incomplete SignUpRequests"
