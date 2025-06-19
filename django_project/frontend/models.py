@@ -11,9 +11,8 @@ from django.contrib.auth.models import Group
 
 
 class PagePermission(models.Model):
-    """
-    Grant access to a named page for one or more Django auth groups.
-    """
+    """Grant access to groups."""
+
     page = models.CharField(
         max_length=100,
         unique=True,
@@ -26,6 +25,7 @@ class PagePermission(models.Model):
     )
 
     class Meta:
+        """Meta options for PagePermission model."""
         db_table = "frontend_page_permission"
         verbose_name = "Page Permission"
         verbose_name_plural = "Page Permissions"

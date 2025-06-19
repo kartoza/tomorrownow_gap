@@ -187,9 +187,11 @@ class OutputDownloadView(APIView):
 
 class PermittedPagesView(APIView):
     """View to return pages for which the user has permission."""
+
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
+        """Return a list of pages the user has permission to access."""
         user = request.user
 
         if user.is_superuser:

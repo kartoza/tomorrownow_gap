@@ -18,6 +18,9 @@ class OutputSerializer(serializers.ModelSerializer):
 
 class PermittedPageSerializer(serializers.ModelSerializer):
     """Serializer for permitted pages."""
+
     class Meta:
+        """Meta options for PermittedPageSerializer."""
+
         model = PagePermission
         fields = ['page']
