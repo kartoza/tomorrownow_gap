@@ -3,10 +3,11 @@
 
 from django.test import TestCase
 from django.contrib.auth import get_user_model
-from django.contrib.auth.models import Group
+from django.contrib.auth.models import Group, AnonymousUser
 from rest_framework.test import APIRequestFactory
 
-from django_project.frontend.permissions import IsKalroUser
+from frontend.permissions import IsKalroUser
+from frontend.models import PagePermission
 
 
 class TestIsKalroUser(TestCase):
@@ -19,7 +20,7 @@ class TestIsKalroUser(TestCase):
         cls.factory = APIRequestFactory()
 
         # Groups
-        cls.kalro_group, _ = Group.objects.get_or_create(name="KALRO")
+        cls.kalro_group, _ = Group.objects.get_or_create(name="Kalro")
 
         # Users
         cls.regular_user = cls.User.objects.create_user(
@@ -35,21 +36,27 @@ class TestIsKalroUser(TestCase):
             username="super_user",
             email="root@example.com", password="pass"
         )
+        cls.page_perm = PagePermission.objects.create(page="dcas_csv")
+        cls.page_perm.groups.add(cls.kalro_group)
 
-    def _has_perm(self, user):
-        """Return permission result for a GET request."""
-        request = self.factory.get("/")
-        request.user = user
-        return IsKalroUser().has_permission(request, view=None)
+    def _has_perm(self, user, view=None):
+        req = self.factory.get("/")
+        req.user = user
+        return IsKalroUser().has_permission(req, view)
+
+    def test_anonymous_rejected(self):
+        """Anonymous should fail immediately."""
+        anon = AnonymousUser()
+        self.assertFalse(self._has_perm(anon))
 
     def test_regular_user_rejected(self):
-        """Authenticated but non-KALRO, non-admin should fail."""
+        """Authenticated but non‐Kalro, non‐admin should fail."""
         self.assertFalse(self._has_perm(self.regular_user))
 
     def test_kalro_user_allowed(self):
-        """Member of KALRO group should pass."""
+        """Member of Kalro group should pass."""
         self.assertTrue(self._has_perm(self.kalro_user))
 
     def test_super_user_allowed(self):
-        """Super-user should pass regardless of groups."""
+        """Super-user should pass regardless of page perms."""
         self.assertTrue(self._has_perm(self.super_user))
