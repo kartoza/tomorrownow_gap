@@ -22,7 +22,7 @@ import {
   clearFeedback
 } from "./authSlice";
 import { RootState, AppDispatch } from "@app/store";
-import { loginEvent } from "@/utils/analytics";
+import { loginEvent, socialAuthRedirect } from "@/utils/analytics";
 import { useNavigateWithEvent } from "@/hooks/useNavigateWithEvent";
 import { useGapContext } from "@/context/GapContext";
 
@@ -254,14 +254,27 @@ const LoginForm: React.FC<LoginFormProps> = () => {
 
                 <Flex justify="center" gap={6}>
                     {social_auth_providers.google && (
-                    <Link href="/accounts/google/login/" aria-label="Login with Google">
-                        <Image src="/static/images/google_icon.svg" alt="Google" boxSize={6} />
-                    </Link>
+                        <Button
+                        variant="ghost"
+                        p={0}
+                        size="xs"
+                        aria-label="Login with Google"
+                        onClick={() => socialAuthRedirect('google')}
+                        >
+                            <Image src="/static/images/google_icon.svg" alt="Google" boxSize={6} />
+                        </Button>
                     )}
+
                     {social_auth_providers.github && (
-                    <Link href="/accounts/github/login/" aria-label="Login with GitHub">
-                        <Image src="/static/images/github_icon.svg" alt="GitHub" boxSize={6} />
-                    </Link>
+                        <Button
+                        variant="ghost"
+                        p={0}
+                        size="xs"
+                        aria-label="Login with GitHub"
+                        onClick={() => socialAuthRedirect('github')}
+                        >
+                            <Image src="/static/images/github_icon.svg" alt="GitHub" boxSize={6} />
+                        </Button>
                     )}
                 </Flex>
                 </Box>
