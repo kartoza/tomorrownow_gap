@@ -6,6 +6,7 @@ Only KALRO staff (or super-users) may access certain DCAS resources.
 """
 
 from rest_framework.permissions import BasePermission
+from frontend.models import PagePermission
 
 
 class IsKalroUser(BasePermission):
@@ -20,6 +21,7 @@ class IsKalroUser(BasePermission):
     """
 
     message = "You must be a KALRO user to access this resource."
+    permission_page = "dcas_csv"
 
     def has_permission(self, request, view):  # noqa: D401
         """Check if the user is a KALRO user."""
@@ -30,8 +32,16 @@ class IsKalroUser(BasePermission):
         if user.is_superuser:
             return True
 
-        # NB: .exists() avoids loading the full queryset
-        return user.groups.filter(name="KALRO").exists()
+        page_key = getattr(view, 'permission_page', self.permission_page)
+
+        try:
+            perm = PagePermission.objects.get(page=page_key)
+        except PagePermission.DoesNotExist:
+            return False
+
+        return perm.groups.filter(
+            id__in=user.groups.values_list('id', flat=True)
+        ).exists()
 
     def has_object_permission(self, request, view, obj):  # noqa: D401
         """Check if the user has permission for the object."""

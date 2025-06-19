@@ -3,6 +3,7 @@
 
 from rest_framework import serializers
 from dcas.models.output import DCASOutput
+from frontend.models import PagePermission
 
 
 class OutputSerializer(serializers.ModelSerializer):
@@ -13,3 +14,10 @@ class OutputSerializer(serializers.ModelSerializer):
 
         model = DCASOutput
         fields = ("id", "file_name", "size", "delivered_at")
+
+
+class PermittedPageSerializer(serializers.ModelSerializer):
+    """Serializer for permitted pages."""
+    class Meta:
+        model = PagePermission
+        fields = ['page']

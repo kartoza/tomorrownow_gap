@@ -12,6 +12,7 @@ import {
 } from "@chakra-ui/react";
 import { format } from "date-fns";
 import { toaster } from "@/components/ui/toaster";
+import { clickEvent } from "@/utils/analytics";
 
 interface Output {
   id: number;
@@ -45,6 +46,25 @@ const DcasCsvList: React.FC = () => {
   }, []);
 
   const paginated = outputs.slice((page - 1) * perPage, page * perPage);
+
+  const handleDownload = (id: number, fileName: string) => {
+    // fire your Google Analytics event
+    clickEvent("download_dcas_csv");
+
+    // then request presigned URL
+    axios
+      .get<{ url: string }>(`/outputs/${id}/download/`)
+      .then((res) => {
+        window.location.href = res.data.url;
+      })
+      .catch(() =>
+        toaster.create({
+          title: "Error",
+          description: "Could not generate download link.",
+          type: "error",
+        })
+      );
+  };
 
   return (
     <Box
@@ -96,6 +116,10 @@ const DcasCsvList: React.FC = () => {
                           href={`/outputs/${o.id}/download/`}
                           display="inline-block"
                           _hover={{ textDecoration: "none" }}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            handleDownload(o.id, o.file_name);
+                          }}
                         >
                           <Button visual="solid" size="sm">
                             Download

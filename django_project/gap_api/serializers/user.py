@@ -14,8 +14,6 @@ User = get_user_model()
 class UserInfoSerializer(serializers.ModelSerializer):
     """Serializer for User Info."""
 
-    groups = serializers.StringRelatedField(many=True, read_only=True)
-
     class Meta:  # noqa
         model = User
         fields = [
@@ -26,7 +24,6 @@ class UserInfoSerializer(serializers.ModelSerializer):
             'last_name',
             'is_staff',
             'is_superuser',
-            'groups',
         ]
         swagger_schema_fields = {
             'title': 'User Info',

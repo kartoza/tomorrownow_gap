@@ -6,7 +6,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from rest_framework.test import APIRequestFactory
 
-from core.permissions import IsKalroUser
+from django_project.frontend.permissions import IsKalroUser
 
 
 class TestIsKalroUser(TestCase):
