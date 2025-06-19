@@ -113,7 +113,7 @@ app.conf.beat_schedule = {
         'schedule': crontab(minute='0', hour='3'),
     },
     'cleanup-incomplete-signup-requests': {
-        'task': 'gap.tasks.cleanup_incomplete_signups',
+        'task': 'cleanup_incomplete_signups',
         # run once a day at 00:00
         'schedule': crontab(minute=0, hour=0),
     },
