@@ -13,3 +13,4 @@ coverage:
   ignore:
     - "**/migrations/*.py"
     - "django_project/core/settings/*.py"
+    - "**/management/commands/*.py"
