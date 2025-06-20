@@ -44,7 +44,7 @@ class ForgotPasswordView(APIView):
             {'user': user}
         ).strip()
         html_message = render_to_string(
-            'account/email/email_set_password_message.txt', {
+            'account/email/email_set_password_message.html', {
                 'user': user,
                 'reset_password_url': reset_password_link,
                 'django_backend_url': '/',
