@@ -43,6 +43,13 @@ class ForgotPasswordView(APIView):
             'account/email/email_set_password_subject.txt',
             {'user': user}
         ).strip()
+        # Render the text message
+        text_body = render_to_string(
+            'account/email/email_set_password_message.txt', {
+                'user': user,
+                'reset_password_url': reset_password_link,
+                'django_backend_url': '/',
+            })
         html_message = render_to_string(
             'account/email/email_set_password_message.html', {
                 'user': user,
@@ -52,7 +59,7 @@ class ForgotPasswordView(APIView):
 
         email_message = EmailMultiAlternatives(
             subject=subject,
-            body="Please reset your password using the link below.",
+            body=text_body,
             from_email=settings.DEFAULT_FROM_EMAIL,
             to=[email]
         )
