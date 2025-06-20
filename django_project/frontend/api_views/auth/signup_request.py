@@ -177,24 +177,6 @@ class SignUpRequestStatusView(APIView):
         return Response({"show_form": True})
 
 
-class CurrentUserView(APIView):
-    """Returns the current user's details."""
-
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request):
-        """Get current user details."""
-        user = request.user
-        return Response({
-            "email": user.email,
-            "first_name": user.first_name,
-            "last_name": user.last_name,
-            "email_verified": getattr(
-                user.userprofile, 'email_verified', False
-            ),
-        })
-
-
 class MySignUpRequestView(APIView):
     """Returns the sign-up request for the current user."""
 

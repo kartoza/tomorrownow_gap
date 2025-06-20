@@ -13,6 +13,7 @@ interface AuthState {
   isAuthenticated: boolean;
   isAdmin: boolean;
   hasInitialized: boolean;
+  pages: string[];
 }
 
 const initialState: AuthState = {
@@ -24,6 +25,7 @@ const initialState: AuthState = {
   isAuthenticated: false,
   isAdmin: false,
   hasInitialized: false, // Track if user info has been fetched
+  pages: [],
 };
 
 // Async thunk for user logs in
@@ -99,6 +101,22 @@ export const resetPasswordConfirm = createAsyncThunk<
       return rejectWithValue(
         err.response?.data?.detail || "Error resetting password."
       );
+    }
+  }
+);
+
+export const fetchPermittedPages = createAsyncThunk<
+  string[],
+  void,
+  { rejectValue: string }
+>(
+  'auth/fetchPermittedPages',
+  async (_, { rejectWithValue }) => {
+    try {
+      const res = await axios.get<{ pages: string[] }>('/api/permitted-pages/');
+      return res.data.pages;
+    } catch (err: any) {
+      return rejectWithValue('Could not load permissions');
     }
   }
 );
@@ -230,6 +248,12 @@ const authSlice = createSlice({
       .addCase(resetPasswordConfirm.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload || action.error.message || null;
+      })
+      .addCase(fetchPermittedPages.fulfilled, (state, action) => {
+        state.pages = action.payload;
+      })
+      .addCase(fetchPermittedPages.rejected, (state) => {
+        state.pages = [];
       });
   },
 });

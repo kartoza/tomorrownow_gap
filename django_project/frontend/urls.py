@@ -3,23 +3,41 @@
 from django.urls import path, re_path
 
 from .views import (
-    HomeView, SentryProxyView, EmailCheckView
+    HomeView, SentryProxyView, EmailCheckView,
+    OutputDownloadView, OutputListView,
+    PermittedPagesView
 )
 from frontend.api_views import (
     UserFromUIDView, SignUpRequestView,
-    SignUpRequestStatusView, CurrentUserView,
+    SignUpRequestStatusView,
     MySignUpRequestView, ForgotPasswordView,
-    ResetPasswordConfirmView, DecodeSocialSignupTokenView
+    ResetPasswordConfirmView, DecodeSocialSignupTokenView,
 )
 
 
 urlpatterns = [
     path('sentry-proxy/', SentryProxyView.as_view(), name='sentry-proxy'),
+    # /outputs/<pk>/download/
+    path(
+        "outputs/<int:pk>/download/",
+        OutputDownloadView.as_view(),
+        name="output-download",
+    ),
+    # list all recent outputs
+    path(
+        "outputs/",
+        OutputListView.as_view(),
+        name="output-list"
+    ),
+    path(
+        "api/permitted-pages/",
+        PermittedPagesView.as_view(),
+        name="permitted-pages"
+    ),
     path(
         'signup/check_email/', EmailCheckView.as_view(), name='check_email'
     ),
     path("api/signup-request/me/", MySignUpRequestView.as_view()),
-    path("api/me/", CurrentUserView.as_view(), name="current-user"),
     path(
         "api/signup-request-check/",
         SignUpRequestStatusView.as_view(),
