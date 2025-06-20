@@ -13,7 +13,9 @@ import {
 } from '@chakra-ui/react';
 // import { ChevronDownIcon, LogOutIcon, UserIcon, MailIcon } from 'lucide-react';
 import { FiChevronDown, FiLogOut } from "react-icons/fi";
-import { User } from '@/types'; // Adjust the import path as necessary
+import { User } from '@/types';
+import { useNavigateWithEvent } from '@/hooks/useNavigateWithEvent';
+import { FiKey } from 'react-icons/fi';
 
 interface ProfileDropdownProps {
   user: User;
@@ -36,6 +38,7 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const fullName = `${user.first_name} ${user.last_name}`.trim();
+  const navigate = useNavigateWithEvent();
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -124,6 +127,25 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({
             </Box>
 
             <Separator marginY={1} />
+
+            <Button
+              variant="solid"
+              w="full"
+              justifyContent="flex-start"
+              p={3}
+              h="auto"
+              borderRadius="md"
+              _hover={{ bg: 'gray.50' }}
+              onClick={() => {
+                setOpen(false);              // close dropdown
+                navigate('/api-keys');       // go to the page
+              }}
+            >
+              <HStack gap={3} w="full">
+                <FiKey size={8} />          {/* import { FiKey } from 'react-icons/fi' */}
+                <Text>API&nbsp;Keys</Text>
+              </HStack>
+            </Button>
 
             {/* Logout Menu Item */}
             <Button

@@ -4,6 +4,7 @@ from django.contrib.auth import get_user_model
 from rest_framework import serializers
 from django.contrib.auth.password_validation import validate_password
 from gap.models import SignUpRequest
+from knox.models import AuthToken
 
 User = get_user_model()
 
@@ -71,3 +72,16 @@ class SignUpRequestSerializer(serializers.ModelSerializer):
             'organization',
             'description'
         ]
+
+
+class APIKeySerializer(serializers.ModelSerializer):
+    """Serializer for API keys (AuthToken)."""
+
+    id = serializers.UUIDField(source='pk', read_only=True)
+
+    class Meta:
+        """Meta class for APIKeySerializer."""
+
+        model = AuthToken
+        fields = ("id", "created", "expiry")  # never return the token string!
+        read_only_fields = fields
