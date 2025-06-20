@@ -13,6 +13,7 @@ import { AuthLayout } from '@/layouts/AuthLayout'
 import LandingPage from '@/pages/LandingPage'
 import LoginPage from '@/pages/LoginPage'
 import SignupPage from '@/pages/SignupPage'
+import DcasCsvList from '@/pages/DcasCsvList'
 
 
 const ErrorPage = () => (
@@ -86,5 +87,16 @@ export const router = createBrowserRouter([
         element: <SignupPage />,
       }
     ],
+  },
+  {
+    path: "/dcas-csv",
+    element: <MainLayout />,
+    errorElement: <ErrorPage />,
+    children: [
+      {
+        index: true,
+        element: <DcasCsvList />,
+      }
+    ]
   }
 ])
