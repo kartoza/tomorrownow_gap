@@ -225,6 +225,17 @@ class Preferences(SingletonModel):
         ),
     )
 
+    # Job executor config
+    job_executor_config = models.JSONField(
+        default=dict,
+        blank=True,
+        null=True,
+        help_text=(
+            'Dict of JobType and ExecutorConfig; '
+            'ExecutorConfig will be passed to the Job Executor.'
+        )
+    )
+
     def social_auth_enabled(self, provider: str) -> bool:
         """Return True if the given provider should be shown in the UI."""
         return bool(self.social_auth_providers.get(provider, False))
