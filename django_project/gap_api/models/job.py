@@ -5,6 +5,7 @@ Tomorrow Now GAP API.
 .. note:: Models for Job submitted by user
 """
 
+import uuid
 from django.db import models
 from django.conf import settings
 from django.utils import timezone
@@ -23,9 +24,18 @@ class JobType(models.TextChoices):
 class Job(models.Model):
     """Model represents job submitted by user."""
 
+    uuid = models.UUIDField(
+        primary_key=True,
+        default=uuid.uuid4,
+        editable=False,
+        help_text="Unique identifier for the analysis."
+    )
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
+        blank=True,
+        null=True,
+        help_text=_('User who submitted the job.')
     )
     job_type = models.CharField(
         max_length=50,
@@ -85,8 +95,23 @@ class Job(models.Model):
         default=0,
         help_text=_('Type of wait for the job to complete.')
     )
+    task_id = models.CharField(
+        max_length=512,
+        null=True,
+        blank=True,
+        help_text=_('ID of the task in the background processing system.')
+    )
+    size = models.PositiveBigIntegerField(default=0)
 
     @property
     def is_async(self):
         """Check if the job is asynchronous."""
         return self.queue_name is not None and self.queue_name != ''
+
+    def set_user_file(self, user_file: UserFile):
+        """Set the output user file for the job."""
+        self.output_file = user_file
+        self.size = user_file.size if user_file else 0
+        if user_file is None:
+            self.errors = 'No results from given query parameters.'
+        self.save(update_fields=['output_file', 'size', 'errors'])

@@ -26,7 +26,10 @@ from rest_framework.views import APIView
 from django.core.files.storage import storages
 from storages.backends.s3boto3 import S3Boto3Storage
 from urllib.parse import urlparse
+from django.conf import settings
 
+from core.models.object_storage_manager import ObjectStorageManager
+from core.models.background_task import TaskStatus
 from gap.models import (
     Dataset,
     DatasetObservationType,
@@ -44,11 +47,15 @@ from gap.utils.reader import (
     DatasetReaderOutputType
 )
 from core.utils.date import closest_leap_year
-from gap_api.models import DatasetTypeAPIConfig, Location, UserFile
+from gap_api.models import (
+    DatasetTypeAPIConfig, Location, UserFile,
+    Job
+)
 from gap_api.serializers.common import APIErrorSerializer
 from gap_api.utils.helper import ApiTag
 from gap_api.mixins import GAPAPILoggingMixin, CounterSlidingWindowThrottle
 from permission.models import PermissionType
+from gap_api.tasks.job import DataRequestJobExecutor
 
 
 logger = logging.getLogger(__name__)
@@ -615,6 +622,49 @@ class MeasurementAPI(GAPAPILoggingMixin, APIView):
             request_params[k] = v
         return request_params
 
+    def _get_user_file(self, location: DatasetReaderInput):
+        query_params = self._get_request_params()
+        query_params['attributes'] = [
+            a.strip() for a in query_params['attributes'].split(',')
+        ]
+        query_params['geom_type'] = location.type
+        query_params['geometry'] = location.geometry.wkt
+        return UserFile(
+            user=self.request.user,
+            name="",
+            query_params=query_params
+        )
+
+    def prepare_response(self, user_file: UserFile):
+        """Prepare response for the user file.
+
+        :param user_file: UserFile object
+        :type user_file: UserFile
+        :return: Response object
+        :rtype: Response
+        """
+        if user_file is None:
+            return Response(
+                status=404,
+                data={
+                    'detail': 'No weather data is found for given queries.'
+                }
+            )
+        # Check if x_accel_redirect is enabled
+        if self._preferences.api_use_x_accel_redirect:
+            presigned_url = user_file.generate_url()
+            file_name = os.path.basename(user_file.name)
+            return self._get_accel_redirect_response(
+                presigned_url,
+                file_name,
+                'application/x-netcdf' if file_name.endswith('.nc') else
+                'text/csv'
+            )
+
+        return ObjectStorageManager.download_file_from_s3(
+            remote_file_path=user_file.name
+        )
+
     def get_response_data(self) -> Response:
         """Read data from dataset.
 
@@ -675,10 +725,10 @@ class MeasurementAPI(GAPAPILoggingMixin, APIView):
         dataset_dict: Dict[int, BaseDatasetReader] = {}
         for da in dataset_attributes:
             if da.dataset.id in dataset_dict:
-                dataset_dict[da.dataset.id].add_attribute(da)
+                continue
             else:
                 try:
-                    reader = get_reader_builder(
+                    get_reader_builder(
                         da.dataset, [da], location, start_dt, end_dt,
                         altitudes=(min_altitudes, max_altitudes),
                         use_parquet=self._preferences.api_use_parquet,
@@ -686,7 +736,7 @@ class MeasurementAPI(GAPAPILoggingMixin, APIView):
                             'forecast_date', None
                         )
                     )
-                    dataset_dict[da.dataset.id] = reader.build()
+                    dataset_dict[da.dataset.id] = 1
                 except TypeError as e:
                     logger.error(
                         f"Error in building dataset reader: {e}",
@@ -704,46 +754,51 @@ class MeasurementAPI(GAPAPILoggingMixin, APIView):
                 }
             )
 
-        # Check UserFile cache if x_accel_redirect is enabled
-        user_file: UserFile = None
-        if self._preferences.api_use_x_accel_redirect:
-            query_params = self._get_request_params()
-            query_params['attributes'] = [
-                a.strip() for a in query_params['attributes'].split(',')
-            ]
-            query_params['geom_type'] = location.type
-            query_params['geometry'] = location.geometry.wkt
-            user_file = UserFile(
-                user=self.request.user,
-                name="",
-                query_params=query_params
+        # Check cache using UserFile
+        user_file = self._get_user_file(location)
+        cache_exist = user_file.find_in_cache()
+        if cache_exist:
+            return self.prepare_response(cache_exist)
+
+        # Create Job for data request
+        is_async = self.request.GET.get('async', 'false').lower() == 'true'
+        job = Job(
+            user=self.request.user,
+            parameters=self._get_request_params(),
+            queue_name=settings.CELERY_DATA_REQUEST_QUEUE,
+            wait_type=0 if is_async else 1,
+        )
+        job.save()
+
+        executor = DataRequestJobExecutor(job)
+        executor.run()
+
+        if is_async:
+            return Response(
+                status=200,
+                data={
+                    'detail': 'Job is submitted successfully.',
+                    'job_id': str(job.uuid)
+                }
             )
 
-        response = None
-        if output_format == DatasetReaderOutputType.JSON:
-            data_value = self._read_data_as_json(
-                dataset_dict, start_dt, end_dt)
-            if data_value:
-                response = Response(
-                    status=200,
-                    data=data_value
-                )
-        elif output_format == DatasetReaderOutputType.NETCDF:
-            response = self._read_data_as_netcdf(
-                dataset_dict, start_dt, end_dt, user_file=user_file)
-        elif output_format == DatasetReaderOutputType.CSV:
-            response = self._read_data_as_csv(
-                dataset_dict, start_dt, end_dt,
-                user_file=user_file
+        job.refresh_from_db()
+        if job.status != TaskStatus.COMPLETED:
+            return Response(
+                status=500,
+                data={
+                    'detail': 'Job failed to complete.',
+                    'errors': job.errors
+                }
             )
-        elif output_format == DatasetReaderOutputType.ASCII:
-            response = self._read_data_as_ascii(dataset_dict, start_dt, end_dt)
+
+        if output_format == DatasetReaderOutputType.JSON:
+            response = Response(
+                status=200,
+                data=job.output_json
+            )
         else:
-            raise ValidationError({
-                'Invalid Request Parameter': (
-                    f'Incorrect output_type value: {output_format}'
-                )
-            })
+            response = self.prepare_response(job.output_file)
 
         if response is None:
             return Response(

@@ -7,11 +7,14 @@ Tomorrow Now GAP.
 """
 
 import os
+import boto3
 from django.db import models
 from django.utils.translation import gettext_lazy as _
+from django.http import StreamingHttpResponse
 
 
 DEFAULT_CONNECTION_NAME = 'default'
+DEFAULT_CHUNK_SIZE = 1024 * 1024  # 1 MB
 
 
 class ProtocolType(models.TextChoices):
@@ -218,3 +221,92 @@ class ObjectStorageManager(models.Model):
         if not s3_url.endswith('/'):
             s3_url += '/'
         return s3_url
+
+    @classmethod
+    def upload_file_to_s3(
+        cls, file_path: str, transfer_config: dict,
+        remote_file_path: str, content_type: str,
+        s3: dict = None, connection_name: str = None
+    ) -> str:
+        """Upload file to S3 storage.
+
+        :param file_path: Path to the file to upload
+        :type file_path: str
+        :param s3: Dictionary of S3 env vars
+        :type s3: dict
+        :param connection_name: Connection name for Object Storage Manager
+        :type connection_name: str
+        :return: URL of the uploaded file
+        :rtype: str
+        """
+        if s3 is None:
+            s3 = cls.get_s3_env_vars(connection_name)
+
+        s3_client_kwargs = cls.get_s3_client_kwargs(connection_name, s3)
+        s3_client_kwargs['aws_access_key_id'] = s3['S3_ACCESS_KEY_ID']
+        s3_client_kwargs['aws_secret_access_key'] = s3['S3_SECRET_ACCESS_KEY']
+        s3_client = boto3.client("s3", **s3_client_kwargs)
+
+        output_url = s3["S3_DIR_PREFIX"]
+        if not output_url.endswith('/'):
+            output_url += '/'
+        output_url += remote_file_path
+
+        # Upload file
+        s3_client.upload_file(
+            Filename=file_path,
+            Bucket=s3["S3_BUCKET_NAME"],
+            Key=output_url,
+            ExtraArgs={'ContentType': content_type},
+            Config=transfer_config
+        )
+
+        # Return file URL
+        return output_url
+
+    @classmethod
+    def download_file_from_s3(
+        cls, remote_file_path: str, s3: dict = None,
+        connection_name: str = None, chunk_size: int = DEFAULT_CHUNK_SIZE
+    ) -> StreamingHttpResponse:
+        """Download file from S3 storage.
+
+        :param remote_file_path: Path to the file in S3
+        :type remote_file_path: str
+        :param s3: Dictionary of S3 env vars
+        :type s3: dict
+        :param connection_name: Connection name for Object Storage Manager
+        :type connection_name: str
+        :return: Streaming HTTP response with file content
+        :rtype: StreamingHttpResponse
+        """
+        if s3 is None:
+            s3 = cls.get_s3_env_vars(connection_name)
+
+        s3_client_kwargs = cls.get_s3_client_kwargs(connection_name, s3)
+        s3_client_kwargs['aws_access_key_id'] = s3['S3_ACCESS_KEY_ID']
+        s3_client_kwargs['aws_secret_access_key'] = s3['S3_SECRET_ACCESS_KEY']
+        s3_client = boto3.client("s3", **s3_client_kwargs)
+
+        s3_object = s3_client.get_object(
+            Bucket=s3["S3_BUCKET_NAME"],
+            Key=remote_file_path
+        )
+        body = s3_object['Body']
+
+        # Generator that reads the body in chunks
+        def stream_generator(chunk_size):
+            while True:
+                data = body.read(chunk_size)
+                if not data:
+                    break
+                yield data
+
+        response = StreamingHttpResponse(
+            stream_generator(chunk_size),
+            content_type=s3_object['ContentType']
+        )
+        response['Content-Disposition'] = (
+            f'attachment; filename="{remote_file_path.split("/")[-1]}"'
+        )
+        return response

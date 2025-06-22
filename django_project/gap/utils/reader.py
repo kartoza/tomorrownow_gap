@@ -5,6 +5,7 @@ Tomorrow Now GAP.
 .. note:: Helper for reading dataset
 """
 
+import os
 import json
 import tempfile
 import dask
@@ -311,6 +312,9 @@ class DatasetReaderValue:
         self.location_input = location_input
         self.attributes = attributes
         self._result_count = result_count
+        self.output_metadata = {
+            'size': 0
+        }
         self._post_init()
 
     def _post_init(self):
@@ -520,6 +524,10 @@ class DatasetReaderValue:
 
         return output_url
 
+    def _get_remote_file_path(self, suffix):
+        output_url = f'user_data/{uuid.uuid4().hex}{suffix}'
+        return output_url
+
     def to_netcdf_stream(self):
         """Generate netcdf stream."""
         with (
@@ -531,6 +539,7 @@ class DatasetReaderValue:
                 compute=False
             )
             execute_dask_compute(x, is_api=True)
+            self.output_metadata['size'] = os.path.getsize(tmp_file.name)
             with open(tmp_file.name, 'rb') as f:
                 while True:
                     chunk = f.read(self.chunk_size_in_bytes)
@@ -540,8 +549,7 @@ class DatasetReaderValue:
 
     def to_netcdf(self):
         """Generate netcdf file to object storage."""
-        output_url = self._get_file_remote_url('.nc')
-        s3_storage: S3Boto3Storage = storages["gap_products"]
+        remote_file_path = self._get_remote_file_path('.nc')
 
         with (
             tempfile.NamedTemporaryFile(
@@ -552,12 +560,15 @@ class DatasetReaderValue:
                 compute=False
             )
             execute_dask_compute(x, is_api=True)
-
+            self.output_metadata['size'] = os.path.getsize(tmp_file.name)
             # upload to s3
-            s3_storage.transfer_config = (
+            transfer_config = (
                 Preferences.user_file_s3_transfer_config()
             )
-            s3_storage.save(output_url, tmp_file)
+            output_url = ObjectStorageManager.upload_file_to_s3(
+                tmp_file.name, transfer_config, remote_file_path,
+                content_type='application/x-netcdf'
+            )
 
         return output_url
 
@@ -570,7 +581,10 @@ class DatasetReaderValue:
             start = stop
         return indices
 
-    def _get_dataset_for_csv(self):
+    def _get_dataset_for_csv(
+        self, date_chunk_size=None, lat_chunk_size=None,
+        lon_chunk_size=None
+    ):
         dim_order = [self.date_variable]
 
         if self.has_time_column:
@@ -581,25 +595,25 @@ class DatasetReaderValue:
         ]
         # use date chunk = 1 to order by date
         rechunk = {
-            self.date_variable: 1
+            self.date_variable: date_chunk_size or 1
         }
         if 'lat' in self.xr_dataset.dims:
             dim_order.append('lat')
             dim_order.append('lon')
-            rechunk['lat'] = 300
-            rechunk['lon'] = 300
+            rechunk['lat'] = lat_chunk_size or 300
+            rechunk['lon'] = lon_chunk_size or 300
             if self.has_time_column:
                 # slightly reducing chunk size for lat/lon
-                rechunk['lat'] = 100
-                rechunk['lon'] = 100
+                rechunk['lat'] = lat_chunk_size or 100
+                rechunk['lon'] = lon_chunk_size or 100
                 rechunk['time'] = 24
         else:
             reordered_cols.insert(0, 'lon')
             reordered_cols.insert(0, 'lat')
-            rechunk[self.date_variable] = 300
+            rechunk[self.date_variable] = date_chunk_size or 300
             if self.has_time_column:
                 # slightly reducing chunk size for lat/lon
-                rechunk[self.date_variable] = 100
+                rechunk[self.date_variable] = date_chunk_size or 100
                 rechunk['time'] = 24
 
         if 'ensemble' in self.xr_dataset.dims:
@@ -710,87 +724,93 @@ class DatasetReaderValue:
                         sep=separator
                     )
 
-    def to_csv(self, suffix='.csv', separator=','):
+    def to_csv(
+        self, suffix='.csv', separator=',',
+        date_chunk_size=None, lat_chunk_size=None,
+        lon_chunk_size=None
+    ):
         """Generate csv file to object storage."""
-        ds, dim_order, reordered_cols = self._get_dataset_for_csv()
+        ds, dim_order, reordered_cols = self._get_dataset_for_csv(
+            date_chunk_size, lat_chunk_size, lon_chunk_size
+        )
 
         date_indices = self._get_chunk_indices(
             ds.chunksizes[self.date_variable]
         )
         write_headers = True
-        output = None
-
-        # cannot use dask utils because to_dataframe is not returning
-        # delayed object
-        with dask.config.set(
-            pool=ThreadPoolExecutor(get_num_of_threads(is_api=True))
-        ):
-            output = self._get_file_remote_url(suffix)
-            s3_storage: S3Boto3Storage = storages["gap_products"]
-            with (
-                tempfile.NamedTemporaryFile(
-                    suffix=suffix, delete=True, delete_on_close=False)
-            ) as tmp_file:
-                if 'lat' in dim_order:
-                    lat_indices = self._get_chunk_indices(
-                        ds.chunksizes['lat']
-                    )
-                    lon_indices = self._get_chunk_indices(
-                        ds.chunksizes['lon']
-                    )
-                    # iterate foreach chunk
-                    for date_start, date_stop in date_indices:
-                        for lat_start, lat_stop in lat_indices:
-                            for lon_start, lon_stop in lon_indices:
-                                slice_dict = {
-                                    self.date_variable: slice(
-                                        date_start, date_stop
-                                    ),
-                                    'lat': slice(lat_start, lat_stop),
-                                    'lon': slice(lon_start, lon_stop)
-                                }
-                                chunk = ds.isel(**slice_dict)
-                                chunk_df = chunk.to_dataframe(
-                                    dim_order=dim_order
-                                )
-                                chunk_df = chunk_df[reordered_cols]
-                                chunk_df = self._filter_df(chunk_df)
-
-                                chunk_df.to_csv(
-                                    tmp_file.name, index=True, mode='a',
-                                    header=write_headers,
-                                    float_format='%g', sep=separator
-                                )
-                                if write_headers:
-                                    write_headers = False
-                else:
-                    # iterate foreach chunk
-                    for date_start, date_stop in date_indices:
-                        slice_dict = {
-                            self.date_variable: slice(
-                                date_start, date_stop
-                            )
-                        }
-                        chunk = ds.isel(**slice_dict)
-                        chunk_df = chunk.to_dataframe(dim_order=dim_order)
-                        chunk_df = chunk_df[reordered_cols]
-                        chunk_df = self._filter_df(chunk_df)
-
-                        chunk_df.to_csv(
-                            tmp_file.name, index=True, mode='a',
-                            header=write_headers,
-                            float_format='%g', sep=separator
-                        )
-                        if write_headers:
-                            write_headers = False
-
-                # save to s3
-                s3_storage.transfer_config = (
-                    Preferences.user_file_s3_transfer_config()
+        output_url = None
+        remote_file_path = self._get_remote_file_path(suffix)
+        with (
+            tempfile.NamedTemporaryFile(
+                suffix=suffix, delete=True, delete_on_close=False)
+        ) as tmp_file:
+            if 'lat' in dim_order:
+                lat_indices = self._get_chunk_indices(
+                    ds.chunksizes['lat']
                 )
-                s3_storage.save(output, tmp_file)
+                lon_indices = self._get_chunk_indices(
+                    ds.chunksizes['lon']
+                )
+                # iterate foreach chunk
+                for date_start, date_stop in date_indices:
+                    for lat_start, lat_stop in lat_indices:
+                        for lon_start, lon_stop in lon_indices:
+                            slice_dict = {
+                                self.date_variable: slice(
+                                    date_start, date_stop
+                                ),
+                                'lat': slice(lat_start, lat_stop),
+                                'lon': slice(lon_start, lon_stop)
+                            }
+                            chunk = ds.isel(**slice_dict)
+                            chunk_df = chunk.to_dataframe(
+                                dim_order=dim_order
+                            )
+                            chunk_df = chunk_df[reordered_cols]
+                            chunk_df = self._filter_df(chunk_df)
 
-        return output
+                            chunk_df.to_csv(
+                                tmp_file.name, index=True, mode='a',
+                                header=write_headers,
+                                float_format='%g', sep=separator
+                            )
+                            if write_headers:
+                                write_headers = False
+            else:
+                # iterate foreach chunk
+                for date_start, date_stop in date_indices:
+                    slice_dict = {
+                        self.date_variable: slice(
+                            date_start, date_stop
+                        )
+                    }
+                    chunk = ds.isel(**slice_dict)
+                    chunk_df = chunk.to_dataframe(dim_order=dim_order)
+                    chunk_df = chunk_df[reordered_cols]
+                    chunk_df = self._filter_df(chunk_df)
+
+                    chunk_df.to_csv(
+                        tmp_file.name, index=True, mode='a',
+                        header=write_headers,
+                        float_format='%g', sep=separator
+                    )
+                    if write_headers:
+                        write_headers = False
+
+            self.output_metadata['size'] = os.path.getsize(tmp_file.name)
+            # save to s3
+            transfer_config = (
+                Preferences.user_file_s3_transfer_config()
+            )
+            output_url = ObjectStorageManager.upload_file_to_s3(
+                tmp_file.name, transfer_config, remote_file_path,
+                content_type=(
+                    'text/csv' if suffix == '.csv' else
+                    'text/plain'
+                )
+            )
+
+        return output_url
 
 
 class BaseDatasetReader:

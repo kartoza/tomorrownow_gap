@@ -274,12 +274,14 @@ class Preferences(SingletonModel):
     def user_file_s3_transfer_config() -> TransferConfig:
         """Get S3 transfer config for GAP Products."""
         conf = Preferences.load().user_file_uploader_config
+        # Files above 8 MB use multipart
         return TransferConfig(
+            multipart_threshold=8 * 1024 * 1024,
             multipart_chunksize=(
-                conf.get('default_block_size', 500 * 1024 * 1024)
+                conf.get('default_block_size', 50 * 1024 * 1024)
             ),
             use_threads=True,
             max_concurrency=(
-                conf.get('max_concurrency', 2)
+                conf.get('max_concurrency', 4)
             )
         )
