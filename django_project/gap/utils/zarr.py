@@ -183,7 +183,7 @@ class BaseZarrReader(BaseNetCDFReader):
             s3_mapper = fs.get_mapper(zarr_url)
         else:
             s3_mapper = fsspec.get_mapper(zarr_url, **s3_options)
-        
+
         drop_variables = []
         if source_file.metadata:
             drop_variables = source_file.metadata.get(

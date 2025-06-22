@@ -14,8 +14,6 @@ import pandas as pd
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
 from typing import Union, List, Tuple
-from django.core.files.storage import storages
-from storages.backends.s3boto3 import S3Boto3Storage
 
 import numpy as np
 import pytz

@@ -436,7 +436,7 @@ class DataRequestJobExecutor(BaseJobExecutor):
                         f"Error in building dataset reader: {e}",
                         exc_info=True
                     )
-        
+
         # prepare UserFile object
         user_file = self._get_user_file(location)
         if output_format == DatasetReaderOutputType.JSON:
