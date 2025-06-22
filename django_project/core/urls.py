@@ -29,7 +29,7 @@ urlpatterns = [
         name="api_key_list_create"
     ),
     path(
-        "api-keys/<uuid:key_id>/",
+        "api-keys/<str:key_id>/",
         APIKeyDestroy.as_view(),
         name="api_key_destroy"
     ),

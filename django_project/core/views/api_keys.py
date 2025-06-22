@@ -15,10 +15,11 @@ from core.serializers import APIKeySerializer
 
 class _Base(permissions.IsAuthenticated, generics.GenericAPIView):
     """Base class for API key views."""
+
     serializer_class = APIKeySerializer
 
     def get_queryset(self):
-        """Return the queryset of API keys for the authenticated user. """
+        """Return the queryset of API keys for the authenticated user."""
         return AuthToken.objects.filter(user=self.request.user)
 
 
@@ -49,9 +50,10 @@ class APIKeyListCreate(_Base, generics.ListCreateAPIView):
 
 
 class APIKeyDestroy(_Base, generics.DestroyAPIView):
-    """DELETE - revoke an API key by ID. """
+    """DELETE - revoke an API key by ID."""
 
     lookup_field = "pk"
+    lookup_url_kwarg = "key_id"
 
     def destroy(self, request, *args, **kwargs):
         """Revoke an API key by ID."""
