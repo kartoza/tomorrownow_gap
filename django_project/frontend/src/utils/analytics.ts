@@ -92,3 +92,10 @@ export const trackSectionEngagement = (sectionId: string, pageTitle: string, dur
     });
   }
 }
+
+export const socialAuthRedirect = (
+  provider: 'google' | 'github',
+): void => {
+  loginEvent(provider);            // analytics
+  window.location.href = `/accounts/${provider}/login/`;  // redirect
+};

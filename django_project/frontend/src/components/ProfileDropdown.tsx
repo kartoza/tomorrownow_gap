@@ -12,10 +12,11 @@ import {
   useDisclosure
 } from '@chakra-ui/react';
 // import { ChevronDownIcon, LogOutIcon, UserIcon, MailIcon } from 'lucide-react';
-import { FiChevronDown, FiLogOut } from "react-icons/fi";
+import { FiChevronDown, FiLogOut, FiKey } from "react-icons/fi";
 import { User } from '@/types';
 import { useNavigateWithEvent } from '@/hooks/useNavigateWithEvent';
-import { FiKey } from 'react-icons/fi';
+import { RootState } from '@/app/store';
+import { useSelector } from 'react-redux';
 
 interface ProfileDropdownProps {
   user: User;
@@ -34,11 +35,12 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({
   onProfileClick,
   ml = 0 // Default margin-left to 0
 }) => {
+  const { pages, isAdmin } = useSelector((state: RootState) => state.auth);
   const { open, setOpen, onToggle } = useDisclosure();
+  const navigate = useNavigateWithEvent();
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const fullName = `${user.first_name} ${user.last_name}`.trim();
-  const navigate = useNavigateWithEvent();
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -127,6 +129,29 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({
             </Box>
 
             <Separator marginY={1} />
+
+            {/* DCAS CSV (KALRO only) */}
+            {(isAdmin || pages.includes('dcas_csv')) && (
+              <Button
+                variant="ghost"
+                size="sm"
+                width="100%"
+                justifyContent="flex-start"
+                padding={3}
+                height="auto"
+                borderRadius="md"
+                onClick={() => {
+                  setOpen(false);
+                  navigate('/dcas-csv');
+                }}
+              >
+                <HStack gap={3} width="100%">
+                  <Text fontSize="sm" fontWeight="semibold">
+                    DCAS CSV
+                  </Text>
+                </HStack>
+              </Button>
+            )}
 
             <Button
               variant="solid"

@@ -13,7 +13,11 @@ import { openInNewTab } from '@/utils/url';
 import { APIDocsURL } from '@/utils/constants';
 import { RootState, AppDispatch } from '@/app/store';
 import ProfileDropdown from './ProfileDropdown';
-import { logoutUser, fetchUserInfo } from '@/features/auth/authSlice';
+import {
+    logoutUser,
+    fetchUserInfo,
+    fetchPermittedPages
+} from '@/features/auth/authSlice';
 import { useNavigateWithEvent } from '@/hooks/useNavigateWithEvent';
 import { logoutEvent } from '@/utils/analytics';
 
@@ -43,6 +47,12 @@ const Navigation: React.FC = () => {
             dispatch(fetchUserInfo())
         }
     }, [loading, hasInitialized, dispatch]);
+
+    useEffect(() => {
+        if (isAuthenticated) {
+          dispatch(fetchPermittedPages())
+        }
+      }, [isAuthenticated, dispatch])
 
     const handleMenuClick = (sectionId: string) => {
         // Check if we're on the landing page
