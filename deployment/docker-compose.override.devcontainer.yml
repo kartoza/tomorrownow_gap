@@ -21,7 +21,21 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '1.5'
+          memory: 4G
+    volumes:
+      - ../:/home/web/project
+      - ../django_project:/home/web/django_project
+      - ./volumes/static:/home/web/static
+
+  dataworker:
+    image: kartoza/${COMPOSE_PROJECT_NAME:-django_project}_dev
+    build:
+      context: ../
+      dockerfile: deployment/docker/Dockerfile
+      target: vscode
+    deploy:
+      resources:
+        limits:
           memory: 4G
     volumes:
       - ../:/home/web/project
