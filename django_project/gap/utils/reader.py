@@ -526,6 +526,27 @@ class DatasetReaderValue:
         output_url = f'user_data/{uuid.uuid4().hex}{suffix}'
         return output_url
 
+    def _upload_to_s3(self, tmp_file_path: str, suffix: str):
+        """Upload file to S3."""
+        remote_file_path = self._get_remote_file_path(suffix)
+        transfer_config = Preferences.user_file_s3_transfer_config()
+        content_type = ''
+        if suffix == '.csv':
+            content_type = 'text/csv'
+        elif suffix == '.txt':
+            content_type = 'text/plain'
+        elif suffix == '.json':
+            content_type = 'application/json'
+        elif suffix == '.nc':
+            content_type = 'application/x-netcdf'
+        output_url = ObjectStorageManager.upload_file_to_s3(
+            tmp_file_path, transfer_config, remote_file_path,
+            content_type=content_type
+        )
+        # save file size output
+        self.output_metadata['size'] = os.path.getsize(tmp_file_path)
+        return output_url
+
     def to_netcdf_stream(self):
         """Generate netcdf stream."""
         with (
@@ -547,8 +568,6 @@ class DatasetReaderValue:
 
     def to_netcdf(self):
         """Generate netcdf file to object storage."""
-        remote_file_path = self._get_remote_file_path('.nc')
-
         with (
             tempfile.NamedTemporaryFile(
                 suffix=".nc", delete=True, delete_on_close=False)
@@ -558,14 +577,9 @@ class DatasetReaderValue:
                 compute=False
             )
             execute_dask_compute(x, is_api=True)
-            self.output_metadata['size'] = os.path.getsize(tmp_file.name)
-            # upload to s3
-            transfer_config = (
-                Preferences.user_file_s3_transfer_config()
-            )
-            output_url = ObjectStorageManager.upload_file_to_s3(
-                tmp_file.name, transfer_config, remote_file_path,
-                content_type='application/x-netcdf'
+
+            output_url = self._upload_to_s3(
+                tmp_file.name, '.nc'
             )
 
         return output_url
@@ -737,7 +751,6 @@ class DatasetReaderValue:
         )
         write_headers = True
         output_url = None
-        remote_file_path = self._get_remote_file_path(suffix)
         with (
             tempfile.NamedTemporaryFile(
                 suffix=suffix, delete=True, delete_on_close=False)
@@ -795,17 +808,8 @@ class DatasetReaderValue:
                     if write_headers:
                         write_headers = False
 
-            self.output_metadata['size'] = os.path.getsize(tmp_file.name)
-            # save to s3
-            transfer_config = (
-                Preferences.user_file_s3_transfer_config()
-            )
-            output_url = ObjectStorageManager.upload_file_to_s3(
-                tmp_file.name, transfer_config, remote_file_path,
-                content_type=(
-                    'text/csv' if suffix == '.csv' else
-                    'text/plain'
-                )
+            output_url = self._upload_to_s3(
+                tmp_file.name, suffix
             )
 
         return output_url

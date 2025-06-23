@@ -406,6 +406,15 @@ class MeasurementAPI(GAPAPILoggingMixin, APIView):
                         f'for {product_type}!'
                     )
                 })
+        elif output_format not in [
+            DatasetReaderOutputType.CSV,
+            DatasetReaderOutputType.ASCII
+        ]:
+            raise ValidationError({
+                'Invalid Request Parameter': (
+                    f'Output format {output_format} is not supported!'
+                )
+            })
 
     def validate_dataset_attributes(self, dataset_attributes, output_format):
         """Validate the attributes for the query.
@@ -618,7 +627,14 @@ class MeasurementAPI(GAPAPILoggingMixin, APIView):
         )
         job.save()
 
-        executor = DataRequestJobExecutor(job)
+        is_execute_immediately = (
+            self._preferences.job_executor_config.get(
+                'execute_immediately', False
+            )
+        )
+        executor = DataRequestJobExecutor(
+            job, is_main_executor=is_execute_immediately
+        )
         executor.run()
 
         if is_async:
@@ -641,6 +657,13 @@ class MeasurementAPI(GAPAPILoggingMixin, APIView):
             )
 
         if output_format == DatasetReaderOutputType.JSON:
+            if job.output_json is None:
+                return Response(
+                    status=404,
+                    data={
+                        'detail': 'No weather data is found for given queries.'
+                    }
+                )
             response = Response(
                 status=200,
                 data=job.output_json

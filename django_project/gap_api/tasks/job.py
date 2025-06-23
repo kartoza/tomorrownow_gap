@@ -82,11 +82,18 @@ class BaseJobExecutor:
 
     def _pre_run(self):
         """Pre-run setup for the job."""
-        pass
+        # update job status to running
+        self.job.status = TaskStatus.RUNNING
+        self.job.started_at = timezone.now()
+        self.job.finished_at = None
+        self.job.errors = None
+        self.job.save()
 
     def _post_run(self):
         """Post-run cleanup for the job."""
-        pass
+        self.job.status = TaskStatus.COMPLETED
+        self.job.finished_at = timezone.now()
+        self.job.save()
 
     def _submit_job(self):
         """Submit job to celery task."""
@@ -114,14 +121,30 @@ class BaseJobExecutor:
         )
         return False
 
+    def _handle_run(self):
+        """Handle the run method for the job executor."""
+        try:
+            self._pre_run()
+            self._run()
+            self._post_run()
+        except Exception as e:
+            logger.error(
+                f"Error during job execution {self.job.uuid}: {e}",
+                exc_info=True
+            )
+            self.job.status = TaskStatus.STOPPED
+            self.job.errors = str(e)
+            self.job.finished_at = timezone.now()
+            self.job.save()
+            raise e
+
     def run(self):
         """Run the job execution."""
-        self._pre_run()
         try:
             if self.is_main_executor:
-                self._run()
+                self._handle_run()
             elif not self.job.is_async:
-                self._run()
+                self._handle_run()
             else:
                 self._submit_job()
                 if self.job.wait_type > 0:
@@ -136,8 +159,6 @@ class BaseJobExecutor:
                 exc_info=True
             )
             raise e
-        finally:
-            self._post_run()
 
 
 class DataRequestJobExecutor(BaseJobExecutor):
@@ -478,13 +499,6 @@ def execute_data_request_job(job_id):
     if job.job_type != JobType.DATA_REQUEST:
         raise ValueError("Job type is not Data Request")
 
-    # update job status to running
-    job.status = TaskStatus.RUNNING
-    job.started_at = timezone.now()
-    job.finished_at = None
-    job.errors = None
-    job.save()
-
     try:
         executor = DataRequestJobExecutor(job, is_main_executor=True)
         executor.run()
@@ -494,7 +508,3 @@ def execute_data_request_job(job_id):
         job.finished_at = timezone.now()
         job.save()
         raise e
-    else:
-        job.status = TaskStatus.COMPLETED
-        job.finished_at = timezone.now()
-        job.save()
