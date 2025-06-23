@@ -47,6 +47,7 @@ class BaseJobExecutor:
     DEFAULT_WAIT_SLEEP = 0.5  # 0.5 seconds
 
     def __init__(self, job: Job, is_main_executor=False):
+        """Initialize the job executor."""
         self.job = job
         self.job_config = Preferences.load().job_executor_config.get(
             job.job_type, {}
@@ -146,6 +147,7 @@ class DataRequestJobExecutor(BaseJobExecutor):
     time_format = '%H:%M:%S'
 
     def __init__(self, job: Job, is_main_executor=False):
+        """Initialize the job executor."""
         super().__init__(job, is_main_executor)
         self._preferences = Preferences.load()
 
