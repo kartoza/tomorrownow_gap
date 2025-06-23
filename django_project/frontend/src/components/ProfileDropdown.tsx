@@ -154,21 +154,23 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({
             )}
 
             <Button
-              variant="solid"
-              w="full"
+              variant="ghost"
+              size="sm"
+              width="100%"
               justifyContent="flex-start"
-              p={3}
-              h="auto"
+              padding={3}
+              height="auto"
               borderRadius="md"
-              _hover={{ bg: 'gray.50' }}
               onClick={() => {
                 setOpen(false);              // close dropdown
                 navigate('/api-keys');       // go to the page
               }}
             >
               <HStack gap={3} w="full">
-                <FiKey size={8} />          {/* import { FiKey } from 'react-icons/fi' */}
-                <Text>API&nbsp;Keys</Text>
+                <FiKey size={6} />          {/* import { FiKey } from 'react-icons/fi' */}
+                <Text fontSize="sm" fontWeight="semibold">
+                  API&nbsp;Keys
+                </Text>
               </HStack>
             </Button>
 

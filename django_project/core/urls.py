@@ -7,7 +7,6 @@ from django.urls import path, include, re_path
 
 from core.views import (
     PreferencesRedirectView, FlowerProxyView,
-    APIKeyListCreate, APIKeyDestroy
 )
 from frontend.api_views.auth.login import (
     LoginView as CustomLoginView, LogoutView as CustomLogoutView
@@ -21,17 +20,6 @@ urlpatterns = [
     re_path(
         r'^admin/gap/preferences/$', PreferencesRedirectView.as_view(),
         name='index'
-    ),
-    # API Key management
-    path(
-        "api-keys/",
-        APIKeyListCreate.as_view(),
-        name="api_key_list_create"
-    ),
-    path(
-        "api-keys/<str:key_id>/",
-        APIKeyDestroy.as_view(),
-        name="api_key_destroy"
     ),
     FlowerProxyView.as_url(),
     path(

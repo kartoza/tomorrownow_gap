@@ -68,15 +68,15 @@ export default function ApiKeys() {
       },
     });
     if (!res.ok) {
-      toaster({ title: 'Generate failed', status: 'error' });
+      toaster.create({ title: 'Generate failed', status: 'error' });
       return;
     }
     const json = await res.json();
     setValue(json.token);
     copy();
-    toaster({
+    toaster.create({
       title: 'Copied to clipboard',
-      status: 'success',
+      type: 'success',
       duration: 5000,
     });
 
@@ -100,7 +100,12 @@ export default function ApiKeys() {
       },
     });
     setKeys(prev => prev.filter(k => k.id !== id));
-    toaster({ title: 'API key revoked', status: 'info', duration: 5000 });
+    toaster.create(
+      {
+        title: 'API key revoked',
+        type: 'success',
+        duration: 5000
+      });
   };
 
   useEffect(() => { void fetchKeys(); }, []);
@@ -204,9 +209,9 @@ export default function ApiKeys() {
                 mr={3}
                 onClick={() => {
                   copy();
-                  toaster({
+                  toaster.create({
                     title: 'Copied again',
-                    status: 'success',
+                    type: 'success',
                     duration: 3000,
                   });
                 }}
