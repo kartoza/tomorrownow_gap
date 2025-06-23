@@ -29,6 +29,7 @@ interface NavItem {
 
 const Navigation: React.FC = () => {
     const { loading, user, isAuthenticated, hasInitialized } = useSelector((s: RootState) => s.auth);
+    const { pages, isAdmin } = useSelector((s: RootState) => s.auth);
     const { open, onToggle } = useDisclosure();
     const { activeSection } = useScrollContext();
     const dispatch = useDispatch<AppDispatch>();
@@ -205,6 +206,29 @@ const Navigation: React.FC = () => {
                                         </Box>
 
                                         <Separator marginY={1} />
+
+                                        {/* DCAS CSV (KALRO only) */}
+                                        {(isAdmin || pages.includes('dcas_csv')) && (
+                                            <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            width="100%"
+                                            justifyContent="flex-start"
+                                            padding={3}
+                                            height="auto"
+                                            borderRadius="md"
+                                            onClick={() => {
+                                                onToggle();
+                                                navigate('/dcas-csv');
+                                            }}
+                                            >
+                                            <HStack gap={3} width="100%">
+                                                <Text fontSize="sm" fontWeight="semibold">
+                                                DCAS CSV
+                                                </Text>
+                                            </HStack>
+                                            </Button>
+                                        )}
                             
                                         {/* Logout Menu Item */}
                                         <Button
