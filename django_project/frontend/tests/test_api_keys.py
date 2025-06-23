@@ -21,24 +21,22 @@ class APIKeyTests(APITestCase):
     """
 
     def setUp(self):
-        # use APIClient + force_authenticate to run as self.user
+        """Set up the test client and a user."""
         self.client = APIClient()
-        # renamed from 'alice' to 'test' per request
         self.user = User.objects.create_user(
             username='test', password='secret123'
         )
         self.client.force_authenticate(user=self.user)
-
         self.list_url = reverse('api_key_list_create')
 
     def test_list_keys_empty(self):
-        """GET initially returns an empty list"""
+        """GET initially returns an empty list."""
         response = self.client.get(self.list_url)
         assert response.status_code == status.HTTP_200_OK
         assert response.json() == []
 
     def test_create_key_returns_metadata_and_token(self):
-        """POST creates a new key and returns id, token, created, expiry"""
+        """POST creates a new key and returns id, token, created, expiry."""
         response = self.client.post(self.list_url, {}, format='json')
         assert response.status_code == status.HTTP_201_CREATED
         data = response.json()
@@ -51,35 +49,30 @@ class APIKeyTests(APITestCase):
         assert AuthToken.objects.filter(pk=data['id'], user=self.user).exists()
 
     def test_list_keys_shows_created_key(self):
-        """After POST, GET returns the key without plaintext token"""
+        """After POST, GET returns the key without plaintext token."""
         self.client.post(self.list_url, {}, format='json')
         items = self.client.get(self.list_url).json()
         assert len(items) == 1
         item = items[0]
-        # metadata only, no token field
         assert set(item.keys()) == {'id', 'created', 'expiry'}
 
     def test_delete_key_revokes_and_returns_detail(self):
-        """DELETE revokes the key and returns a confirmation"""
-        # create a key first
+        """DELETE revokes the key and returns a confirmation."""
         key_id = self.client.post(
             self.list_url, {}, format='json'
         ).json()['id']
         destroy_url = reverse('api_key_destroy', kwargs={'key_id': key_id})
-
         del_resp = self.client.delete(destroy_url)
         assert del_resp.status_code == status.HTTP_200_OK
         assert del_resp.json().get('detail') == 'API key revoked'
-        # now GET should return empty
         assert self.client.get(self.list_url).json() == []
 
     def test_cannot_delete_other_user_key(self):
-        """Users cannot delete tokens belonging to someone else"""
+        """Users cannot delete tokens belonging to someone else."""
         other = User.objects.create_user(username='bob', password='pw')
         other_instance, _ = AuthToken.objects.create(user=other)
         destroy_url = reverse(
             'api_key_destroy', kwargs={'key_id': other_instance.pk}
         )
-
         resp = self.client.delete(destroy_url)
         assert resp.status_code == status.HTTP_404_NOT_FOUND
