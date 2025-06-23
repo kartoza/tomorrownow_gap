@@ -128,7 +128,7 @@ class SalientNetCDFReader(BaseNetCDFReader):
     def __init__(
             self, dataset: Dataset, attributes: List[DatasetAttribute],
             location_input: DatasetReaderInput, start_date: datetime,
-            end_date: datetime
+            end_date: datetime, use_cache: bool = True
     ) -> None:
         """Initialize SalientNetCDFReader class.
 
@@ -144,7 +144,8 @@ class SalientNetCDFReader(BaseNetCDFReader):
         :type end_date: datetime
         """
         super().__init__(
-            dataset, attributes, location_input, start_date, end_date
+            dataset, attributes, location_input,
+            start_date, end_date, use_cache=use_cache
         )
         self.latest_forecast_date = None
 

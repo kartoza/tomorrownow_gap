@@ -60,7 +60,7 @@ class CBAMNetCDFReader(BaseNetCDFReader):
     def __init__(
             self, dataset: Dataset, attributes: List[DatasetAttribute],
             location_input: DatasetReaderInput, start_date: datetime,
-            end_date: datetime
+            end_date: datetime, use_cache: bool = True
     ) -> None:
         """Initialize CBAMNetCDFReader class.
 
@@ -76,7 +76,8 @@ class CBAMNetCDFReader(BaseNetCDFReader):
         :type end_date: datetime
         """
         super().__init__(
-            dataset, attributes, location_input, start_date, end_date
+            dataset, attributes, location_input,
+            start_date, end_date, use_cache=use_cache
         )
 
     def read_historical_data(self, start_date: datetime, end_date: datetime):
