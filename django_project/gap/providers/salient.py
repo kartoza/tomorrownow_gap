@@ -128,7 +128,7 @@ class SalientNetCDFReader(BaseNetCDFReader):
     def __init__(
             self, dataset: Dataset, attributes: List[DatasetAttribute],
             location_input: DatasetReaderInput, start_date: datetime,
-            end_date: datetime
+            end_date: datetime, use_cache: bool = True
     ) -> None:
         """Initialize SalientNetCDFReader class.
 
@@ -144,7 +144,8 @@ class SalientNetCDFReader(BaseNetCDFReader):
         :type end_date: datetime
         """
         super().__init__(
-            dataset, attributes, location_input, start_date, end_date
+            dataset, attributes, location_input,
+            start_date, end_date, use_cache=use_cache
         )
         self.latest_forecast_date = None
 
@@ -269,11 +270,13 @@ class SalientZarrReader(BaseZarrReader, SalientNetCDFReader):
             self, dataset: Dataset, attributes: List[DatasetAttribute],
             location_input: DatasetReaderInput, start_date: datetime,
             end_date: datetime,
+            use_cache: bool = True,
             forecast_date: datetime = None
     ) -> None:
         """Initialize SalientZarrReader class."""
         super().__init__(
-            dataset, attributes, location_input, start_date, end_date
+            dataset, attributes, location_input, start_date, end_date,
+            use_cache=use_cache
         )
         self.request_forecast_date = forecast_date
         if self.request_forecast_date:
@@ -523,5 +526,5 @@ class SalientReaderBuilder(BaseReaderBuilder):
         return SalientZarrReader(
             self.dataset, self.attributes, self.location_input,
             self.start_date, self.end_date,
-            forecast_date=self.forecast_date
+            forecast_date=self.forecast_date, use_cache=self.use_cache
         )

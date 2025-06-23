@@ -208,7 +208,11 @@ class ObservationReaderValue(DatasetReaderValue):
                 sep=separator
             )
 
-    def to_csv(self, suffix='.csv', separator=','):
+    def to_csv(
+        self, suffix='.csv', separator=',',
+        date_chunk_size=None, lat_chunk_size=None,
+        lon_chunk_size=None
+    ):
         """Generate csv file to object storage."""
         headers, _ = self._get_headers(use_station_id=True)
 
