@@ -7,7 +7,6 @@ Tomorrow Now GAP.
 
 import json
 import duckdb
-import uuid
 import numpy as np
 from _collections_abc import dict_values
 from datetime import datetime
