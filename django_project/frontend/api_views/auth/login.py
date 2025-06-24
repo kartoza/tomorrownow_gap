@@ -11,6 +11,7 @@ from rest_framework.permissions import (
 )
 
 from gap.models import UserProfile
+from frontend.models import PagePermission
 
 
 class LoginView(APIView):
@@ -39,7 +40,8 @@ class LoginView(APIView):
                             "last_name": user.last_name,
                             "is_staff": user.is_staff,
                             "is_superuser": user.is_superuser
-                        }
+                        },
+                        "pages": PagePermission.get_page_permissions(user)
                     },
                     status=status.HTTP_200_OK
                 )

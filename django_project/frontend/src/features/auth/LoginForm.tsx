@@ -28,6 +28,7 @@ import { loginEvent, socialAuthRedirect } from "@/utils/analytics";
 import { useNavigateWithEvent } from "@/hooks/useNavigateWithEvent";
 import { useGapContext } from "@/context/GapContext";
 import { AiOutlineEye, AiOutlineEyeInvisible } from "react-icons/ai";
+import { LocationState } from "@/types";
 
 
 interface LoginFormProps {
@@ -46,7 +47,12 @@ const LoginForm: React.FC<LoginFormProps> = () => {
 
     const dispatch = useDispatch<AppDispatch>();
     const { loading, token, message,error } = useSelector((s: RootState) => s.auth);
-    const { search } = useLocation();
+    const { search, state } = useLocation();
+
+    // Get the page user was trying to access before login
+    const locationState = state as LocationState | null;
+    const from = locationState?.from?.pathname || '/';
+
     const params = new URLSearchParams(search);
     const prevType = useRef<FormType>(formType);
 
@@ -91,8 +97,13 @@ const LoginForm: React.FC<LoginFormProps> = () => {
                     description: "You have successfully logged in.",
                     type: "success"
                 });
-                // login successful, redirect to home
-                navigate("/", null, true);
+                if (from) {
+                    // If there is a previous page, navigate there
+                    navigate(from, null, true, { replace: true });
+                } else {
+                    // login successful, redirect to home
+                    navigate("/", null, true, { replace: true });
+                }
             }
             break;
         case "signup":
