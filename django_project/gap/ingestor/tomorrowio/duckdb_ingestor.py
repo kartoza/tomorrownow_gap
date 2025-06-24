@@ -292,7 +292,7 @@ class TioShortTermDuckDBIngestor(TioShortTermIngestor):
                 'country': 'All Countries',
                 'queryset': Grid.objects.all()
             })
-        
+
         # process for each country queryset
         for country_qs in queryset_list:
             country = country_qs['country']
