@@ -14,6 +14,7 @@ import LandingPage from '@/pages/LandingPage'
 import LoginPage from '@/pages/LoginPage'
 import SignupPage from '@/pages/SignupPage'
 import DcasCsvList from '@/pages/DcasCsvList'
+import DataFormsPage from '@/pages/DataFormsPage'
 
 
 const ErrorPage = () => (
@@ -98,5 +99,16 @@ export const router = createBrowserRouter([
         element: <DcasCsvList />,
       }
     ]
-  }
+  },
+  {
+    path: "/data-forms",
+    element: <MainLayout />,
+    errorElement: <ErrorPage />,
+    children: [
+      {
+        index: true,
+        element: <DataFormsPage />,
+      }
+    ]
+  },
 ])
