@@ -706,3 +706,124 @@ class MeasurementAPI(GAPAPILoggingMixin, APIView):
         self._preferences = Preferences.load()
 
         return self.get_response_data()
+
+
+class JobStatusAPI(APIView):
+    """API class for job status."""
+
+    permission_classes = [IsAuthenticated]
+    throttle_classes = [CounterSlidingWindowThrottle]
+    api_parameters = [
+        openapi.Parameter(
+            'job_id', openapi.IN_PATH,
+            required=True,
+            description='Job ID',
+            type=openapi.TYPE_STRING
+        )
+    ]
+
+    @swagger_auto_schema(
+        operation_id='get-job-status',
+        operation_description=(
+            "Fetch the status of a job by its ID."
+        ),
+        tags=[ApiTag.Measurement],
+        manual_parameters=[
+            *api_parameters
+        ],
+        responses={
+            200: openapi.Schema(
+                description=(
+                    'Job status information'
+                ),
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    'job_id': openapi.Schema(
+                        type=openapi.TYPE_STRING,
+                        description='The ID of the job'
+                    ),
+                    'status': openapi.Schema(
+                        type=openapi.TYPE_STRING,
+                        description='Current status of the job'
+                    ),
+                    'errors': openapi.Schema(
+                        type=openapi.TYPE_ARRAY,
+                        items=openapi.Items(type=openapi.TYPE_STRING),
+                        description='List of errors if any'
+                    ),
+                    'url': openapi.Schema(
+                        type=openapi.TYPE_STRING,
+                        description=(
+                            'URL to access the output file if available'
+                        )
+                    ),
+                    'data': openapi.Schema(
+                        type=openapi.TYPE_OBJECT,
+                        description=(
+                            'JSON Data if the job has completed successfully'
+                        )
+                    )
+                }
+            ),
+            400: APIErrorSerializer
+        }
+    )
+    def get(self, request, *args, **kwargs):
+        """Fetch job status by Job ID."""
+        job_id = kwargs.get('job_id', None)
+        if job_id is None:
+            return Response(
+                status=400,
+                data={
+                    'Invalid Request Parameter': 'Job ID is required.'
+                }
+            )
+
+        try:
+            job_query_filter = {
+                'uuid': job_id
+            }
+            if not request.user.is_superuser:
+                job_query_filter['user'] = request.user
+            job = Job.objects.get(**job_query_filter)
+        except Job.DoesNotExist:
+            return Response(
+                status=404,
+                data={
+                    'detail': 'Job not found.'
+                }
+            )
+
+        if job.status not in [TaskStatus.COMPLETED]:
+            return Response(
+                status=200,
+                data={
+                    'job_id': str(job.uuid),
+                    'status': job.status,
+                    'errors': job.errors,
+                    'url': None,
+                    'data': None
+                }
+            )
+
+        response_data = {
+            'job_id': str(job.uuid),
+            'status': job.status,
+            'errors': job.errors,
+            'url': None,
+            'data': None
+        }
+
+        if job.output_file:
+            response_data['url'] = job.output_file.generate_url()
+            if settings.DEBUG:
+                response_data['url'] = response_data['url'].replace(
+                    "http://minio:9000", "http://localhost:9010"
+                )
+        else:
+            response_data['data'] = job.output_json
+
+        return Response(
+            status=200,
+            data=response_data
+        )
