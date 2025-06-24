@@ -1,12 +1,14 @@
 import { createBrowserRouter } from 'react-router-dom'
 import { MainLayout } from '@/layouts/MainLayout'
 import { AuthLayout } from '@/layouts/AuthLayout'
+import { MapLayout } from '@/layouts/MapLayout'
 import LandingPage from '@/pages/LandingPage'
 import LoginPage from '@/pages/LoginPage'
 import SignupPage from '@/pages/SignupPage'
 import DcasCsvList from '@/pages/DcasCsvList'
 import ErrorPage from '@/pages/ErrorPage'
 import ProtectedRoute from '@/components/ProtectedRoute'
+import {SearchForm} from '@/pages/DataBrowserPage'
 
 
 export const router = createBrowserRouter([
@@ -55,6 +57,21 @@ export const router = createBrowserRouter([
       {
         index: true,
         element: <DcasCsvList />,
+      }
+    ]
+  },
+  {
+    path: "/data-browser",
+    element: (
+      <ProtectedRoute>
+        <MapLayout />
+      </ProtectedRoute>
+    ),
+    errorElement: <ErrorPage />,
+    children: [
+      {
+        index: true,
+        element: <SearchForm />,
       }
     ]
   }
