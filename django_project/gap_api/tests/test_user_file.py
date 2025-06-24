@@ -139,7 +139,10 @@ class TestUserFileAPI(CommonMeasurementAPITest):
 
     def tearDown(self):
         """Cleanup resources."""
-        remove_s3_folder(self.s3_storage, 'dev/user_data')
+        try:
+            remove_s3_folder(self.s3_storage, 'dev/user_data')
+        except Exception as e:
+            print(f"Error during S3 cleanup: {e}")
         super().tearDown()
 
     def test_cleanup(self):

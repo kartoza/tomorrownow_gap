@@ -246,6 +246,7 @@ class JobAdmin(admin.ModelAdmin):
     ordering = ('-submitted_on',)
     list_display = (
         'user', 'status', 'started_at', 'finished_at', 'get_size',
+        'uuid',
     )
 
     def get_size(self, obj: Job):
