@@ -317,7 +317,9 @@ class BaseZarrIngestor(BaseIngestor):
         return all(arr[i] + 1 == arr[i + 1] for i in range(len(arr) - 1))
 
     def _transform_coordinates_array(
-            self, coord_arr, coord_type) -> List[CoordMapping]:
+        self, coord_arr, coord_type,
+        tolerance = None, fix_incremented: bool = False
+    ) -> List[CoordMapping]:
         """Find nearest in Zarr for array of lat/lon/date.
 
         :param coord_arr: array of lat/lon/date
@@ -330,23 +332,34 @@ class BaseZarrIngestor(BaseIngestor):
         # open existing zarr
         ds = self._open_zarr_dataset()
 
+        tolerance = tolerance or self.reindex_tolerance
         # find nearest coordinate for each item
+        prev_coord_idx = None
         results: List[CoordMapping] = []
         for target_coord in coord_arr:
-            if coord_type == 'lat':
-                nearest_coord = ds['lat'].sel(
-                    lat=target_coord, method='nearest',
-                    tolerance=self.reindex_tolerance
-                ).item()
-            elif coord_type == 'lon':
-                nearest_coord = ds['lon'].sel(
-                    lon=target_coord, method='nearest',
-                    tolerance=self.reindex_tolerance
+            if coord_type in ['lat', 'lon']:
+                nearest_coord = ds[coord_type].sel(
+                    **{coord_type: target_coord}, method='nearest',
+                    tolerance=tolerance
                 ).item()
             else:
                 nearest_coord = target_coord
 
             coord_idx = np.where(ds[coord_type].values == nearest_coord)[0][0]
+            if fix_incremented and prev_coord_idx is not None:
+                # if previous coordinate is not the same as current,
+                # we need to add the missing coordinate
+                if coord_idx != prev_coord_idx + 1:
+                    # add missing coordinate
+                    missing_coord = ds[coord_type].values[
+                        prev_coord_idx + 1:coord_idx
+                    ]
+                    for idx, mc in enumerate(missing_coord):
+                        results.append(
+                            CoordMapping(mc, prev_coord_idx + 1 + idx, mc)
+                        )
+            prev_coord_idx = coord_idx
+            # append result
             results.append(
                 CoordMapping(target_coord, coord_idx, nearest_coord)
             )
