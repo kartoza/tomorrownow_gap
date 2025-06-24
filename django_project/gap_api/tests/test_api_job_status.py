@@ -61,6 +61,7 @@ class TestJobStatusAPI(BaseAPIViewTest):
 
     @patch('gap_api.api_views.measurement.Job.objects.get')
     def test_get_job_status_exception(self, mock_get):
+        """Test retrieving job status with an exception."""
         mock_get.side_effect = Exception("Unexpected error")
         request = self.factory.get(self.url)
         request.user = self.user_1
