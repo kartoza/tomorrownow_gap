@@ -1,0 +1,72 @@
+[
+{
+    "model": "gap.gridset",
+    "pk": 1,
+    "fields": {
+        "name": "Kenya",
+        "description": "",
+        "country": 150,
+        "resolution": "4km",
+        "metadata": {},
+        "config": {
+            "reindex_tolerance": 0.01
+        }
+    }
+},
+{
+    "model": "gap.gridset",
+    "pk": 2,
+    "fields": {
+        "name": "South Sudan",
+        "description": "",
+        "country": 68,
+        "resolution": "4km",
+        "metadata": {},
+        "config": {
+            "reindex_tolerance": 0.01
+        }
+    }
+},
+{
+    "model": "gap.gridset",
+    "pk": 3,
+    "fields": {
+        "name": "Ethiopia",
+        "description": "",
+        "country": 113,
+        "resolution": "4km",
+        "metadata": {},
+        "config": {
+            "reindex_tolerance": 0.01
+        }
+    }
+},
+{
+    "model": "gap.gridset",
+    "pk": 4,
+    "fields": {
+        "name": "Zambia",
+        "description": "",
+        "country": 103,
+        "resolution": "4km",
+        "metadata": {},
+        "config": {
+            "reindex_tolerance": 0.1
+        }
+    }
+},
+{
+    "model": "gap.gridset",
+    "pk": 5,
+    "fields": {
+        "name": "Malawi",
+        "description": "",
+        "country": 2,
+        "resolution": "4km",
+        "metadata": {},
+        "config": {
+            "reindex_tolerance": 0.1
+        }
+    }
+}
+]
