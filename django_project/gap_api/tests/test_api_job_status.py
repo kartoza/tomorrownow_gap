@@ -12,7 +12,7 @@ from django.urls import reverse
 
 from core.tests.common import BaseAPIViewTest, FakeResolverMatchV1
 from core.models.background_task import TaskStatus
-from django_project.gap_api.factories import UserFileFactory
+from gap_api.factories import UserFileFactory
 from gap_api.models import Job
 from gap_api.api_views.measurement import JobStatusAPI
 
