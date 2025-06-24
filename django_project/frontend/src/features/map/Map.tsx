@@ -1,14 +1,13 @@
 import React, { useEffect, useRef } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { Box, Text } from '@chakra-ui/react';
-import maplibregl, {IControl} from 'maplibre-gl';
-import MapboxDraw from '@mapbox/mapbox-gl-draw';
+import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import '@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css';
 
 import { RootState } from '@/app/store';
-import { setDrawingMode, clearBoundingBox, setBoundingBox } from './mapSlice';
-import { BoundingBox, customDrawStyles } from './types';
+import { setDrawingMode, setBoundingBox } from './mapSlice';
+import { BboxDrawControl } from './BboxDrawControl';
 
 
 export const MapComponent: React.FC = () => {
@@ -19,7 +18,7 @@ export const MapComponent: React.FC = () => {
   
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
-  const draw = useRef<MapboxDraw | null>(null);
+  const bboxControl = useRef<BboxDrawControl | null>(null);
 
   useEffect(() => {
     if (!mapContainer.current || map.current) return;
@@ -49,154 +48,45 @@ export const MapComponent: React.FC = () => {
 
     map.current.addControl(new maplibregl.NavigationControl(), 'bottom-left');
 
-    // Initialize MapboxDraw
-    draw.current = new MapboxDraw({
-      styles: customDrawStyles,
-      displayControlsDefault: false,
-      controls: {
-        polygon: false,
-        line_string: false,
-        point: false,
-        trash: true,
-      }
-    });
-
-    // Simple rectangle drawing using map click events
-    let rectangleStartPoint: [number, number] | null = null;
-    let isDrawingRectangle = false;
-    let tempStartPointId: string | null = null;
-
-    const handleMapClick = (e: maplibregl.MapMouseEvent) => {
-      if (!isDrawingRectangle) return;
-
-      if (!rectangleStartPoint) {
-        // First click - set start point
-        rectangleStartPoint = [e.lngLat.lng, e.lngLat.lat];
-
-        // Add temporary point to show where user clicked
-        const tempPoint = {
-          type: 'Feature' as const,
-          properties: {
-            isTemporary: true
-          },
-          geometry: {
-            type: 'Point' as const,
-            coordinates: rectangleStartPoint
-          }
-        };
-        
-        const addedFeature = draw.current!.add(tempPoint);
-        if (addedFeature && addedFeature.length > 0) {
-          tempStartPointId = addedFeature[0];
-        }
-        
-        map.current!.getCanvas().style.cursor = 'crosshair';
-      } else {
-        // Second click - create rectangle
-        const endPoint: [number, number] = [e.lngLat.lng, e.lngLat.lat];
-        
-        // Create rectangle coordinates
-        const coords = [
-          [rectangleStartPoint[0], rectangleStartPoint[1]], // SW
-          [endPoint[0], rectangleStartPoint[1]],            // SE
-          [endPoint[0], endPoint[1]],                       // NE
-          [rectangleStartPoint[0], endPoint[1]],            // NW
-          [rectangleStartPoint[0], rectangleStartPoint[1]]  // Close the polygon
-        ];
-        
-        // Clear existing features and add rectangle
-        draw.current!.deleteAll();
-        draw.current!.add({
-          type: 'Feature',
-          properties: {},
-          geometry: {
-            type: 'Polygon',
-            coordinates: [coords]
-          }
-        });
-
-        // Calculate and dispatch bounding box
-        const bbox: BoundingBox = {
-          north: Math.max(rectangleStartPoint[1], endPoint[1]),
-          south: Math.min(rectangleStartPoint[1], endPoint[1]),
-          east: Math.max(rectangleStartPoint[0], endPoint[0]),
-          west: Math.min(rectangleStartPoint[0], endPoint[0]),
-        };
-        
+    // Initialize BboxDrawControl with callbacks
+    bboxControl.current = new BboxDrawControl({
+      onBoundingBoxChange: (bbox) => {
         dispatch(setBoundingBox(bbox));
-        dispatch(setDrawingMode(false));
-        
-        // Reset drawing state
-        rectangleStartPoint = null;
-        isDrawingRectangle = false;
-        tempStartPointId = null;
-        map.current!.getCanvas().style.cursor = '';
+      },
+      onDrawingModeChange: (drawing) => {
+        dispatch(setDrawingMode(drawing));
       }
-    };
-
-    // Store the drawing state handler for cleanup
-    (map.current as any)._rectangleHandler = {
-      handleMapClick,
-      setDrawingState: (drawing: boolean) => {
-        isDrawingRectangle = drawing;
-        rectangleStartPoint = null;
-        tempStartPointId = null;
-        if (!drawing) {
-          map.current!.getCanvas().style.cursor = '';
-        }
-      }
-    };
-
-    // Add MapboxDraw control container classes 
-    const originalOnAdd = draw.current.onAdd.bind(draw.current);
-    draw.current.onAdd = (map: any) => {
-        const controlContainer = originalOnAdd(map);
-        controlContainer.classList.add('maplibregl-ctrl', 'maplibregl-ctrl-group');
-        return controlContainer;
-    };
-
-    // eslint-disable-next-line no-type-assertion/no-type-assertion
-    const typeFudgedDrawControl = draw.current as unknown as IControl;
-    map.current.addControl(typeFudgedDrawControl, 'bottom-left');
-
-    // Add map click handler for rectangle drawing
-    map.current.on('click', (map.current as any)._rectangleHandler.handleMapClick);
-
-    // Listen for draw delete events
-    map.current.on('draw.delete', () => {
-      dispatch(clearBoundingBox());
     });
+    // Add the control to the map
+    map.current.addControl(bboxControl.current, 'bottom-left');
 
     return () => {
       if (map.current) {
+        if (bboxControl.current) {
+          map.current.removeControl(bboxControl.current);
+          bboxControl.current = null;
+        }
         map.current.remove();
         map.current = null;
       }
     };
   }, []);
 
-  // Handle drawing mode changes from Redux
+   // Handle drawing mode changes from Redux
   useEffect(() => {
-    if (map.current && (map.current as any)._rectangleHandler) {
-      const handler = (map.current as any)._rectangleHandler;
-      
-      if (isDrawingMode) {
-        // Clear existing drawings first
-        draw.current?.deleteAll();
-        // Set drawing state
-        handler.setDrawingState(true);
-        map.current.getCanvas().style.cursor = 'crosshair';
-      } else {
-        // Exit drawing mode
-        handler.setDrawingState(false);
+    if (bboxControl.current) {
+      if (isDrawingMode && !bboxControl.current.isDrawing()) {
+        bboxControl.current.startDrawingMode();
+      } else if (!isDrawingMode && bboxControl.current.isDrawing()) {
+        bboxControl.current.exitDrawingMode();
       }
     }
   }, [isDrawingMode]);
 
   // Handle bounding box clearing from Redux
   useEffect(() => {
-    if (draw.current && !boundingBox) {
-      draw.current.deleteAll();
+    if (bboxControl.current && !boundingBox) {
+      bboxControl.current.clearBoundingBox();
     }
   }, [boundingBox]);
 
