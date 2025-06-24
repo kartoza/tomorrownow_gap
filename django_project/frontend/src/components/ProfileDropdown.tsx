@@ -154,6 +154,23 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({
               </Button>
             )}
 
+            {/* Data Forms */}
+            <Button
+              variant="ghost"
+              size="sm"
+              w="100%"
+              justifyContent="flex-start"
+              p={3}
+              onClick={() => {
+                setOpen(false);
+                navigate('/data-forms');
+              }}
+            >
+              <Text fontSize="sm" fontWeight="semibold">Data Forms</Text>
+            </Button>
+
+            <Separator my={1} />
+
             {/* Logout Menu Item */}
             <Button
               variant="ghost"
