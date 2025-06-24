@@ -31,7 +31,8 @@ from gap.models import (
     CollectorSession, Grid,
     DatasetTimeStep, Preferences,
     IngestorSessionStatus,
-    Dataset, DatasetStore
+    Dataset, DatasetStore,
+    GridSet
 )
 from gap.ingestor.tomorrowio.json_ingestor import TioShortTermIngestor
 
@@ -321,12 +322,26 @@ class TioShortTermDuckDBIngestor(TioShortTermIngestor):
             lat_arr = sorted(lat_arr)
             lon_arr = sorted(lon_arr)
 
+            # find reindex_tolerance config from GridSet
+            reindex_tolerance = None
+            grid_set = GridSet.objects.filter(
+                country__name=country
+            ).first()
+            if grid_set:
+                reindex_tolerance = grid_set.config.get(
+                    'reindex_tolerance', None
+                )
+
             # transform lat lon arrays
             lat_arr = self._transform_coordinates_array(
-                lat_arr, 'lat', fix_incremented=True
+                lat_arr, 'lat',
+                tolerance=reindex_tolerance,
+                fix_incremented=True
             )
             lon_arr = self._transform_coordinates_array(
-                lon_arr, 'lon', fix_incremented=True
+                lon_arr, 'lon',
+                tolerance=reindex_tolerance,
+                fix_incremented=True
             )
 
             lat_indices = [lat.nearest_idx for lat in lat_arr]
