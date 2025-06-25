@@ -493,7 +493,20 @@ class AsyncCollector(BaseIngestor):
         # check existing grid ids
         existing_grid_ids = self._get_existing_grid_ids(con)
 
-        _grids = Grid.objects.annotate(
+        # query grids by countries
+        countries = self.get_config(
+            'countries', None
+        )
+        _grids = Grid.objects.all()
+        if countries:
+            logger.info(
+                f"Filtering grids by countries: {countries}"
+            )
+            _grids = _grids.filter(
+                country__name__in=countries
+            )
+
+        _grids = _grids.annotate(
                 centroid=Centroid('geometry')
         ).annotate(
             lat=ST_Y('centroid'),

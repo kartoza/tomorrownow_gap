@@ -79,7 +79,8 @@ class BaseNetCDFReader(BaseDatasetReader):
     def __init__(
             self, dataset: Dataset, attributes: List[DatasetAttribute],
             location_input: DatasetReaderInput,
-            start_date: datetime, end_date: datetime
+            start_date: datetime, end_date: datetime,
+            use_cache: bool = True
     ) -> None:
         """Initialize BaseNetCDFReader class.
 
@@ -98,6 +99,7 @@ class BaseNetCDFReader(BaseDatasetReader):
             dataset, attributes, location_input, start_date, end_date
         )
         self.xrDatasets = []
+        self.use_cache = use_cache
 
     def _get_fs(self, s3: dict):
         return fsspec.filesystem(

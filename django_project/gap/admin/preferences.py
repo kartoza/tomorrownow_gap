@@ -85,5 +85,12 @@ class PreferencesAdmin(admin.ModelAdmin):
                     "social_auth_providers",
                 )
             }
+        ),
+        (
+            'Job Execution', {
+                'fields': (
+                    'job_executor_config',
+                )
+            }
         )
     )

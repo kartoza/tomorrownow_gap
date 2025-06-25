@@ -34,3 +34,27 @@ class Grid(Definition):
         return Grid.objects.filter(
             geometry__intersects=point
         )
+
+
+class GridSet(Definition):
+    """Model representing a set of grids."""
+
+    country = models.ForeignKey(
+        Country, on_delete=models.CASCADE
+    )
+    resolution = models.CharField(
+        max_length=50,
+        help_text="Resolution of the grid set, e.g., '1km', '10km'."
+    )
+    metadata = models.JSONField(
+        default=dict,
+        blank=True,
+        null=True,
+        help_text="Additional metadata for the grid set."
+    )
+    config = models.JSONField(
+        default=dict,
+        blank=True,
+        null=True,
+        help_text="Configuration settings for the grid set."
+    )

@@ -18,7 +18,8 @@ class BaseReaderBuilder:
     def __init__(
         self, dataset: Dataset, attributes: List[DatasetAttribute],
         location_input: DatasetReaderInput,
-        start_date: datetime, end_date: datetime
+        start_date: datetime, end_date: datetime,
+        use_cache: bool = True
     ):
         """Initialize BaseReaderBuilder class."""
         self.dataset = dataset
@@ -26,6 +27,9 @@ class BaseReaderBuilder:
         self.location_input = location_input
         self.start_date = start_date
         self.end_date = end_date
+        # TODO: implement caching logic
+        # without race conditions
+        self.use_cache = use_cache
 
     def build(self) -> BaseDatasetReader:
         """Build a new Dataset Reader."""

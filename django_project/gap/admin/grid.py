@@ -7,7 +7,7 @@ Tomorrow Now GAP.
 
 from django.contrib import admin
 
-from gap.models import Grid
+from gap.models import Grid, GridSet
 
 
 @admin.register(Grid)
@@ -26,3 +26,12 @@ class GridAdmin(admin.ModelAdmin):
     def longitude(self, obj: Grid):
         """Longitude of Grid."""
         return obj.geometry.centroid.x
+
+
+@admin.register(GridSet)
+class GridSetAdmin(admin.ModelAdmin):
+    """Admin for GridSet."""
+
+    list_display = (
+        'country', 'resolution'
+    )

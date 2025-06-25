@@ -1,20 +1,9 @@
 import { createSlice, PayloadAction, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios';
-import { setCSRFToken } from '../../utils/csrfUtils'
-import { User } from '../../types';
-import { AppDispatch } from '../../app/store';
-
-interface AuthState {
-  user: User | null;
-  token: string | null;
-  loading: boolean;
-  error: string | null;
-  message: string | null;
-  isAuthenticated: boolean;
-  isAdmin: boolean;
-  hasInitialized: boolean;
-  pages: string[];
-}
+import { setCSRFToken } from '@/utils/csrfUtils'
+import { User } from '@/types';
+import { AppDispatch } from '@/app/store';
+import { AuthState } from './type';
 
 const initialState: AuthState = {
   user: null,
@@ -48,7 +37,7 @@ export const fetchUserInfo = createAsyncThunk(
   'auth/fetchUserInfo',
   async ({}, { dispatch, rejectWithValue }) => {
     try {
-      const response = await axios.get(`/api/v1/user/me`);
+      const response = await axios.get(`/api/user-info/`);
       return response.data;
     } catch (error: any) {
       return rejectWithValue(error.response?.data['detail'] || 'Failed to fetch status');
@@ -130,7 +119,7 @@ const authSlice = createSlice({
       state.error = null;
       state.message = null;
     },
-    loginSuccess: (state, action: PayloadAction<{ is_admin: boolean; user: User; token: string }>) => {
+    loginSuccess: (state, action: PayloadAction<{ is_admin: boolean; user: User; token: string;}>) => {
       state.loading = false;
       state.user = action.payload.user;
       state.token = action.payload.token;
@@ -180,6 +169,7 @@ const authSlice = createSlice({
         state.isAuthenticated = true;
         state.isAdmin = action.payload.is_superuser || false; // Assuming is_superuser indicates admin status
         state.hasInitialized = true; // Mark as initialized after fetching user info
+        state.pages = action.payload.pages || []; // Assuming pages are part of user info
       })
       .addCase(fetchUserInfo.rejected, (state, action) => {
         state.loading = false;
@@ -223,6 +213,7 @@ const authSlice = createSlice({
         state.isAdmin = action.payload.user.is_superuser || false; // Assuming is_superuser indicates admin status
         state.message = 'Login successful';
         state.hasInitialized = true; // Mark as initialized after successful login
+        state.pages = action.payload.pages || [];
       }
       )
       .addCase(loginUser.rejected, (state, action) => {

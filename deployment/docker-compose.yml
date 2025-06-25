@@ -55,6 +55,7 @@ services:
       - db
       - worker
       - plumber
+      - dataworker
 
   worker:
     <<: *default-common-django
@@ -64,6 +65,14 @@ services:
       - db
       - redis
       - plumber
+
+  dataworker:
+    <<: *default-common-django
+    entrypoint: [ ]
+    command: 'celery -A core worker -l info -Q data_request_queue --concurrency=4 --prefetch-multiplier=1 -n data-wkr@%h'
+    links:
+      - db
+      - redis
 
   nginx:
     image: nginx

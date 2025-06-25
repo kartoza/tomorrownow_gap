@@ -60,7 +60,7 @@ class CBAMNetCDFReader(BaseNetCDFReader):
     def __init__(
             self, dataset: Dataset, attributes: List[DatasetAttribute],
             location_input: DatasetReaderInput, start_date: datetime,
-            end_date: datetime
+            end_date: datetime, use_cache: bool = True
     ) -> None:
         """Initialize CBAMNetCDFReader class.
 
@@ -76,7 +76,8 @@ class CBAMNetCDFReader(BaseNetCDFReader):
         :type end_date: datetime
         """
         super().__init__(
-            dataset, attributes, location_input, start_date, end_date
+            dataset, attributes, location_input,
+            start_date, end_date, use_cache=use_cache
         )
 
     def read_historical_data(self, start_date: datetime, end_date: datetime):
@@ -184,11 +185,12 @@ class CBAMZarrReader(BaseZarrReader, CBAMNetCDFReader):
     def __init__(
             self, dataset: Dataset, attributes: List[DatasetAttribute],
             location_input: DatasetReaderInput, start_date: datetime,
-            end_date: datetime
+            end_date: datetime, use_cache: bool = True
     ) -> None:
         """Initialize CBAMZarrReader class."""
         super().__init__(
-            dataset, attributes, location_input, start_date, end_date
+            dataset, attributes, location_input, start_date, end_date,
+            use_cache=use_cache
         )
 
     def _read_variables_by_point(
@@ -360,5 +362,5 @@ class CBAMReaderBuilder(BaseReaderBuilder):
         """
         return CBAMZarrReader(
             self.dataset, self.attributes, self.location_input,
-            self.start_date, self.end_date
+            self.start_date, self.end_date, use_cache=self.use_cache
         )

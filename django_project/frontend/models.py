@@ -37,3 +37,22 @@ class PagePermission(models.Model):
                 g.name for g in self.groups.all()
             )}"
         )
+
+    @classmethod
+    def get_page_permissions(cls, user):
+        """Get page permissions for a user."""
+        if user.is_superuser:
+            # Superusers have access to all pages
+            pages = (
+                PagePermission.objects
+                .values_list('page', flat=True)
+                .distinct()
+            )
+        else:
+            pages = (
+                PagePermission.objects
+                .filter(groups__in=user.groups.all())
+                .values_list('page', flat=True)
+                .distinct()
+            )
+        return list(pages)
