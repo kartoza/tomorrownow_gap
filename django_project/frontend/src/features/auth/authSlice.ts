@@ -15,6 +15,7 @@ const initialState: AuthState = {
   isAdmin: false,
   hasInitialized: false, // Track if user info has been fetched
   pages: [],
+  apiKeys: []
 };
 
 // Async thunk for user logs in
@@ -106,6 +107,83 @@ export const fetchPermittedPages = createAsyncThunk<
       return res.data.pages;
     } catch (err: any) {
       return rejectWithValue('Could not load permissions');
+    }
+  }
+);
+
+export const fetchApiKeys = createAsyncThunk<
+  { id: string; name: string; description: string; created: string; expiry: string | null }[],
+  void,
+  { rejectValue: string }
+>(
+  'auth/fetchApiKeys',
+  async (_, { rejectWithValue }) => {
+    try {
+      const resp = await axios.get<{
+        id: string; 
+        name: string;
+        description: string;
+        created: string;
+        expiry: string | null
+      }[]>(
+        '/api-keys/',
+        { withCredentials: true }
+      );
+      return resp.data;
+    } catch (err: any) {
+      return rejectWithValue(err.response?.data?.detail || 'Failed to load API keys');
+    }
+  }
+);
+
+export const generateApiKey = createAsyncThunk<
+  {
+    id: string;
+    name: string;
+    description: string;
+    token: string;
+    created: string;
+    expiry: string | null
+  },
+    { name: string; description: string }, // Payload for the API key generation
+  { rejectValue: string }
+>(
+  'auth/generateApiKey',
+  async ({ name, description }: { name: string; description: string }, { rejectWithValue }) => {
+    try {
+      setCSRFToken();
+      const resp = await axios.post<{
+        id: string;
+        name: string;
+        description: string;
+        token: string;
+        created: string;
+        expiry: string | null;
+      }>(
+        '/api-keys/',
+        { name, description },
+        { withCredentials: true }
+      );
+      return resp.data;
+    } catch (err: any) {
+      return rejectWithValue(err.response?.data?.detail || 'Error generating API key');
+    }
+  }
+);
+
+export const revokeApiKey = createAsyncThunk<
+  string,
+  string,
+  { rejectValue: string }
+>(
+  'auth/revokeApiKey',
+  async (keyId, { rejectWithValue }) => {
+    try {
+      setCSRFToken();
+      await axios.delete(`/api-keys/${keyId}/`, { withCredentials: true });
+      return keyId;
+    } catch (err: any) {
+      return rejectWithValue(err.response?.data?.detail || 'Error revoking API key');
     }
   }
 );
@@ -245,6 +323,22 @@ const authSlice = createSlice({
       })
       .addCase(fetchPermittedPages.rejected, (state) => {
         state.pages = [];
+      })
+      .addCase(fetchApiKeys.fulfilled, (state, { payload }) => {
+        state.apiKeys = payload;
+      })
+      .addCase(generateApiKey.fulfilled, (state, { payload }) => {
+        // payload.token contains plaintext, if you want to show it
+        state.apiKeys.push({
+          name: payload.name,
+          description: payload.description,
+          id: payload.id,
+          created: payload.created,
+          expiry: payload.expiry,
+        });
+      })
+      .addCase(revokeApiKey.fulfilled, (state, { payload: deletedId }) => {
+        state.apiKeys = state.apiKeys.filter(k => k.id !== deletedId);
       });
   },
 });

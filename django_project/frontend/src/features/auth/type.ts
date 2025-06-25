@@ -12,5 +12,12 @@ export interface AuthState {
   isAdmin: boolean;
   hasInitialized: boolean;
   pages: string[];
+  apiKeys: {
+    name: string;
+    description: string;
+    id: string;
+    created: string;
+    expiry: string | null;
+  }[];
 }
 

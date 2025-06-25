@@ -7,7 +7,6 @@ from rest_framework.test import APITestCase, APIClient
 
 from knox.models import AuthToken
 
-
 User = get_user_model()
 
 
@@ -36,30 +35,62 @@ class APIKeyTests(APITestCase):
         assert response.json() == []
 
     def test_create_key_returns_metadata_and_token(self):
-        """POST creates a new key and returns id, token, created, expiry."""
-        response = self.client.post(self.list_url, {}, format='json')
+        """
+        POST creates a new key.
+
+        Returns id, token, created, expiry, name, description.
+        """
+        payload = {
+            'name': 'my-token',
+            'description': 'testing API key creation'
+        }
+        response = self.client.post(self.list_url, payload, format='json')
         assert response.status_code == status.HTTP_201_CREATED
         data = response.json()
         # required fields
-        assert 'id' in data
-        assert 'token' in data
-        assert 'created' in data
-        assert 'expiry' in data
+        for field in (
+            "id", "token", "created", "expiry", "name", "description"
+        ):
+            assert field in data
+        assert data['name'] == 'my-token'
+        assert data['description'] == 'testing API key creation'
         # DB record exists
-        assert AuthToken.objects.filter(pk=data['id'], user=self.user).exists()
+        assert AuthToken.objects.filter(
+            pk=data['id'], user=self.user
+        ).exists()
 
     def test_list_keys_shows_created_key(self):
-        """After POST, GET returns the key without plaintext token."""
-        self.client.post(self.list_url, {}, format='json')
+        """
+        After POST, GET.
+
+        Returns the created key with metadata.
+        """
+        payload = {
+            'name': 'another-token',
+            'description': 'list view test'
+        }
+        self.client.post(self.list_url, payload, format='json')
         items = self.client.get(self.list_url).json()
         assert len(items) == 1
         item = items[0]
-        assert set(item.keys()) == {'id', 'created', 'expiry'}
+
+        expected_keys = {
+            'id',
+            'token',
+            'created',
+            'name',
+            'description',
+            'expiry'
+        }
+        assert set(item.keys()) == expected_keys
+        assert item['name'] == 'another-token'
+        assert item['description'] == 'list view test'
 
     def test_delete_key_revokes_and_returns_detail(self):
         """DELETE revokes the key and returns a confirmation."""
+        payload = {'name': 'to-be-deleted', 'description': ''}
         key_id = self.client.post(
-            self.list_url, {}, format='json'
+            self.list_url, payload, format='json'
         ).json()['id']
         destroy_url = reverse('api_key_destroy', kwargs={'key_id': key_id})
         del_resp = self.client.delete(destroy_url)

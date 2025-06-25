@@ -11,27 +11,41 @@ import {
   Dialog,
   Text,
   Input,
+  Collapsible,
 } from '@chakra-ui/react';
-import { Trash2 } from 'lucide-react';
+import { FiTrash2 as Trash2 } from 'react-icons/fi';
 import { useEffect, useState } from 'react';
 import { toaster } from '@/components/ui/toaster';
-import { setCSRFToken } from '@/utils/csrfUtils';
+import {
+  fetchApiKeys,
+  generateApiKey,
+  revokeApiKey,
+} from '@/features/auth/authSlice';
 
+import { useDispatch, useSelector } from 'react-redux';
+import type { RootState, AppDispatch } from '@/app/store';
 
-interface ApiKey {
-  id: string;
-  created: string;
-  expiry: string | null;
-}
 
 export default function ApiKeys() {
+  const dispatch = useDispatch<AppDispatch>();
   const { setValue, copy } = useClipboard('');
-  const [keys, setKeys] = useState<ApiKey[]>([]);
-  const [loading, setLoading] = useState(false);
+  const keys    = useSelector((s: RootState) => s.auth.apiKeys);
+  const loading = useSelector((s: RootState) => s.auth.loading);
 
    /* dialog */
-  const { open, onOpen, onClose } = useDisclosure();
-  const [newToken, setNewToken]     = useState<string>('');
+  const {
+    open: isFormOpen,
+    onOpen: onFormOpen,
+    onClose: onFormClose,
+  } = useDisclosure();
+  const {
+    open: isTokenOpen,
+    onOpen: onTokenOpen,
+    onClose: onTokenClose,
+  } = useDisclosure();
+  const [newToken, setNewToken] = useState<string>('');
+  const [tokenName, setTokenName] = useState<string>('');
+  const [tokenDescription, setTokenDescription] = useState<string>('');
 
    /* Del dialog */
   const {
@@ -41,80 +55,47 @@ export default function ApiKeys() {
   } = useDisclosure();
   const [toDeleteId, setToDeleteId] = useState<string | null>(null);
 
+  useEffect(() => {
+    dispatch(fetchApiKeys());
+  }, [dispatch]);
+
   /* helpers */
-  const fetchKeys = async () => {
-    setCSRFToken();
-    setLoading(true);
-    const res = await fetch('/api-keys/', { credentials: 'include' });
-    setKeys(await res.json());
-    setLoading(false);
-  };
-
-  const getCookie = (name: string): string => {
-    const value = `; ${document.cookie}`;
-    const parts = value.split(`; ${name}=`);
-    if (parts.length === 2) return parts.pop()?.split(";")[0] || "";
-    return "";
-  };
-
-  const generate = async () => {
-    setCSRFToken();
-    const res = await fetch('/api-keys/', {
-      method: 'POST',
-      credentials: 'include',
-      headers: {
-        'Content-Type': 'application/json',
-        "X-CSRFToken": getCookie("csrftoken"),
-      },
-    });
-    if (!res.ok) {
-      toaster.create({ title: 'Generate failed', status: 'error' });
-      return;
+  const handleGenerate = async () => {
+    try {
+      const payload = await dispatch(generateApiKey({
+        name: tokenName,
+        description: tokenDescription,
+      })).unwrap();
+      setValue(payload.token);
+      copy();
+      toaster.create({ title: 'Copied to clipboard', type: 'success' });
+      setNewToken(payload.token);
+      onTokenOpen();
+      setTokenName('');
+      setTokenDescription('');
+    } catch {
+      toaster.create({ title: 'Generate failed', type: 'error' });
     }
-    const json = await res.json();
-    setValue(json.token);
-    copy();
-    toaster.create({
-      title: 'Copied to clipboard',
-      type: 'success',
-      duration: 5000,
-    });
-
-    // show it in the dialog
-    setNewToken(json.token);
-    onOpen();
-
-    setKeys(prev => [
-      ...prev,
-      { id: json.id, created: json.created, expiry: json.expiry }
-    ]);
   };
-
-  const revoke = async (id: string) => {
-    await fetch(`/api-keys/${id}/`, {
-      method: 'DELETE',
-      credentials: 'include',
-      headers: {
-        'Content-Type': 'application/json',
-        "X-CSRFToken": getCookie("csrftoken"),
-      },
-    });
-    setKeys(prev => prev.filter(k => k.id !== id));
-    toaster.create(
-      {
-        title: 'API key revoked',
-        type: 'success',
-        duration: 5000
-      });
+  
+  // 5. Revoke handler
+  const handleRevoke = async (id: string) => {
+    try {
+      await dispatch(revokeApiKey(id)).unwrap();
+      toaster.create({ title: 'API key revoked', type: 'success' });
+    } catch {
+      toaster.create({ title: 'Revoke failed', type: 'error' });
+    } finally {
+      onDelClose();
+    }
   };
-
-  useEffect(() => { void fetchKeys(); }, []);
+  
 
   /* render */
   return (
     <>
       {/* API Page*/}
-      <Box                       /* ← caps width & centres page */
+      <Box
         px={{ base: 4, md: 6 }}
         py={6}
         maxW="4xl"
@@ -124,20 +105,19 @@ export default function ApiKeys() {
           mb={6}
           justify="space-between"
           align="center"
-          flexWrap="wrap"        /* button drops under heading on xs */
+          flexWrap="wrap"
         >
           <Heading fontSize={{ base: '2xl', md: '3xl' }}>
             My&nbsp;API&nbsp;Keys
           </Heading>
 
-          {/* button unchanged – relies on theme.ts defaults */}
           <Button
             visual="solid"
             size="md"
             type="submit"
             fontWeight="bold"
             mb={{ base: 4, md: 0 }}
-            onClick={generate}
+            onClick={onFormOpen}
           >
             Generate&nbsp;new
           </Button>
@@ -149,6 +129,8 @@ export default function ApiKeys() {
           <Table.Root size="sm" striped>
             <Table.Header>
               <Table.Row>
+                <Table.ColumnHeader>Name</Table.ColumnHeader>
+                <Table.ColumnHeader>Description</Table.ColumnHeader>
                 <Table.ColumnHeader>Created</Table.ColumnHeader>
                 <Table.ColumnHeader>Expires</Table.ColumnHeader>
                 <Table.ColumnHeader textAlign="end" />
@@ -157,9 +139,11 @@ export default function ApiKeys() {
             <Table.Body>
               {keys.map(k => (
                 <Table.Row key={k.id}>
+                  <Table.Cell>{k.name}</Table.Cell>
+                  <Table.Cell>{k.description || '—'}</Table.Cell>
                   <Table.Cell>{new Date(k.created).toLocaleString()}</Table.Cell>
                   <Table.Cell>
-                    {k.expiry ? new Date(k.expiry).toLocaleDateString() : '—'}
+                    {k.expiry ? new Date(k.expiry).toLocaleString() : '—'}
                   </Table.Cell>
                   <Table.Cell textAlign="end">
                     <Button
@@ -183,44 +167,95 @@ export default function ApiKeys() {
       </Box>
 
       {/* New API key dialog */}
-      <Dialog.Root open={open} onOpenChange={onClose}>
+      <Dialog.Root open={isFormOpen} onOpenChange={onFormClose}>
         <Dialog.Backdrop />
         <Dialog.Positioner>
           <Dialog.Content>
             <Dialog.Header>
-              <Dialog.Title>Your new API Key</Dialog.Title>
+              <Dialog.Title>Create a new API Key</Dialog.Title>
             </Dialog.Header>
 
             <Dialog.Body>
-              <Text mb={2}>
-                This is the only time you will see it—copy and store it now.
-              </Text>
               <Input
-                value={newToken}
-                readOnly
-                onFocus={e => e.target.select()}
+                value={tokenName}
+                placeholder="Token Name"
+                mb={2}
+                onChange={e => setTokenName(e.target.value)}
               />
+              <Input
+                value={tokenDescription}
+                placeholder="Token Description"
+                mb={4}
+                onChange={e => setTokenDescription(e.target.value)}
+              />
+              <Text mb={2}>
+                After you click “Create”, we’ll show you the plaintext once—copy and store it now.
+              </Text>
+
+              <Collapsible.Root open={!!newToken}>
+                <Collapsible.Content>
+                  <Box mt={4} p={4} bg="gray.50" rounded="md">
+                    <Text mb={2}>
+                      This is the only time you will see it—copy and store it now.
+                    </Text>
+                    <Input
+                      value={newToken}
+                      readOnly
+                      onFocus={e => e.target.select()}
+                    />
+                  </Box>
+                </Collapsible.Content>
+              </Collapsible.Root>
             </Dialog.Body>
 
             <Dialog.Footer>
-              <Button
-                visual="solid"
-                size="xs"
-                mr={3}
-                onClick={() => {
-                  copy();
-                  toaster.create({
-                    title: 'Copied again',
-                    type: 'success',
-                    duration: 3000,
-                  });
-                }}
-              >
-                Copy
-              </Button>
-              <Button variant="ghost" size="xs" onClick={onClose}>
-                Close
-              </Button>
+              {!newToken ? (
+                <>
+                  <Button
+                    visual="solid"
+                    size="xs"
+                    mr={3}
+                    onClick={handleGenerate}
+                    disabled={!tokenName.trim()}
+                  >
+                    Create
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="xs"
+                    onClick={() => {
+                      setNewToken('');
+                      onFormClose();
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button
+                    visual="solid"
+                    size="xs"
+                    mr={3}
+                    onClick={() => {
+                      copy();
+                      toaster.create({ title: 'Copied again', type: 'success' });
+                    }}
+                  >
+                    Copy
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="xs"
+                    onClick={() => {
+                      setNewToken('');
+                      onFormClose();
+                    }}
+                  >
+                    Close
+                  </Button>
+                </>
+              )}
             </Dialog.Footer>
           </Dialog.Content>
         </Dialog.Positioner>
@@ -250,7 +285,7 @@ export default function ApiKeys() {
                 _hover={{ bg: 'red.600' }}
                 ml={3}
                 onClick={() => {
-                  if (toDeleteId) revoke(toDeleteId);
+                  if (toDeleteId) handleRevoke(toDeleteId);
                   onDelClose();
                 }}
               >

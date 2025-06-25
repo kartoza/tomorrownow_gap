@@ -11,7 +11,6 @@ import {
   Collapsible,
   useDisclosure
 } from '@chakra-ui/react';
-// import { ChevronDownIcon, LogOutIcon, UserIcon, MailIcon } from 'lucide-react';
 import { FiChevronDown, FiLogOut, FiKey } from "react-icons/fi";
 import { User } from '@/types';
 import { useNavigateWithEvent } from '@/hooks/useNavigateWithEvent';

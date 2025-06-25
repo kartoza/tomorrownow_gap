@@ -10,7 +10,8 @@ from knox.settings import knox_settings
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 
-from core.serializers import APIKeySerializer
+from frontend.serializers import APIKeySerializer
+from frontend.models import APIKeyMetadata
 
 
 class _Base(permissions.IsAuthenticated, generics.GenericAPIView):
@@ -32,15 +33,27 @@ class APIKeyListCreate(_Base, generics.ListCreateAPIView):
 
     def create(self, request, *args, **kwargs):
         """Create a new API key for the authenticated user."""
+        name = request.data.get("name", "")
+        description = request.data.get("description", "")
         expiry = knox_settings.TOKEN_TTL or timedelta(days=365)
         instance, token = AuthToken.objects.create(
             user=request.user, expiry=expiry
         )
+
+        # Create metadata for the API key
+        APIKeyMetadata.objects.create(
+            token = instance,
+            name = name,
+            description = description,
+        )
+
         headers = self.get_success_headers({})
         return Response(
             {
                 "id": instance.pk,
                 "token": token,
+                "name": name,
+                "description": description,
                 "created": instance.created,
                 "expiry": instance.expiry,
             },
