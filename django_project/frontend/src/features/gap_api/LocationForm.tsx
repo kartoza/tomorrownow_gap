@@ -72,8 +72,12 @@ const LocationForm: React.FC = () => {
 
   return (
     <Fieldset.Root size="lg" maxW="md">
-      <Stack spacing={2} mb={4}>
-        <Fieldset.Legend>Upload Location</Fieldset.Legend>
+      <Stack gap={2} mb={4}>
+        <Fieldset.Legend>
+          <Text fontSize="md" fontWeight="bold">
+            Upload Location
+          </Text>
+        </Fieldset.Legend>
         <Fieldset.HelperText>
           Provide a name and upload a GeoJSON, zipped Shapefile, or GPKG.
         </Fieldset.HelperText>
@@ -111,9 +115,11 @@ const LocationForm: React.FC = () => {
 
         <Button
           mt={4}
+          visual="solid"
+          size="sm"
           alignSelf="flex-start"
           onClick={onSubmit}
-          isDisabled={loading}
+          disabled={loading}
         >
           {loading ? <Spinner size="sm" /> : 'Upload'}
         </Button>

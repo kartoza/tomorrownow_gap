@@ -64,8 +64,12 @@ const CropPlanForm: React.FC = () => {
 
   return (
     <Fieldset.Root size="lg" maxW="md">
-      <Stack spacing={2} mb={4}>
-        <Fieldset.Legend>Crop Plan Data</Fieldset.Legend>
+      <Stack gap={2} mb={4}>
+        <Fieldset.Legend>
+          <Text fontSize="md" fontWeight="bold">
+            Crop Plan Form
+          </Text>
+        </Fieldset.Legend>
         <Fieldset.HelperText>
           Query crop plan insight for your farms.
         </Fieldset.HelperText>
@@ -122,13 +126,11 @@ const CropPlanForm: React.FC = () => {
               value={form.format}
               onChange={(e) => handle('format', e.target.value)}
             >
-              <For each={['json', 'geojson', 'csv']}>
-                {(o) => (
-                  <option key={o} value={o}>
-                    {o.toUpperCase()}
-                  </option>
-                )}
-              </For>
+              {['json', 'geojson', 'csv'].map((o) => (
+                <option key={o} value={o}>
+                  {o.toUpperCase()}
+                </option>
+              ))}
             </NativeSelect.Field>
             <NativeSelect.Indicator />
           </NativeSelect.Root>
@@ -136,9 +138,12 @@ const CropPlanForm: React.FC = () => {
 
         <Button
           mt={4}
+          visual="solid"
+          size="sm"
+          colorScheme="green.500"
           alignSelf="flex-start"
           onClick={onSubmit}
-          isDisabled={loading}
+          disabled={loading}
         >
           {loading ? <Spinner size="sm" /> : 'Fetch'}
         </Button>

@@ -3,7 +3,6 @@ import {
   Button,
   Field,
   Fieldset,
-  For,
   Input,
   NativeSelect,
   Stack,
@@ -108,9 +107,13 @@ const MeasurementForm: React.FC = () => {
   ]
 
   return (
-    <Fieldset.Root size="lg" maxW="800px">
+    <Fieldset.Root size="lg" maxW="md">
       <Stack mb={4}>
-        <Fieldset.Legend>Fetch Measurement Data</Fieldset.Legend>
+        <Fieldset.Legend>
+          <Text fontSize="md" fontWeight="bold">
+            Fetch Measurement Data
+          </Text>
+        </Fieldset.Legend>
         <Fieldset.HelperText>
           Choose your parameters and hit Fetch
         </Fieldset.HelperText>
@@ -127,13 +130,11 @@ const MeasurementForm: React.FC = () => {
               onChange={(e) => handle('product', e.target.value)}
             >
               <option value="">Select product</option>
-              <For each={productList}>
-                {(p) => (
-                  <option key={p.variable_name} value={p.variable_name}>
-                    {p.name}
-                  </option>
-                )}
-              </For>
+              {productList.map((p) => (
+                <option key={p.variable_name} value={p.variable_name}>
+                  {p.name}
+                </option>
+              ))}
             </NativeSelect.Field>
             <NativeSelect.Indicator />
           </NativeSelect.Root>
@@ -148,17 +149,15 @@ const MeasurementForm: React.FC = () => {
             onValueChange={(vals: string[]) => handle('attributes', vals)}
           >
             <Stack>
-            <For each={attrs}>
-                {(a) => (
-                  <Checkbox.Root key={a} value={a}>
+              {attrs.map((a) => (
+                <Checkbox.Root key={a} value={a}>
                   <Checkbox.HiddenInput />
                   <Checkbox.Control>
                     <Checkbox.Indicator />
                   </Checkbox.Control>
                   <Checkbox.Label>{a}</Checkbox.Label>
                 </Checkbox.Root>
-                )}
-              </For>
+              ))}
             </Stack>
           </CheckboxGroup>
           <Field.ErrorText>{errors.attributes}</Field.ErrorText>
@@ -250,21 +249,21 @@ const MeasurementForm: React.FC = () => {
             onValueChange={(e: any) => handle('locationType', e.value)}
           >
             <Stack gap="6">
-              {/* @ts-expect-error */}
+              {/* @ts-ignore */}
               <RadioGroup.Item value="point">
                 <RadioGroup.ItemHiddenInput />
                 <RadioGroup.ItemIndicator />
                 <RadioGroup.ItemText>Point</RadioGroup.ItemText>
               </RadioGroup.Item>
 
-              {/* @ts-expect-error */}
+              {/* @ts-ignore */}
               <RadioGroup.Item value="bbox">
                 <RadioGroup.ItemHiddenInput />
                 <RadioGroup.ItemIndicator />
                 <RadioGroup.ItemText>BBox</RadioGroup.ItemText>
               </RadioGroup.Item>
 
-              {/* @ts-expect-error */}
+              {/* @ts-ignore */}
               <RadioGroup.Item value="saved">
                 <RadioGroup.ItemHiddenInput />
                 <RadioGroup.ItemIndicator />
@@ -295,6 +294,8 @@ const MeasurementForm: React.FC = () => {
 
         <Button
           mt={4}
+          visual="solid"
+          size="sm"
           alignSelf="flex-start"
           onClick={onSubmit}
           disabled={loading}
