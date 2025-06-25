@@ -78,7 +78,11 @@ export const router = createBrowserRouter([
   },
   {
     path: "/api-keys",
-    element: <MainLayout />,
+    element: (
+      <ProtectedRoute>
+        <MainLayout />
+      </ProtectedRoute>
+    ),
     errorElement: <ErrorPage />,
     children: [
       {
