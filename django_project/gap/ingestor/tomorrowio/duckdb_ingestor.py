@@ -13,7 +13,7 @@ import geohash
 import duckdb
 import time
 import pandas as pd
-from typing import List
+from typing import List, Tuple
 from datetime import date
 
 from django.core.files.storage import storages
@@ -131,9 +131,10 @@ class TioShortTermDuckDBIngestor(TioShortTermIngestor):
         return None
 
     def _process_tio_shortterm_data_from_conn(
-            self, forecast_date: date, lat_arr: List[CoordMapping],
-            lon_arr: List[CoordMapping], grids: dict,
-            conn: duckdb.DuckDBPyConnection) -> dict:
+        self, forecast_date: date, lat_arr: List[CoordMapping],
+        lon_arr: List[CoordMapping], grids: dict,
+        conn: duckdb.DuckDBPyConnection
+    ) -> Tuple[dict, int]:
         """Process Tio data and update into zarr.
 
         :param forecast_date: forecast date
@@ -177,6 +178,10 @@ class TioShortTermDuckDBIngestor(TioShortTermIngestor):
         weather_df = self._fetch_data(conn, list(grid_ids.values()))
 
         if weather_df is None:
+            logger.warning(
+                f'No data found for forecast date: {forecast_date} '
+                f'for lat: {len(lat_arr)} and lon: {len(lon_arr)}'
+            )
             return warnings, count
 
         for idx_lat, lat in enumerate(lat_arr):
@@ -246,6 +251,11 @@ class TioShortTermDuckDBIngestor(TioShortTermIngestor):
         self._update_by_region(forecast_date, lat_arr, lon_arr, new_data)
         del new_data
 
+        logger.info(
+            f'Processed {count} grids for '
+            f'{len(lat_arr)} lat and {len(lon_arr)} lon. '
+            f'Total: {len(lat_arr) * len(lon_arr)}'
+        )
         return warnings, count
 
     def _run(self):
@@ -349,6 +359,26 @@ class TioShortTermDuckDBIngestor(TioShortTermIngestor):
             assert self._is_sorted_and_incremented(lat_indices)
             assert self._is_sorted_and_incremented(lon_indices)
 
+            # check the number of gap filled
+            lat_gap_filled = sum(
+                1 for lat in lat_arr if lat.is_gap_filled
+            )
+            lon_gap_filled = sum(
+                1 for lon in lon_arr if lon.is_gap_filled
+            )
+            self._add_progress(
+                'Check latitudes gap filled',
+                f'Latitudes gap filled: {lat_gap_filled} '
+                f'out of {len(lat_arr)} '
+                f'({lat_gap_filled / len(lat_arr) * 100:.2f}%)'
+            )
+            self._add_progress(
+                'Check longitudes gap filled',
+                f'Longitudes gap filled: {lon_gap_filled} '
+                f'out of {len(lon_arr)} '
+                f'({lon_gap_filled / len(lon_arr) * 100:.2f}%)'
+            )
+
             # create slices for chunks
             lat_chunk_size = self.get_config(
                 'lat_chunk_size',
@@ -397,7 +427,10 @@ class TioShortTermDuckDBIngestor(TioShortTermIngestor):
                     self.metadata['chunks'].append({
                         'lat_slice': str(lat_slice),
                         'lon_slice': str(lon_slice),
-                        'warnings': warnings
+                        'warnings': warnings,
+                        'count': count,
+                        'total': len(lat_chunks) * len(lon_chunks),
+                        'country': country
                     })
                     self.metadata['total_json_processed'] += count
 

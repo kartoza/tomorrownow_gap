@@ -38,7 +38,10 @@ logger = logging.getLogger(__name__)
 class CoordMapping:
     """Mapping coordinate between Grid and Zarr."""
 
-    def __init__(self, value, nearest_idx, nearest_val) -> None:
+    def __init__(
+        self, value, nearest_idx, nearest_val,
+        is_gap_filled: bool = False
+    ) -> None:
         """Initialize coordinate mapping class.
 
         :param value: lat/lon value from Grid
@@ -51,6 +54,7 @@ class CoordMapping:
         self.value = value
         self.nearest_idx = nearest_idx
         self.nearest_val = nearest_val
+        self.is_gap_filled = is_gap_filled
 
 
 class BaseIngestor:
@@ -359,7 +363,9 @@ class BaseZarrIngestor(BaseIngestor):
                         add_idx = prev_coord_idx + idx + 1
                         if add_idx not in coord_idx_hash:
                             results.append(
-                                CoordMapping(mc, add_idx, mc)
+                                CoordMapping(
+                                    mc, add_idx, mc, is_gap_filled=True
+                                )
                             )
                             coord_idx_hash[add_idx] = 1
             if coord_idx not in coord_idx_hash:
