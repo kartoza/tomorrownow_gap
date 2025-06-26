@@ -340,7 +340,9 @@ class TestTioIngestor(TestCase):
             lat_arr = []
             for i in range(10):
                 if i not in [2, 5, 7]:
-                    lat_arr.append(LAT_METADATA['min'] + i * LAT_METADATA['inc'])
+                    lat_arr.append(
+                        LAT_METADATA['min'] + i * LAT_METADATA['inc']
+                    )
             coords = self.ingestor._transform_coordinates_array(
                 lat_arr, 'lat', fix_incremented=True
             )
