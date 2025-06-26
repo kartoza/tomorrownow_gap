@@ -3,5 +3,20 @@
         "django_project"
     ],
     "python.testing.unittestEnabled": false,
-    "python.testing.pytestEnabled": true
+    "python.testing.pytestEnabled": true,
+    "files.watcherExclude": {
+        "**/.git/objects/**": true,
+        "**/.git/subtree-cache/**": true,
+        "**/.hg/store/**": true,
+        "**/deployment/volumes/**": true,
+        "**/__pycache__/**": true,
+        "**/.pytest_cache/**": true,
+        "**/node_modules/**": true,
+        "**/bundles/**": true,
+        "**/static/**": true,
+        "**/public/**": true,
+        "**/*.pyc": true,
+        "**/.coverage": true,
+        "**/coverage/**": true
+    }
 }
