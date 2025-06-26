@@ -269,11 +269,6 @@ class TioShortTermDuckDBIngestor(TioShortTermIngestor):
         # get connection
         conn = self._get_connection(collector)
 
-        # get lat and lon array from grids
-        lat_arr = set()
-        lon_arr = set()
-        grid_dict = {}
-
         # query grids by countries
         countries = self.get_config(
             'countries', None
@@ -312,6 +307,11 @@ class TioShortTermDuckDBIngestor(TioShortTermIngestor):
             grids = grids.annotate(
                 centroid=Centroid('geometry')
             )
+
+            # get lat and lon array from grids
+            lat_arr = set()
+            lon_arr = set()
+            grid_dict = {}
             for grid in grids:
                 lat = round(grid.centroid.y, 8)
                 lon = round(grid.centroid.x, 8)
