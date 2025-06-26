@@ -336,6 +336,7 @@ class BaseZarrIngestor(BaseIngestor):
         # find nearest coordinate for each item
         prev_coord_idx = None
         results: List[CoordMapping] = []
+        coord_idx_hash = {}
         for target_coord in coord_arr:
             if coord_type in ['lat', 'lon']:
                 nearest_coord = ds[coord_type].sel(
@@ -355,14 +356,19 @@ class BaseZarrIngestor(BaseIngestor):
                         prev_coord_idx + 1:coord_idx
                     ]
                     for idx, mc in enumerate(missing_coord):
-                        results.append(
-                            CoordMapping(mc, prev_coord_idx + 1 + idx, mc)
-                        )
-            prev_coord_idx = coord_idx
-            # append result
-            results.append(
-                CoordMapping(target_coord, coord_idx, nearest_coord)
-            )
+                        add_idx = prev_coord_idx + idx + 1
+                        if add_idx not in coord_idx_hash:
+                            results.append(
+                                CoordMapping(mc, add_idx, mc)
+                            )
+                            coord_idx_hash[add_idx] = 1
+            if coord_idx not in coord_idx_hash:
+                prev_coord_idx = coord_idx
+                # append result
+                results.append(
+                    CoordMapping(target_coord, coord_idx, nearest_coord)
+                )
+                coord_idx_hash[coord_idx] = 1
 
         # close dataset
         ds.close()
