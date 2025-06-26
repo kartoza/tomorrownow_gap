@@ -315,6 +315,43 @@ class TestTioIngestor(TestCase):
                 )
             )
 
+    def test_transform_coordinates_array_unique(self):
+        """Test transform_coordinates_array function."""
+        with patch.object(self.ingestor, '_open_zarr_dataset') as mock_open:
+            mock_open.return_value = mock_open_zarr_dataset()
+            lat_arr = [
+                LAT_METADATA['min']
+            ]
+            for i in range(10):
+                lat_arr.append(LAT_METADATA['min'] + i * LAT_METADATA['inc'])
+            coords = self.ingestor._transform_coordinates_array(lat_arr, 'lat')
+            mock_open.assert_called_once()
+            self.assertEqual(len(coords), 10)
+            self.assertTrue(
+                self.ingestor._is_sorted_and_incremented(
+                    [c.nearest_idx for c in coords]
+                )
+            )
+
+    def test_transform_coordinates_array_missing(self):
+        """Test transform_coordinates_array function."""
+        with patch.object(self.ingestor, '_open_zarr_dataset') as mock_open:
+            mock_open.return_value = mock_open_zarr_dataset()
+            lat_arr = []
+            for i in range(10):
+                if i not in [2, 5, 7]:
+                    lat_arr.append(LAT_METADATA['min'] + i * LAT_METADATA['inc'])
+            coords = self.ingestor._transform_coordinates_array(
+                lat_arr, 'lat', fix_incremented=True
+            )
+            mock_open.assert_called_once()
+            self.assertEqual(len(coords), 10)
+            self.assertTrue(
+                self.ingestor._is_sorted_and_incremented(
+                    [c.nearest_idx for c in coords]
+                )
+            )
+
     def test_find_chunk_slices(self):
         """Test find_chunk_slices function."""
         coords = self.ingestor._find_chunk_slices(1, 1)
