@@ -24,6 +24,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from urllib.parse import urlparse
 from django.conf import settings
+from django.utils import timezone
 
 from core.models.object_storage_manager import ObjectStorageManager
 from core.models.background_task import TaskStatus
@@ -611,14 +612,39 @@ class MeasurementAPI(GAPAPILoggingMixin, APIView):
                 }
             )
 
+        # Check if the request is async, API will return job ID
+        is_async = self.request.GET.get('async', 'false').lower() == 'true'
+
         # Check cache using UserFile
         user_file = self._get_user_file(location)
         cache_exist = user_file.find_in_cache()
         if cache_exist:
+            if is_async:
+                # prepare job with existing user file
+                # Create Job for data request
+                job = Job(
+                    user=self.request.user,
+                    parameters=self._get_request_params(),
+                    queue_name=settings.CELERY_DATA_REQUEST_QUEUE,
+                    wait_type=0 if is_async else 1,
+                    status=TaskStatus.COMPLETED,
+                    output_file=cache_exist,
+                    finished_at=cache_exist.created_on
+                )
+                job.save()
+                # we may need to update user file last accessed time
+                cache_exist.created_on = timezone.now()
+                cache_exist.save()
+                return Response(
+                    status=200,
+                    data={
+                        'detail': 'Job is submitted successfully.',
+                        'job_id': str(job.uuid)
+                    }
+                )
             return self.prepare_response(cache_exist)
 
         # Create Job for data request
-        is_async = self.request.GET.get('async', 'false').lower() == 'true'
         job = Job(
             user=self.request.user,
             parameters=self._get_request_params(),
