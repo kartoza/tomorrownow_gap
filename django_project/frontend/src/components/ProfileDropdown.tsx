@@ -11,13 +11,11 @@ import {
   Collapsible,
   useDisclosure
 } from '@chakra-ui/react';
-// import { ChevronDownIcon, LogOutIcon, UserIcon, MailIcon } from 'lucide-react';
-import { FiChevronDown, FiLogOut } from "react-icons/fi";
+import { FiChevronDown, FiLogOut, FiKey } from "react-icons/fi";
 import { User } from '@/types';
 import { useNavigateWithEvent } from '@/hooks/useNavigateWithEvent';
 import { RootState } from '@/app/store';
 import { useSelector } from 'react-redux';
-
 
 interface ProfileDropdownProps {
   user: User;
@@ -153,6 +151,27 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({
                 </HStack>
               </Button>
             )}
+
+            <Button
+              variant="ghost"
+              size="sm"
+              width="100%"
+              justifyContent="flex-start"
+              padding={3}
+              height="auto"
+              borderRadius="md"
+              onClick={() => {
+                setOpen(false);              // close dropdown
+                navigate('/api-keys');       // go to the page
+              }}
+            >
+              <HStack gap={3} w="full">
+                <FiKey size={6} />          {/* import { FiKey } from 'react-icons/fi' */}
+                <Text fontSize="sm" fontWeight="semibold">
+                  API&nbsp;Keys
+                </Text>
+              </HStack>
+            </Button>
 
             {/* Logout Menu Item */}
             <Button

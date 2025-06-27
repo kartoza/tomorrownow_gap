@@ -4,7 +4,7 @@ import { Box, Button, Container, Flex, HStack, Link, Spacer, Text, useDisclosure
 import { RxHamburgerMenu } from "react-icons/rx";
 import { RiCloseFill } from "react-icons/ri";
 import { useLocation } from 'react-router-dom';
-import { FiLogOut } from "react-icons/fi";
+import { FiLogOut, FiKey } from "react-icons/fi";
 import { toaster } from '@/components/ui/toaster';
 
 import { useScrollContext } from '@/context/ScrollContext';
@@ -215,6 +215,27 @@ const Navigation: React.FC = () => {
                                             </HStack>
                                             </Button>
                                         )}
+
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            width="100%"
+                                            justifyContent="flex-start"
+                                            padding={3}
+                                            height="auto"
+                                            borderRadius="md"
+                                            onClick={() => {
+                                            onToggle();
+                                            navigate('/api-keys');       // go to the page
+                                            }}
+                                        >
+                                            <HStack gap={3} w="full">
+                                            <FiKey size={6} />
+                                            <Text fontSize="sm" fontWeight="semibold">
+                                                API&nbsp;Keys
+                                            </Text>
+                                            </HStack>
+                                        </Button>
                             
                                         {/* Logout Menu Item */}
                                         <Button

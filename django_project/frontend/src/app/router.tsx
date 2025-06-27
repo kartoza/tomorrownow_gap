@@ -9,6 +9,7 @@ import DcasCsvList from '@/pages/DcasCsvList'
 import ErrorPage from '@/pages/ErrorPage'
 import ProtectedRoute from '@/components/ProtectedRoute'
 import {SearchForm} from '@/pages/DataBrowserPage'
+import ApiKeys from '@/pages/ApiKeys'
 
 
 export const router = createBrowserRouter([
@@ -72,6 +73,21 @@ export const router = createBrowserRouter([
       {
         index: true,
         element: <SearchForm />,
+      }
+    ]
+  },
+  {
+    path: "/api-keys",
+    element: (
+      <ProtectedRoute>
+        <MainLayout />
+      </ProtectedRoute>
+    ),
+    errorElement: <ErrorPage />,
+    children: [
+      {
+        index: true,
+        element: <ApiKeys />,
       }
     ]
   }
