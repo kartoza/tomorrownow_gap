@@ -13,7 +13,7 @@ import {
   Input,
   Collapsible,
 } from '@chakra-ui/react';
-import { FiTrash2 as Trash2 } from 'react-icons/fi';
+import { FiTrash2 as Trash2, FiCalendar } from 'react-icons/fi';
 import { useEffect, useState } from 'react';
 import { toaster } from '@/components/ui/toaster';
 import {
@@ -46,6 +46,11 @@ export default function ApiKeys() {
   const [newToken, setNewToken] = useState<string>('');
   const [tokenName, setTokenName] = useState<string>('');
   const [tokenDescription, setTokenDescription] = useState<string>('');
+  const [expiry, setExpiry] = useState<string>(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 30);
+    return d.toISOString().slice(0, 10);
+  });
 
    /* Del dialog */
   const {
@@ -59,26 +64,33 @@ export default function ApiKeys() {
     dispatch(fetchApiKeys());
   }, [dispatch]);
 
+  const handleFormClose = () => {
+    setTokenName("");
+    setTokenDescription("");
+    setNewToken("");
+    onFormClose();
+  };
+
   /* helpers */
   const handleGenerate = async () => {
     try {
       const payload = await dispatch(generateApiKey({
         name: tokenName,
         description: tokenDescription,
+        expiry,
       })).unwrap();
       setValue(payload.token);
       copy();
       toaster.create({ title: 'Copied to clipboard', type: 'success' });
       setNewToken(payload.token);
       onTokenOpen();
-      setTokenName('');
-      setTokenDescription('');
+
     } catch {
       toaster.create({ title: 'Generate failed', type: 'error' });
     }
   };
   
-  // 5. Revoke handler
+  // Revoke handler
   const handleRevoke = async (id: string) => {
     try {
       await dispatch(revokeApiKey(id)).unwrap();
@@ -141,9 +153,9 @@ export default function ApiKeys() {
                 <Table.Row key={k.id}>
                   <Table.Cell>{k.name}</Table.Cell>
                   <Table.Cell>{k.description || '—'}</Table.Cell>
-                  <Table.Cell>{new Date(k.created).toLocaleString()}</Table.Cell>
+                  <Table.Cell>{new Date(k.created).toLocaleDateString()}</Table.Cell>
                   <Table.Cell>
-                    {k.expiry ? new Date(k.expiry).toLocaleString() : '—'}
+                    {k.expiry ? new Date(k.expiry).toLocaleDateString() : '—'}
                   </Table.Cell>
                   <Table.Cell textAlign="end">
                     <Button
@@ -167,7 +179,7 @@ export default function ApiKeys() {
       </Box>
 
       {/* New API key dialog */}
-      <Dialog.Root open={isFormOpen} onOpenChange={onFormClose}>
+      <Dialog.Root open={isFormOpen} onOpenChange={handleFormClose}>
         <Dialog.Backdrop />
         <Dialog.Positioner>
           <Dialog.Content>
@@ -181,22 +193,35 @@ export default function ApiKeys() {
                 placeholder="Token Name"
                 mb={2}
                 onChange={e => setTokenName(e.target.value)}
+                _placeholder={{ color: 'gray.400' }}
+                readOnly={!!newToken}
+                variant={newToken ? 'subtle' : 'outline'}
               />
               <Input
                 value={tokenDescription}
                 placeholder="Token Description"
                 mb={4}
                 onChange={e => setTokenDescription(e.target.value)}
+                _placeholder={{ color: 'gray.400' }}
+                readOnly={!!newToken}
+                variant={newToken ? 'subtle' : 'outline'}
+              />
+              {/* Expiration date picker */}
+              <Input
+                type="date"
+                value={expiry}
+                mb={4}
+                onChange={e => setExpiry(e.target.value)}
               />
               <Text mb={2}>
-                After you click “Create”, we’ll show you the plaintext once—copy and store it now.
+                After you click “Create”, we’ll show you the plaintext once, copy and store it now.
               </Text>
 
               <Collapsible.Root open={!!newToken}>
                 <Collapsible.Content>
                   <Box mt={4} p={4} bg="gray.50" rounded="md">
                     <Text mb={2}>
-                      This is the only time you will see it—copy and store it now.
+                      This is the only time you will see it, copy and store it now.
                     </Text>
                     <Input
                       value={newToken}
@@ -224,8 +249,7 @@ export default function ApiKeys() {
                     variant="ghost"
                     size="xs"
                     onClick={() => {
-                      setNewToken('');
-                      onFormClose();
+                      handleFormClose();
                     }}
                   >
                     Cancel
@@ -248,8 +272,7 @@ export default function ApiKeys() {
                     variant="ghost"
                     size="xs"
                     onClick={() => {
-                      setNewToken('');
-                      onFormClose();
+                      handleFormClose();
                     }}
                   >
                     Close

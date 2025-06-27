@@ -16,5 +16,5 @@ class PagePermissionAdmin(admin.ModelAdmin):
 class APIKeyMetadataAdmin(admin.ModelAdmin):
     """Admin for APIKeyMetadata model."""
 
-    list_display = ("token_id", "name", "description")
+    list_display = ("digest", "name", "description")
     search_fields = ("name", "description")

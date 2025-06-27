@@ -4,7 +4,9 @@ Tomorrow Now GAP.
 .. note:: API Key Management View
 """
 
-from datetime import timedelta
+from datetime import timedelta, datetime
+from django.utils.dateparse import parse_date
+from django.utils import timezone
 from knox.models import AuthToken
 from knox.settings import knox_settings
 from rest_framework import generics, permissions, status
@@ -35,14 +37,26 @@ class APIKeyListCreate(_Base, generics.ListCreateAPIView):
         """Create a new API key for the authenticated user."""
         name = request.data.get("name", "")
         description = request.data.get("description", "")
-        expiry = knox_settings.TOKEN_TTL or timedelta(days=365)
+        expiry_input = request.data.get("expiry")
+        if expiry_input:
+            d = parse_date(expiry_input)
+            abs_dt = timezone.make_aware(
+                datetime.combine(d, datetime.min.time())
+            )
+            now = timezone.now()
+            ttl = abs_dt - now
+            expiry = ttl if ttl > timedelta(seconds=0) else timedelta(0)
+        else:
+            expiry = knox_settings.TOKEN_TTL or timedelta(days=365)
+
         instance, token = AuthToken.objects.create(
-            user=request.user, expiry=expiry
+            user=request.user,
+            expiry=expiry
         )
 
         # Create metadata for the API key
         APIKeyMetadata.objects.create(
-            token = instance,
+            digest = instance.digest,
             name = name,
             description = description,
         )
@@ -70,7 +84,14 @@ class APIKeyDestroy(_Base, generics.DestroyAPIView):
 
     def destroy(self, request, *args, **kwargs):
         """Revoke an API key by ID."""
-        super().destroy(request, *args, **kwargs)
+        instance = self.get_object()
+        digest = instance.digest
+
+        # revoke the Knox token
+        instance.delete()
+
+        # remove our metadata record
+        APIKeyMetadata.objects.filter(digest=digest).delete()
         return Response(
             {"detail": "API key revoked"},
             status=status.HTTP_200_OK

@@ -75,12 +75,7 @@ class APIKeyTests(APITestCase):
         item = items[0]
 
         expected_keys = {
-            'id',
-            'token',
-            'created',
-            'name',
-            'description',
-            'expiry'
+            'id', 'name', 'description', 'created', 'expiry'
         }
         assert set(item.keys()) == expected_keys
         assert item['name'] == 'another-token'

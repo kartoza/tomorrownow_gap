@@ -145,11 +145,11 @@ export const generateApiKey = createAsyncThunk<
     created: string;
     expiry: string | null
   },
-    { name: string; description: string }, // Payload for the API key generation
+    { name: string; description: string, expiry: string }, // Payload for the API key generation
   { rejectValue: string }
 >(
   'auth/generateApiKey',
-  async ({ name, description }: { name: string; description: string }, { rejectWithValue }) => {
+  async ({ name, description, expiry }: { name: string; description: string, expiry: string }, { rejectWithValue }) => {
     try {
       setCSRFToken();
       const resp = await axios.post<{
@@ -161,7 +161,7 @@ export const generateApiKey = createAsyncThunk<
         expiry: string | null;
       }>(
         '/api-keys/',
-        { name, description },
+        { name, description, expiry },
         { withCredentials: true }
       );
       return resp.data;

@@ -131,14 +131,3 @@ SWAGGER_SETTINGS = {
 CELERY_DATA_REQUEST_QUEUE = os.getenv(
     "CELERY_DATA_REQUEST_QUEUE", "data_request_queue"
 )
-
-# Tell Django to look for Knox’s migrations in our own app directory
-# (so we can version-control any tweaks e.g. adding APIKeyMetadata—and avoid
-# permission errors when running makemigrations against knox site-packages)
-MIGRATION_MODULES = {
-    "knox": "knox_local_migrations",
-}
-
-# Explicitly point Knox at its AuthToken model so our local migrations
-# reference the correct token table
-KNOX_TOKEN_MODEL = "knox.AuthToken"

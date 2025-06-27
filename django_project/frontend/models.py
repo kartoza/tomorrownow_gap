@@ -8,7 +8,6 @@ Tomorrow Now GAP.
 
 from django.db import models
 from django.contrib.auth.models import Group
-from knox.models import AuthToken
 
 
 class PagePermission(models.Model):
@@ -62,14 +61,14 @@ class PagePermission(models.Model):
 class APIKeyMetadata(models.Model):
     """Metadata for API keys."""
 
-    token = models.OneToOneField(
-        AuthToken,
-        on_delete=models.CASCADE,
+    digest = models.CharField(
+        unique=True,
+        db_index=True,
         primary_key=True,
-        related_name="metadata"
+        help_text="The unique API key token."
     )
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True)
 
     def __str__(self):
-        return f"{self.name} ({self.pk})"
+        return f"{self.name} ({self.digest})"
