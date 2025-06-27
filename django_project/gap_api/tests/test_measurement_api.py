@@ -131,7 +131,7 @@ class CommonMeasurementAPITest(BaseAPIViewTest):
             self, lat=None, lon=None, bbox=None,
             attributes='max_temperature',
             start_dt='2024-04-01', end_dt='2024-04-04', product=None,
-            output_type='json', altitudes=None
+            output_type='json', altitudes=None, is_async=False
     ):
         """Get request for Measurement API.
 
@@ -166,6 +166,8 @@ class CommonMeasurementAPITest(BaseAPIViewTest):
             request_params = request_params + f'&bbox={bbox}'
         if lat is not None and lon is not None:
             request_params = request_params + f'&lat={lat}&lon={lon}'
+        if is_async:
+            request_params = request_params + '&async=true'
         request = self.factory.get(
             reverse('api:v1:get-measurement') + request_params
         )
@@ -176,7 +178,7 @@ class CommonMeasurementAPITest(BaseAPIViewTest):
     def _get_measurement_request_point(
             self, lat=-2.215, lon=29.125, attributes='max_temperature',
             start_dt='2024-04-01', end_dt='2024-04-04', product=None,
-            output_type='json', altitudes=None
+            output_type='json', altitudes=None, is_async=False
     ):
         """Get request for Measurement API.
 
@@ -199,7 +201,8 @@ class CommonMeasurementAPITest(BaseAPIViewTest):
         return self._get_measurement_request(
             lat=lat, lon=lon, attributes=attributes,
             start_dt=start_dt, end_dt=end_dt, product=product,
-            output_type=output_type, altitudes=altitudes
+            output_type=output_type, altitudes=altitudes,
+            is_async=is_async
         )
 
     def _get_measurement_request_bbox(
