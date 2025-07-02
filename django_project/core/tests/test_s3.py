@@ -5,17 +5,33 @@ Tomorrow Now GAP.
 .. note:: Unit test for S3 utils.
 """
 import os
-
+import boto3
+from botocore.stub import Stubber
 from django.conf import settings
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
 from django.test import TestCase
 
-from core.utils.s3 import zip_folder_in_s3, remove_s3_folder, create_s3_bucket
+from core.utils.s3 import (
+    zip_folder_in_s3,
+    remove_s3_folder,
+    create_s3_bucket,
+    remove_s3_folder_by_batch
+)
 
 
 class TestS3Utilities(TestCase):
     """Test S3 utilities."""
+
+    def setUp(self):
+        self.bucket = 'test-bucket'
+        self.prefix = 'zarr-dataset/'
+        self.s3 = boto3.client('s3', region_name='us-east-1')
+        self.stubber = Stubber(self.s3)
+        self.stubber.activate()
+
+    def tearDown(self):
+        self.stubber.deactivate()
 
     def test_bucket_already_created(self):
         """Test S3 bucket already created."""
@@ -40,3 +56,45 @@ class TestS3Utilities(TestCase):
         self.assertFalse(
             default_storage.exists(folder)
         )
+
+    def test_remove_s3_folder_by_batch(self):
+        """Test remove S3 folder by batch."""
+         # Mock list_objects_v2 pagination
+        list_response = {
+            'Contents': [
+                {'Key': 'zarr-dataset/.zarray'},
+                {'Key': 'zarr-dataset/0.0.0'},
+                {'Key': 'zarr-dataset/0.0.1'},
+            ],
+            'IsTruncated': False
+        }
+
+        delete_request = {
+            'Bucket': self.bucket,
+            'Delete': {
+                'Objects': [
+                    {'Key': 'zarr-dataset/.zarray'},
+                    {'Key': 'zarr-dataset/0.0.0'},
+                    {'Key': 'zarr-dataset/0.0.1'},
+                ]
+            }
+        }
+
+        delete_response = {
+            'Deleted': delete_request['Delete']['Objects']
+        }
+
+        self.stubber.add_response('list_objects_v2', list_response, {
+            'Bucket': self.bucket,
+            'Prefix': self.prefix
+        })
+        self.stubber.add_response(
+            'delete_objects',
+            delete_response,
+            delete_request
+        )
+        result = remove_s3_folder_by_batch(self.bucket, self.prefix, self.s3)
+
+        self.assertEqual(result['total_deleted'], 3)
+        self.assertEqual(result['total_batches'], 1)
+        self.stubber.assert_no_pending_responses()
