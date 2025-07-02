@@ -179,6 +179,11 @@ class DataSourceFile(models.Model):
     )
     is_latest = models.BooleanField(default=False)
     metadata = models.JSONField(blank=True, default=dict, null=True)
+    deleted_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="If the file is deleted, this field will be set."
+    )
 
     def __str__(self):
         return f'{self.name} - {self.id}'

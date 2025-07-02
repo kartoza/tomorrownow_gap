@@ -1,8 +1,18 @@
-"""# gap/tasks.py."""
+# coding=utf-8
+"""
+Tomorrow Now GAP.
+
+.. note:: Cleanup Tasks.
+"""
+
+from celery.utils.log import get_task_logger
 from core.celery import app
 from django.utils import timezone
 from datetime import timedelta
+
 from gap.models.signup_request import SignUpRequest, RequestStatus
+
+logger = get_task_logger(__name__)
 
 
 @app.task(name='cleanup_incomplete_signups')
@@ -16,3 +26,6 @@ def cleanup_incomplete_signups():
     count = qs.count()
     qs.delete()
     return f"Deleted {count} old incomplete SignUpRequests"
+
+
+

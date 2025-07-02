@@ -24,6 +24,7 @@ class TestS3Utilities(TestCase):
     """Test S3 utilities."""
 
     def setUp(self):
+        """Set up the test case."""
         self.bucket = 'test-bucket'
         self.prefix = 'zarr-dataset/'
         self.s3 = boto3.client('s3', region_name='us-east-1')
@@ -31,6 +32,7 @@ class TestS3Utilities(TestCase):
         self.stubber.activate()
 
     def tearDown(self):
+        """Tear down the test case."""
         self.stubber.deactivate()
 
     def test_bucket_already_created(self):
@@ -59,7 +61,6 @@ class TestS3Utilities(TestCase):
 
     def test_remove_s3_folder_by_batch(self):
         """Test remove S3 folder by batch."""
-         # Mock list_objects_v2 pagination
         list_response = {
             'Contents': [
                 {'Key': 'zarr-dataset/.zarray'},
