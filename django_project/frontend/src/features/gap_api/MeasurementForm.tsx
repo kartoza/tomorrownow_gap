@@ -13,7 +13,7 @@ import {
   Text,
   Box,
 } from '@chakra-ui/react'
-import { productList, attributeMap } from '@/utils/measurementData'
+import { useMeasurementOptions } from '@/utils/useMeasurementOptions'
 
 
 const hourlyProducts = ['cbam_shortterm_hourly_forecast']
@@ -49,6 +49,7 @@ type FormState = typeof initialForm
 type Errors = Partial<Record<keyof FormState, string>>
 
 const MeasurementForm: React.FC = () => {
+  const { products, attributes, error } = useMeasurementOptions()
   const [form, setForm] = useState<FormState>(initialForm)
   const [errors, setErrors] = useState<Errors>({})
   const [loading, setLoading] = useState(false)
@@ -69,12 +70,6 @@ const MeasurementForm: React.FC = () => {
     if (windborneProduct === form.product && (!form.altMin || !form.altMax)) {
       err.altMin = 'Provide both altitudes'
     }
-    if (salientProduct === form.product && !form.forecastDate) {
-      err.forecastDate = 'Required'
-    }
-    if (hourlyProducts.includes(form.product) && (!form.startTime || !form.endTime)) {
-      err.startTime = 'Required'
-    }
 
     if (form.locationType === 'point' && (!form.lat || !form.lon)) {
       err.lat = 'Enter lat & lon'
@@ -85,6 +80,9 @@ const MeasurementForm: React.FC = () => {
     }
     if (form.locationType === 'saved' && !form.locationName) {
       err.locationName = 'Enter a saved name'
+    }
+    if (form.outputType === 'json' && form.locationType !== 'point') {
+      err.outputType = 'JSON output is only available for Point locations'
     }
 
     setErrors(err)
@@ -99,7 +97,7 @@ const MeasurementForm: React.FC = () => {
     setLoading(false)
   }
 
-  const attrs = attributeMap[form.product] || []
+  const attrs = attributes[form.product] || []
   const locationOptions = [
     { label: 'Point', value: 'point' },
     { label: 'BBox', value: 'bbox' },
@@ -130,12 +128,12 @@ const MeasurementForm: React.FC = () => {
               onChange={(e) => handle('product', e.target.value)}
             >
               <option value="">Select product</option>
-              {productList.map((p) => (
+              {products.map((p) => (
                 <option key={p.variable_name} value={p.variable_name}>
                   {p.name}
                 </option>
               ))}
-            </NativeSelect.Field>
+              </NativeSelect.Field>
             <NativeSelect.Indicator />
           </NativeSelect.Root>
           <Field.ErrorText>{errors.product}</Field.ErrorText>
@@ -171,22 +169,20 @@ const MeasurementForm: React.FC = () => {
             value={form.startDate}
             onChange={(e) => handle('startDate', e.target.value)}
           />
-          <Field.ErrorText>{errors.startDate}</Field.ErrorText>
         </Field.Root>
 
         {hourlyProducts.includes(form.product) && (
-          <Field.Root invalid={!!errors.startTime} isRequired>
+          <Field.Root>
             <Field.Label>Start Time (UTC)</Field.Label>
             <Input
               type="time"
               value={form.startTime}
               onChange={(e) => handle('startTime', e.target.value)}
             />
-            <Field.ErrorText>{errors.startTime}</Field.ErrorText>
           </Field.Root>
         )}
 
-        <Field.Root invalid={!!errors.endDate} isRequired>
+        <Field.Root>
           <Field.Label>End Date</Field.Label>
           <Input
             type="date"
@@ -210,7 +206,7 @@ const MeasurementForm: React.FC = () => {
 
         {/* Forecast Date */}
         {form.product === salientProduct && (
-          <Field.Root invalid={!!errors.forecastDate} isRequired>
+          <Field.Root invalid={!!errors.forecastDate}>
             <Field.Label>Forecast Date</Field.Label>
             <Input
               type="date"
@@ -274,7 +270,7 @@ const MeasurementForm: React.FC = () => {
         </Field.Root>
 
         {/* Output */}
-        <Field.Root>
+        <Field.Root invalid={!!errors.outputType}>
           <Field.Label>Output Format</Field.Label>
           <NativeSelect.Root>
             <NativeSelect.Field
@@ -290,6 +286,7 @@ const MeasurementForm: React.FC = () => {
             </NativeSelect.Field>
             <NativeSelect.Indicator />
           </NativeSelect.Root>
+          <Field.ErrorText>{errors.outputType}</Field.ErrorText>
         </Field.Root>
 
         <Button
