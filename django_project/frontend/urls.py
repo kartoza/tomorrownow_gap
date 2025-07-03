@@ -12,6 +12,8 @@ from frontend.api_views import (
     SignUpRequestStatusView,
     MySignUpRequestView, ForgotPasswordView,
     ResetPasswordConfirmView, DecodeSocialSignupTokenView,
+    UserInfoAPI,
+    APIKeyListCreate, APIKeyDestroy
 )
 
 
@@ -33,6 +35,11 @@ urlpatterns = [
         "api/permitted-pages/",
         PermittedPagesView.as_view(),
         name="permitted-pages"
+    ),
+    path(
+        "api/user-info/",
+        UserInfoAPI.as_view(),
+        name="user-info"
     ),
     path(
         'signup/check_email/', EmailCheckView.as_view(), name='check_email'
@@ -64,6 +71,17 @@ urlpatterns = [
     path(
         'api/user-uid/<str:uid>/',
         UserFromUIDView.as_view(), name='user-uid'
+    ),
+    # API Key management
+    path(
+        "api-keys/",
+        APIKeyListCreate.as_view(),
+        name="api_key_list_create"
+    ),
+    path(
+        "api-keys/<str:key_id>/",
+        APIKeyDestroy.as_view(),
+        name="api_key_destroy"
     ),
     re_path(r'', HomeView.as_view(), name='home'),
 ]

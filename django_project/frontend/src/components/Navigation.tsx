@@ -1,10 +1,10 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { Box, Button, Container, Flex, HStack, Link, Spacer, Text, useDisclosure, IconButton, Collapsible, VStack, Avatar, Separator } from '@chakra-ui/react';
 import { RxHamburgerMenu } from "react-icons/rx";
 import { RiCloseFill } from "react-icons/ri";
-import { useLocation, useNavigate } from 'react-router-dom';
-import { FiLogOut } from "react-icons/fi";
+import { useLocation } from 'react-router-dom';
+import { FiLogOut, FiKey } from "react-icons/fi";
 import { toaster } from '@/components/ui/toaster';
 
 import { useScrollContext } from '@/context/ScrollContext';
@@ -14,9 +14,7 @@ import { APIDocsURL } from '@/utils/constants';
 import { RootState, AppDispatch } from '@/app/store';
 import ProfileDropdown from './ProfileDropdown';
 import {
-    logoutUser,
-    fetchUserInfo,
-    fetchPermittedPages
+    logoutUser
 } from '@/features/auth/authSlice';
 import { useNavigateWithEvent } from '@/hooks/useNavigateWithEvent';
 import { logoutEvent } from '@/utils/analytics';
@@ -28,7 +26,8 @@ interface NavItem {
 }
 
 const Navigation: React.FC = () => {
-    const { loading, user, isAuthenticated, hasInitialized } = useSelector((s: RootState) => s.auth);
+    const { user, isAuthenticated } = useSelector((s: RootState) => s.auth);
+    const { pages, isAdmin } = useSelector((s: RootState) => s.auth);
     const { open, onToggle } = useDisclosure();
     const { activeSection } = useScrollContext();
     const dispatch = useDispatch<AppDispatch>();
@@ -41,18 +40,6 @@ const Navigation: React.FC = () => {
         { label: 'About Us', href: '#about' }
     ];
     const fullName = user ? `${user.first_name} ${user.last_name}`.trim() : null;
-
-    useEffect(() => {
-        if (!hasInitialized && !loading) {
-            dispatch(fetchUserInfo())
-        }
-    }, [loading, hasInitialized, dispatch]);
-
-    useEffect(() => {
-        if (isAuthenticated) {
-          dispatch(fetchPermittedPages())
-        }
-      }, [isAuthenticated, dispatch])
 
     const handleMenuClick = (sectionId: string) => {
         // Check if we're on the landing page
@@ -205,6 +192,50 @@ const Navigation: React.FC = () => {
                                         </Box>
 
                                         <Separator marginY={1} />
+
+                                        {/* DCAS CSV (KALRO only) */}
+                                        {(isAdmin || pages.includes('dcas_csv')) && (
+                                            <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            width="100%"
+                                            justifyContent="flex-start"
+                                            padding={3}
+                                            height="auto"
+                                            borderRadius="md"
+                                            onClick={() => {
+                                                onToggle();
+                                                navigate('/dcas-csv');
+                                            }}
+                                            >
+                                            <HStack gap={3} width="100%">
+                                                <Text fontSize="sm" fontWeight="semibold">
+                                                DCAS CSV
+                                                </Text>
+                                            </HStack>
+                                            </Button>
+                                        )}
+
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            width="100%"
+                                            justifyContent="flex-start"
+                                            padding={3}
+                                            height="auto"
+                                            borderRadius="md"
+                                            onClick={() => {
+                                            onToggle();
+                                            navigate('/api-keys');       // go to the page
+                                            }}
+                                        >
+                                            <HStack gap={3} w="full">
+                                            <FiKey size={6} />
+                                            <Text fontSize="sm" fontWeight="semibold">
+                                                API&nbsp;Keys
+                                            </Text>
+                                            </HStack>
+                                        </Button>
                             
                                         {/* Logout Menu Item */}
                                         <Button

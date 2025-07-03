@@ -1,0 +1,20 @@
+{
+    "exclude": [
+        "**/node_modules",
+        "**/__pycache__",
+        "**/.*",
+        "**/deployment/volumes/**",
+        "**/.pytest_cache",
+        "**/bundles/**",
+        "**/static/**",
+        "**/public/**",
+        "deployment/**",
+        "docs/**",
+        "examples/**",
+        "locust/**"
+    ],
+    "typeCheckingMode": "off",
+    "reportMissingImports": true,
+    "reportMissingTypeStubs": false,
+    "reportGeneralTypeIssues": false
+}

@@ -1066,3 +1066,88 @@ class TioShortTermAsyncCollectorTest(DailyDuckDBAssert, TestCase):
         self.assertIn('forecast_date', data_source.metadata)
         self.assertIn('remote_url', data_source.metadata)
         self.assert_duckdb_file(data_source)
+
+    @patch("aiohttp.ClientSession.post")
+    @patch.object(CollectorSession, '_run')
+    def test_collector_one_grid_filtered(self, mock_run, mock_post):
+        """Testing collector."""
+        today = datetime(
+            2024, 10, 1, 6, 0, 0
+        )
+        today = timezone.make_aware(
+            today, timezone.get_default_timezone()
+        )
+        country_1 = Country.objects.create(
+            name='Country 1',
+            iso_a3='C1',
+        )
+        grid_1 = GridFactory(
+            geometry=Polygon(
+                (
+                    (0, 0), (0, 0.01), (0.01, 0.01), (0.01, 0), (0, 0)
+                )
+            ),
+            country=country_1
+        )
+        country_2 = Country.objects.create(
+            name='Country 2',
+            iso_a3='C2',
+        )
+        GridFactory(
+            geometry=Polygon(
+                (
+                    (1, 1), (1, 1.01), (1.01, 1.01), (1.01, 1), (1, 1)
+                )
+            ),
+            country=country_2
+        )
+        session = CollectorSession.objects.create(
+            ingestor_type=self.ingestor_type,
+            additional_config={
+                'duckdb_num_threads': 1,
+                'countries': [country_1.name]
+            }
+        )
+        # create DataSourceFile for the session
+        data_source = DataSourceFile.objects.create(
+            name=f'{str(uuid.uuid4())}.duckdb',
+            dataset=self.dataset,
+            start_date_time=today,
+            end_date_time=today,
+            format=DatasetStore.DUCKDB,
+            created_on=timezone.now(),
+            metadata={
+                'forecast_date': (
+                    today.isoformat()
+                ),
+                'total_grid': 1,
+                'start_grid_id': grid_1.id,
+                'end_grid_id': grid_1.id,
+            }
+        )
+        session.dataset_files.set([data_source])
+
+        mock_response = AsyncMock()
+        mock_response.__aenter__.return_value = mock_response
+        mock_response.status = 200
+        mock_response.json.return_value = self.response
+
+        mock_post.return_value = mock_response
+
+        mock_run.side_effect = partial(
+            mock_collector_run_with_dt,
+            session,
+            today,
+            TioShortTermDailyCollector
+        )
+
+        session.run()
+        session.refresh_from_db()
+        self.assertEqual(session.dataset_files.count(), 1)
+        print(session.notes)
+        self.assertEqual(session.status, IngestorSessionStatus.SUCCESS)
+        self.assertEqual(session.dataset_files.count(), 1)
+        data_source = session.dataset_files.first()
+        self.assertIn('forecast_date', data_source.metadata)
+        self.assertIn('remote_url', data_source.metadata)
+        self.assert_duckdb_file(data_source)

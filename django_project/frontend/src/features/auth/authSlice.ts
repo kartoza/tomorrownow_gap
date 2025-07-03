@@ -1,20 +1,9 @@
 import { createSlice, PayloadAction, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios';
-import { setCSRFToken } from '../../utils/csrfUtils'
-import { User } from '../../types';
-import { AppDispatch } from '../../app/store';
-
-interface AuthState {
-  user: User | null;
-  token: string | null;
-  loading: boolean;
-  error: string | null;
-  message: string | null;
-  isAuthenticated: boolean;
-  isAdmin: boolean;
-  hasInitialized: boolean;
-  pages: string[];
-}
+import { setCSRFToken } from '@/utils/csrfUtils'
+import { User } from '@/types';
+import { AppDispatch } from '@/app/store';
+import { AuthState } from './type';
 
 const initialState: AuthState = {
   user: null,
@@ -26,6 +15,7 @@ const initialState: AuthState = {
   isAdmin: false,
   hasInitialized: false, // Track if user info has been fetched
   pages: [],
+  apiKeys: []
 };
 
 // Async thunk for user logs in
@@ -48,7 +38,7 @@ export const fetchUserInfo = createAsyncThunk(
   'auth/fetchUserInfo',
   async ({}, { dispatch, rejectWithValue }) => {
     try {
-      const response = await axios.get(`/api/v1/user/me`);
+      const response = await axios.get(`/api/user-info/`);
       return response.data;
     } catch (error: any) {
       return rejectWithValue(error.response?.data['detail'] || 'Failed to fetch status');
@@ -121,6 +111,83 @@ export const fetchPermittedPages = createAsyncThunk<
   }
 );
 
+export const fetchApiKeys = createAsyncThunk<
+  { id: string; name: string; description: string; created: string; expiry: string | null }[],
+  void,
+  { rejectValue: string }
+>(
+  'auth/fetchApiKeys',
+  async (_, { rejectWithValue }) => {
+    try {
+      const resp = await axios.get<{
+        id: string; 
+        name: string;
+        description: string;
+        created: string;
+        expiry: string | null
+      }[]>(
+        '/api-keys/',
+        { withCredentials: true }
+      );
+      return resp.data;
+    } catch (err: any) {
+      return rejectWithValue(err.response?.data?.detail || 'Failed to load API keys');
+    }
+  }
+);
+
+export const generateApiKey = createAsyncThunk<
+  {
+    id: string;
+    name: string;
+    description: string;
+    token: string;
+    created: string;
+    expiry: string | null
+  },
+    { name: string; description: string, expiry: string }, // Payload for the API key generation
+  { rejectValue: string }
+>(
+  'auth/generateApiKey',
+  async ({ name, description, expiry }: { name: string; description: string, expiry: string }, { rejectWithValue }) => {
+    try {
+      setCSRFToken();
+      const resp = await axios.post<{
+        id: string;
+        name: string;
+        description: string;
+        token: string;
+        created: string;
+        expiry: string | null;
+      }>(
+        '/api-keys/',
+        { name, description, expiry },
+        { withCredentials: true }
+      );
+      return resp.data;
+    } catch (err: any) {
+      return rejectWithValue(err.response?.data?.detail || 'Error generating API key');
+    }
+  }
+);
+
+export const revokeApiKey = createAsyncThunk<
+  string,
+  string,
+  { rejectValue: string }
+>(
+  'auth/revokeApiKey',
+  async (keyId, { rejectWithValue }) => {
+    try {
+      setCSRFToken();
+      await axios.delete(`/api-keys/${keyId}/`, { withCredentials: true });
+      return keyId;
+    } catch (err: any) {
+      return rejectWithValue(err.response?.data?.detail || 'Error revoking API key');
+    }
+  }
+);
+
 const authSlice = createSlice({
   name: 'auth',
   initialState,
@@ -130,7 +197,7 @@ const authSlice = createSlice({
       state.error = null;
       state.message = null;
     },
-    loginSuccess: (state, action: PayloadAction<{ is_admin: boolean; user: User; token: string }>) => {
+    loginSuccess: (state, action: PayloadAction<{ is_admin: boolean; user: User; token: string;}>) => {
       state.loading = false;
       state.user = action.payload.user;
       state.token = action.payload.token;
@@ -180,6 +247,7 @@ const authSlice = createSlice({
         state.isAuthenticated = true;
         state.isAdmin = action.payload.is_superuser || false; // Assuming is_superuser indicates admin status
         state.hasInitialized = true; // Mark as initialized after fetching user info
+        state.pages = action.payload.pages || []; // Assuming pages are part of user info
       })
       .addCase(fetchUserInfo.rejected, (state, action) => {
         state.loading = false;
@@ -223,6 +291,7 @@ const authSlice = createSlice({
         state.isAdmin = action.payload.user.is_superuser || false; // Assuming is_superuser indicates admin status
         state.message = 'Login successful';
         state.hasInitialized = true; // Mark as initialized after successful login
+        state.pages = action.payload.pages || [];
       }
       )
       .addCase(loginUser.rejected, (state, action) => {
@@ -254,6 +323,22 @@ const authSlice = createSlice({
       })
       .addCase(fetchPermittedPages.rejected, (state) => {
         state.pages = [];
+      })
+      .addCase(fetchApiKeys.fulfilled, (state, { payload }) => {
+        state.apiKeys = payload;
+      })
+      .addCase(generateApiKey.fulfilled, (state, { payload }) => {
+        // payload.token contains plaintext, if you want to show it
+        state.apiKeys.push({
+          name: payload.name,
+          description: payload.description,
+          id: payload.id,
+          created: payload.created,
+          expiry: payload.expiry,
+        });
+      })
+      .addCase(revokeApiKey.fulfilled, (state, { payload: deletedId }) => {
+        state.apiKeys = state.apiKeys.filter(k => k.id !== deletedId);
       });
   },
 });

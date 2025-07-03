@@ -17,7 +17,8 @@ from gap_api.api_views.crop_insight import CropPlanAPI
 from gap_api.api_views.measurement import (
     MeasurementAPI,
     product_type_list,
-    dataset_attribute_by_product
+    dataset_attribute_by_product,
+    JobStatusAPI
 )
 from gap_api.api_views.user import UserInfo
 from gap_api.api_views.location import LocationAPI
@@ -94,10 +95,15 @@ user_urls = [
 # MEASUREMENT APIs
 measurement_urls = [
     path(
+        'measurement/job-status/<str:job_id>/',
+        JobStatusAPI.as_view(),
+        name='measurement-job-status'
+    ),
+    path(
         'measurement/',
         MeasurementAPI.as_view(),
         name='get-measurement'
-    )
+    ),
 ]
 
 # LOCATION API

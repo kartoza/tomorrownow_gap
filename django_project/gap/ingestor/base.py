@@ -38,7 +38,10 @@ logger = logging.getLogger(__name__)
 class CoordMapping:
     """Mapping coordinate between Grid and Zarr."""
 
-    def __init__(self, value, nearest_idx, nearest_val) -> None:
+    def __init__(
+        self, value, nearest_idx, nearest_val,
+        is_gap_filled: bool = False
+    ) -> None:
         """Initialize coordinate mapping class.
 
         :param value: lat/lon value from Grid
@@ -51,6 +54,7 @@ class CoordMapping:
         self.value = value
         self.nearest_idx = nearest_idx
         self.nearest_val = nearest_val
+        self.is_gap_filled = is_gap_filled
 
 
 class BaseIngestor:
@@ -317,7 +321,9 @@ class BaseZarrIngestor(BaseIngestor):
         return all(arr[i] + 1 == arr[i + 1] for i in range(len(arr) - 1))
 
     def _transform_coordinates_array(
-            self, coord_arr, coord_type) -> List[CoordMapping]:
+        self, coord_arr, coord_type,
+        tolerance = None, fix_incremented: bool = False
+    ) -> List[CoordMapping]:
         """Find nearest in Zarr for array of lat/lon/date.
 
         :param coord_arr: array of lat/lon/date
@@ -330,26 +336,45 @@ class BaseZarrIngestor(BaseIngestor):
         # open existing zarr
         ds = self._open_zarr_dataset()
 
+        tolerance = tolerance or self.reindex_tolerance
         # find nearest coordinate for each item
+        prev_coord_idx = None
         results: List[CoordMapping] = []
+        coord_idx_hash = {}
         for target_coord in coord_arr:
-            if coord_type == 'lat':
-                nearest_coord = ds['lat'].sel(
-                    lat=target_coord, method='nearest',
-                    tolerance=self.reindex_tolerance
-                ).item()
-            elif coord_type == 'lon':
-                nearest_coord = ds['lon'].sel(
-                    lon=target_coord, method='nearest',
-                    tolerance=self.reindex_tolerance
+            if coord_type in ['lat', 'lon']:
+                nearest_coord = ds[coord_type].sel(
+                    **{coord_type: target_coord}, method='nearest',
+                    tolerance=tolerance
                 ).item()
             else:
                 nearest_coord = target_coord
 
             coord_idx = np.where(ds[coord_type].values == nearest_coord)[0][0]
-            results.append(
-                CoordMapping(target_coord, coord_idx, nearest_coord)
-            )
+            if fix_incremented and prev_coord_idx is not None:
+                # if previous coordinate is not the same as current,
+                # we need to add the missing coordinate
+                if coord_idx != prev_coord_idx + 1:
+                    # add missing coordinate
+                    missing_coord = ds[coord_type].values[
+                        prev_coord_idx + 1:coord_idx
+                    ]
+                    for idx, mc in enumerate(missing_coord):
+                        add_idx = prev_coord_idx + idx + 1
+                        if add_idx not in coord_idx_hash:
+                            results.append(
+                                CoordMapping(
+                                    mc, add_idx, mc, is_gap_filled=True
+                                )
+                            )
+                            coord_idx_hash[add_idx] = 1
+            if coord_idx not in coord_idx_hash:
+                prev_coord_idx = coord_idx
+                # append result
+                results.append(
+                    CoordMapping(target_coord, coord_idx, nearest_coord)
+                )
+                coord_idx_hash[coord_idx] = 1
 
         # close dataset
         ds.close()

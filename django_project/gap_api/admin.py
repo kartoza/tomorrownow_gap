@@ -25,7 +25,8 @@ from gap_api.models import (
     DatasetTypeAPIConfig,
     Location,
     APIRateLimiter,
-    UserFile
+    UserFile,
+    Job
 )
 from gap_api.resources import APIRequestLogResource
 
@@ -239,8 +240,26 @@ class UserFileAdmin(admin.ModelAdmin):
     get_size.admin_order_field = 'size'
 
 
+class JobAdmin(admin.ModelAdmin):
+    """Admin class for Job."""
+
+    ordering = ('-submitted_on',)
+    list_display = (
+        'user', 'status', 'started_at', 'finished_at', 'get_size',
+        'uuid',
+    )
+
+    def get_size(self, obj: Job):
+        """Get the size."""
+        return format_size(obj.size)
+
+    get_size.short_description = 'Size'
+    get_size.admin_order_field = 'size'
+
+
 admin.site.register(APIRequestLog, GapAPIRequestLogAdmin)
 admin.site.register(DatasetTypeAPIConfig, GapAPIDatasetTypeConfigAdmin)
 admin.site.register(Location, LocationAdmin)
 admin.site.register(APIRateLimiter, APIRateLimiterAdmin)
 admin.site.register(UserFile, UserFileAdmin)
+admin.site.register(Job, JobAdmin)

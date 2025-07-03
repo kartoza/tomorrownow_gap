@@ -10,7 +10,9 @@ import {
   Link,
   Input,
   Field,
-  Image
+  Image,
+  InputGroup,
+  IconButton
 } from "@chakra-ui/react";
 import { toaster } from "@/components/ui/toaster"
 import { FormType } from "./type";
@@ -25,6 +27,8 @@ import { RootState, AppDispatch } from "@app/store";
 import { loginEvent, socialAuthRedirect } from "@/utils/analytics";
 import { useNavigateWithEvent } from "@/hooks/useNavigateWithEvent";
 import { useGapContext } from "@/context/GapContext";
+import { AiOutlineEye, AiOutlineEyeInvisible } from "react-icons/ai";
+import { LocationState } from "@/types";
 
 
 interface LoginFormProps {
@@ -33,6 +37,8 @@ interface LoginFormProps {
 
 const LoginForm: React.FC<LoginFormProps> = () => {
     const navigate = useNavigateWithEvent();
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirm, setShowConfirm] = useState(false);
     const [formType, setFormType] = useState<FormType>("signin");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
@@ -41,7 +47,12 @@ const LoginForm: React.FC<LoginFormProps> = () => {
 
     const dispatch = useDispatch<AppDispatch>();
     const { loading, token, message,error } = useSelector((s: RootState) => s.auth);
-    const { search } = useLocation();
+    const { search, state } = useLocation();
+
+    // Get the page user was trying to access before login
+    const locationState = state as LocationState | null;
+    const from = locationState?.from?.pathname || '/';
+
     const params = new URLSearchParams(search);
     const prevType = useRef<FormType>(formType);
 
@@ -86,8 +97,13 @@ const LoginForm: React.FC<LoginFormProps> = () => {
                     description: "You have successfully logged in.",
                     type: "success"
                 });
-                // login successful, redirect to home
-                navigate("/", null, true);
+                if (from) {
+                    // If there is a previous page, navigate there
+                    navigate(from, null, true, { replace: true });
+                } else {
+                    // login successful, redirect to home
+                    navigate("/", null, true, { replace: true });
+                }
             }
             break;
         case "signup":
@@ -103,6 +119,14 @@ const LoginForm: React.FC<LoginFormProps> = () => {
             break;
         case "resetPassword": {
             // Dispatch the reset-password-confirm thunk
+            if (password !== confirmPw) {
+                toaster.create({
+                    title: "Error",
+                    description: "Passwords do not match",
+                    type: "error",
+                });
+                return;
+            }
             const result = await dispatch(
                 resetPasswordConfirm({ uid, token, password })
             );
@@ -198,24 +222,54 @@ const LoginForm: React.FC<LoginFormProps> = () => {
             {/* Password */}
             {formType !== "forgotPassword" && (
             <Field.Root required mb={3}>
-                <Input
-                    placeholder="Password"
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                />
+                <InputGroup
+                    flex="1"
+                    endElement={
+                        <IconButton
+                            aria-label={showPassword ? "Hide password" : "Show password"}
+                            variant="ghost"
+                            size="xs"
+                            onClick={() => setShowPassword((v) => !v)}
+                            >
+                                {showPassword ? <AiOutlineEyeInvisible /> : <AiOutlineEye />}
+                        </IconButton>
+                    }
+                    >
+                    <Input
+                        placeholder="Password"
+                        type={showPassword ? "text" : "password"}
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        pr="2.5rem"
+                    />
+                </InputGroup>
             </Field.Root>
             )}
 
             {/* Confirm Password */}
             {(formType === "signup" || formType === "resetPassword") && (
             <Field.Root required mb={3}>
+                <InputGroup
+                flex="1"
+                endElement={
+                    <IconButton
+                        aria-label={showConfirm ? "Hide confirm" : "Show confirm"}
+                        variant="ghost"
+                        size="xs"
+                        onClick={() => setShowConfirm((v) => !v)}
+                        >
+                            {showConfirm ? <AiOutlineEyeInvisible /> : <AiOutlineEye />}
+                    </IconButton>
+                }
+                >
                 <Input
                     placeholder="Confirm Password"
-                    type="password"
+                    type={showConfirm ? "text" : "password"}
                     value={confirmPw}
                     onChange={(e) => setConfirmPw(e.target.value)}
+                    pr="2.5rem"
                 />
+                </InputGroup>
             </Field.Root>
             )}
 

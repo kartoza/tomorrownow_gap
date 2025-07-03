@@ -6,7 +6,7 @@ from django.contrib import admin
 from django.urls import path, include, re_path
 
 from core.views import (
-    PreferencesRedirectView, FlowerProxyView
+    PreferencesRedirectView, FlowerProxyView,
 )
 from frontend.api_views.auth.login import (
     LoginView as CustomLoginView, LogoutView as CustomLogoutView

@@ -98,11 +98,12 @@ class TamsatZarrReader(BaseZarrReader):
     def __init__(
             self, dataset: Dataset, attributes: List[DatasetAttribute],
             location_input: DatasetReaderInput, start_date: datetime,
-            end_date: datetime
+            end_date: datetime, use_cache: bool = True
     ) -> None:
         """Initialize TioZarrReader class."""
         super().__init__(
-            dataset, attributes, location_input, start_date, end_date
+            dataset, attributes, location_input, start_date, end_date,
+            use_cache=use_cache
         )
         self.today = datetime.now(tz=pytz.UTC)
         self.closest_leap_year = closest_leap_year(self.today.year)
@@ -244,5 +245,5 @@ class TamsatReaderBuilder(BaseReaderBuilder):
         """Build a new Dataset Reader."""
         return TamsatZarrReader(
             self.dataset, self.attributes, self.location_input,
-            self.start_date, self.end_date
+            self.start_date, self.end_date, use_cache=self.use_cache
         )

@@ -126,3 +126,8 @@ SWAGGER_SETTINGS = {
     'LOGIN_URL': '/admin/login/',
     'LOGOUT_URL': '/admin/logout/'
 }
+
+# Celery Data Request QUEUE
+CELERY_DATA_REQUEST_QUEUE = os.getenv(
+    "CELERY_DATA_REQUEST_QUEUE", "data_request_queue"
+)

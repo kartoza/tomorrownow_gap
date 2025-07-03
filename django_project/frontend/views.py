@@ -13,7 +13,6 @@ from django.views.generic import TemplateView, View
 from django.urls import reverse
 from django.utils import timezone
 from django.core.files.storage import storages
-from django.shortcuts import redirect
 from rest_framework import generics, permissions
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -174,7 +173,7 @@ class OutputDownloadView(APIView):
                 f'attachment; filename="{output.file_name}"',
             },
         )
-
+        presigned = presigned_url
         # **new** – persist audit row
         DCASDownloadLog.objects.create(output=output, user=request.user)
         if settings.DEBUG:
@@ -182,7 +181,7 @@ class OutputDownloadView(APIView):
                 "http://minio:9000", "http://localhost:9010"
             )
 
-        return redirect(presigned)
+        return Response({"url": presigned})
 
 
 class PermittedPagesView(APIView):
