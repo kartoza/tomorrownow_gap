@@ -12,9 +12,8 @@ export interface MeasurementOptions {
 }
 
 /**
- * TODO (backend): Add MeasurementOptionsAPI at GET /api/v1/measurement/options/
- * The current api only fetches products and attributes cannot be
- * enumarated from it.
+ * Fetches the list of dataset‐types (products) and their attributes
+ * from GET /api/v1/measurement/options/
  */
 export function useMeasurementOptions(): MeasurementOptions & {
   loading: boolean

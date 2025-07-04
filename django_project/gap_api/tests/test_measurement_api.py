@@ -27,7 +27,9 @@ from gap.utils.reader import (
     LocationInputType
 )
 from gap_api.models.api_config import DatasetTypeAPIConfig
-from gap_api.api_views.measurement import MeasurementAPI
+from gap_api.api_views.measurement import (
+    MeasurementAPI, MeasurementOptionsView
+)
 from gap_api.factories import LocationFactory
 from permission.models import PermissionType
 from gap.tests.ingestor.test_tio_shortterm_ingestor import (
@@ -583,3 +585,35 @@ class HistoricalAPITest(CommonMeasurementAPITest):
         self.assertIn('results', response.data)
         results = response.data['results']
         self.assertEqual(len(results), 1)
+
+
+class MeasurementOptionsAPITest(BaseAPIViewTest):
+    """Tests for the GET /measurement/options/ endpoint."""
+
+    def test_get_measurement_options(self):
+        """Test retrieving measurement options."""
+        request = self.factory.get('/v1/measuremnent/options/')
+        request.user = self.superuser
+        request.resolver_match = FakeResolverMatchV1
+
+        response = MeasurementOptionsView.as_view()(request)
+        self.assertEqual(response.status_code, 200)
+
+        data = response.data
+        # top‐level keys
+        self.assertIn('products', data)
+        self.assertIn('attributes', data)
+
+        # products should be a list of dicts with both fields
+        self.assertIsInstance(data['products'], list)
+        for prod in data['products']:
+            self.assertIn('variable_name', prod)
+            self.assertIn('name', prod)
+
+        # attributes should be a dict mapping variable_name, list of strings
+        self.assertIsInstance(data['attributes'], dict)
+        for key, vals in data['attributes'].items():
+            self.assertIsInstance(key, str)
+            self.assertIsInstance(vals, list)
+            for v in vals:
+                self.assertIsInstance(v, str)
