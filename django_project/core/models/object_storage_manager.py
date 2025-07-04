@@ -387,10 +387,37 @@ class DeletionLog(models.Model):
             )
         if not self.path:
             raise ValueError('Path must be specified for Deletion Log.')
-        
+
         # Ensure path ends with a slash for folder deletion
         if self.is_directory and not self.path.endswith('/'):
             self.path += '/'
+
+        # Ensure path does not start with a slash
+        if self.path.startswith('/'):
+            raise ValueError(
+                f'Path "{self.path}" cannot start with a slash ("/"). '
+                'Use the S3 directory prefix instead.'
+            )
+
+        if self.path == '/':
+            raise ValueError('Path cannot be just a slash ("/").')
+
+        s3_env_vars = self.object_storage_manager.get_s3_env_vars(
+            connection_name=self.object_storage_manager.connection_name
+        )
+        prefix = s3_env_vars.get('S3_DIR_PREFIX', '')
+        if not self.path.startswith(prefix):
+            raise ValueError(
+                f'Path "{self.path}" must start with the S3 directory prefix '
+                f'"{prefix}".'
+            )
+
+        # validate path must not be prefix
+        if self.path == prefix:
+            raise ValueError(
+                f'Path "{self.path}" cannot be the S3 directory prefix '
+                f'"{prefix}".'
+            )
 
     def run(self):
         """Run the deletion process."""
@@ -400,14 +427,14 @@ class DeletionLog(models.Model):
         self.save()
 
         try:
-            # s3_client = self.object_storage_manager.get_s3_client(
-            #     connection_name=self.object_storage_manager.connection_name
-            # )
-            # self.stats = remove_s3_folder_by_batch(
-            #     self.object_storage_manager.bucket_name,
-            #     self.path,
-            #     s3_client
-            # )
+            s3_client = self.object_storage_manager.get_s3_client(
+                connection_name=self.object_storage_manager.connection_name
+            )
+            self.stats = remove_s3_folder_by_batch(
+                self.object_storage_manager.bucket_name,
+                self.path,
+                s3_client
+            )
 
             self.status = TaskStatus.COMPLETED
         except Exception as e:
