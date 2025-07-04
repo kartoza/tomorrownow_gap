@@ -167,8 +167,6 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({
               <Text fontSize="sm" fontWeight="semibold">Data Forms</Text>
             </Button>
 
-            <Separator my={1} />
-
             <Button
               variant="ghost"
               size="sm"
@@ -189,6 +187,8 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({
                 </Text>
               </HStack>
             </Button>
+
+            <Separator my={1} />
 
             {/* Logout Menu Item */}
             <Button
