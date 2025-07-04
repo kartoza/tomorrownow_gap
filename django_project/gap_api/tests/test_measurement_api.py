@@ -590,6 +590,17 @@ class HistoricalAPITest(CommonMeasurementAPITest):
 class MeasurementOptionsAPITest(BaseAPIViewTest):
     """Tests for the GET /measurement/options/ endpoint."""
 
+    fixtures = [
+        '1.object_storage_manager.json',
+        '2.provider.json',
+        '3.station_type.json',
+        '4.dataset_type.json',
+        '5.dataset.json',
+        '6.unit.json',
+        '7.attribute.json',
+        '8.dataset_attribute.json',
+    ]
+
     def test_get_measurement_options(self):
         """Test retrieving measurement options."""
         request = self.factory.get('/v1/measuremnent/options/')
