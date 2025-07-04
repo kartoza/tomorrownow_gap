@@ -5,6 +5,7 @@ Tomorrow Now GAP.
 .. note:: Cleanup Tasks.
 """
 
+import os
 from celery.utils.log import get_task_logger
 from core.celery import app
 from django.utils import timezone
@@ -67,7 +68,7 @@ def cleanup_deleted_zarr():
         )
         path = ds_file.name
         if not path.startswith(s3_env_vars['S3_DIR_PREFIX']):
-            path = s3_env_vars['S3_DIR_PREFIX'] + path
+            path = os.path.join(s3_env_vars['S3_DIR_PREFIX'], path)
         if not path.endswith('/'):
             path += '/'
 
