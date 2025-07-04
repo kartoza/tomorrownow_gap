@@ -347,6 +347,23 @@ class MeasurementAPI(GAPAPILoggingMixin, APIView):
         )
         return response
 
+    def _get_accel_redirect_response_job_wait(self, job_id):
+        response = Response(
+            status=200
+        )
+        poll_interval = self._preferences.job_executor_config.get(
+            'poll_interval', 0.5
+        )
+        max_wait_time = self._preferences.job_executor_config.get(
+            'max_wait_time', 1200
+        )
+        response['X-Accel-Redirect'] = (
+            f'/userjobs/http/django:8001/job/{job_id}/wait?'
+            f'poll_interval={poll_interval}&'
+            f'max_wait_time={max_wait_time}'
+        )
+        return response
+
     def validate_product_type(self, product_filter):
         """Validate user has access to product type.
 
@@ -508,6 +525,7 @@ class MeasurementAPI(GAPAPILoggingMixin, APIView):
                     'detail': 'No weather data is found for given queries.'
                 }
             )
+
         # Check if x_accel_redirect is enabled
         if self._preferences.api_use_x_accel_redirect:
             presigned_url = user_file.generate_url()
@@ -614,6 +632,17 @@ class MeasurementAPI(GAPAPILoggingMixin, APIView):
 
         # Check if the request is async, API will return job ID
         is_async = self.request.GET.get('async', 'false').lower() == 'true'
+        use_async_wait = False
+        if not is_async:
+            # Check if async wait is enabled in preferences
+            use_async_wait = self._preferences.job_executor_config.get(
+                'use_async_wait', False
+            )
+        is_execute_immediately = (
+            self._preferences.job_executor_config.get(
+                'execute_immediately', False
+            )
+        )
 
         # Check cache using UserFile
         user_file = self._get_user_file(location)
@@ -653,11 +682,6 @@ class MeasurementAPI(GAPAPILoggingMixin, APIView):
         )
         job.save()
 
-        is_execute_immediately = (
-            self._preferences.job_executor_config.get(
-                'execute_immediately', False
-            )
-        )
         executor = DataRequestJobExecutor(
             job, is_main_executor=is_execute_immediately
         )
@@ -670,6 +694,11 @@ class MeasurementAPI(GAPAPILoggingMixin, APIView):
                     'detail': 'Job is submitted successfully.',
                     'job_id': str(job.uuid)
                 }
+            )
+        elif use_async_wait:
+            # Return job ID for async wait
+            return self._get_accel_redirect_response_job_wait(
+                str(job.uuid)
             )
 
         job.refresh_from_db()
