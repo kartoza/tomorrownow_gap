@@ -12,6 +12,7 @@ import os
 
 class Settings(BaseSettings):
     """Configuration settings for the Job Polling API."""
+
     # Project info
     PROJECT_NAME: str = "Job Polling API"
     VERSION: str = "1.0.0"

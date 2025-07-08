@@ -69,6 +69,7 @@ class JobStatusResponse(BaseModel):
 
 class HealthResponse(BaseModel):
     """Response model for health check."""
+
     status: str
     worker_id: str
     redis_connected: bool

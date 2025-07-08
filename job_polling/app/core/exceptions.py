@@ -42,7 +42,7 @@ class JobFailedError(Exception):
 
 
 def setup_exception_handlers(app: FastAPI):
-    """Setup custom exception handlers"""
+    """Set the custom exception handlers."""
 
     @app.exception_handler(JobNotFoundError)
     async def job_not_found_handler(request: Request, exc: JobNotFoundError):

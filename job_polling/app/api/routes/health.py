@@ -37,5 +37,5 @@ async def health_check():
 
 @router.get("/ping")
 async def ping():
-    """Simple ping endpoint."""
+    """Endpoint that returns pong."""
     return {"message": "pong"}

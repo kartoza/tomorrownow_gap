@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 
 def create_app() -> FastAPI:
-    """Create and configure FastAPI application"""
+    """Create and configure FastAPI application."""
     settings = get_settings()
 
     app = FastAPI(
