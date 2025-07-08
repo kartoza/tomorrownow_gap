@@ -678,7 +678,7 @@ class MeasurementAPI(GAPAPILoggingMixin, APIView):
             user=self.request.user,
             parameters=self._get_request_params(),
             queue_name=settings.CELERY_DATA_REQUEST_QUEUE,
-            wait_type=0 if is_async else 1,
+            wait_type=0 if is_async or use_async_wait else 1,
         )
         job.save()
 
