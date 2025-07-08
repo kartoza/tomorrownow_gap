@@ -20,12 +20,15 @@ RUN pip3 install -r /requirements.txt
 RUN apt-get update -y && apt-get install -y nodejs npm
 
 ADD django_project /home/web/django_project
+ADD job_polling /home/web/job_polling
 
 EXPOSE 8080
+EXPOSE 8001
 
 ADD deployment/docker/uwsgi.conf /uwsgi.conf
 # Add supervisord config for worker
 ADD deployment/docker/supervisord.conf /supervisord.conf
+ADD deployment/docker/main_supervisord.conf /main_supervisord.conf
 
 WORKDIR /home/web/django_project
 ENTRYPOINT ["/home/web/django_project/entrypoint.sh"]

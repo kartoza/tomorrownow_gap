@@ -37,4 +37,5 @@ echo "FINISHED DJANGO ENTRYPOINT --------------------------"
 echo "-----------------------------------------------------"
 
 # Run the CMD
-exec "$@"
+# exec "$@"
+exec supervisord -c /main_supervisord.conf
