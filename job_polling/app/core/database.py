@@ -18,8 +18,8 @@ async def get_redis() -> redis.Redis:
         settings = get_settings()
         _redis_client = redis.Redis(
             host=settings.REDIS_HOST,
-            port=settings.REDIS_PORT,
-            db=settings.REDIS_DB,
+            port=6379,  # Default Redis port
+            db=0,  # Default Redis database
             password=settings.REDIS_PASSWORD or None,
             decode_responses=True,
             retry_on_timeout=True,
