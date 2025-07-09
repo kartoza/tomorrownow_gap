@@ -373,7 +373,7 @@ class TestUserFileAPI(CommonMeasurementAPITest):
         mocked_execute_job.assert_called_once()
         self.assertIn('X-Accel-Redirect', response.headers)
         self.assertIn(
-            'userjobs/http/django:8001',
+            'userjobs/http/django_jobs:8001',
             response.headers['X-Accel-Redirect']
         )
         self.assertFalse(UserFile.objects.filter(
