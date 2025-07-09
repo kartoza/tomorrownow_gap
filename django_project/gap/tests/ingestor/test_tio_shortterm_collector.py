@@ -89,7 +89,7 @@ class DailyDuckDBAssert:
             self.assertEqual(rows[0], 15)
             # Check the columns in the table
             columns = duckdb_conn.execute("DESCRIBE weather").fetchall()
-            self.assertEqual(len(columns), 17)
+            self.assertEqual(len(columns), 18)
             columns_str = [col[0] for col in columns]
             self.assertIn('id', columns_str)
             self.assertIn('grid_id', columns_str)
@@ -108,6 +108,7 @@ class DailyDuckDBAssert:
             self.assertIn('solar_radiation', columns_str)
             self.assertIn('weather_code', columns_str)
             self.assertIn('flood_index', columns_str)
+            self.assertIn('wind_direction', columns_str)
             # Check the data in the table
             data = duckdb_conn.sql(
                 "SELECT * FROM weather where date='2024-10-15'"
@@ -132,7 +133,8 @@ class DailyDuckDBAssert:
                         'humidity_minimum': 72.77,
                         'wind_speed_avg': 3.17,
                         'weather_code': np.nan,
-                        'flood_index': np.nan
+                        'flood_index': np.nan,
+                        'wind_direction': np.nan
                     }
                 ])
             )
@@ -367,7 +369,8 @@ class TioShortTermCollectorTest(BaseTestWithPatchResponses, TestCase):
                                 'wind_speed_avg': 4.77,
                                 'solar_radiation': None,
                                 'weather_code': None,
-                                'flood_index': None
+                                'flood_index': None,
+                                'wind_direction': None
                             }
                         },
                         {
@@ -383,7 +386,8 @@ class TioShortTermCollectorTest(BaseTestWithPatchResponses, TestCase):
                                 'wind_speed_avg': 4.35,
                                 'solar_radiation': None,
                                 'weather_code': None,
-                                'flood_index': None
+                                'flood_index': None,
+                                'wind_direction': None
                             }
                         },
                         {
@@ -399,7 +403,8 @@ class TioShortTermCollectorTest(BaseTestWithPatchResponses, TestCase):
                                 'wind_speed_avg': 5.58,
                                 'solar_radiation': None,
                                 'weather_code': None,
-                                'flood_index': None
+                                'flood_index': None,
+                                'wind_direction': None
                             }
                         },
                         {
@@ -415,7 +420,8 @@ class TioShortTermCollectorTest(BaseTestWithPatchResponses, TestCase):
                                 'wind_speed_avg': 5.74,
                                 'solar_radiation': None,
                                 'weather_code': None,
-                                'flood_index': None
+                                'flood_index': None,
+                                'wind_direction': None
                             }
                         },
                         {
@@ -431,7 +437,8 @@ class TioShortTermCollectorTest(BaseTestWithPatchResponses, TestCase):
                                 'wind_speed_avg': 5.09,
                                 'solar_radiation': None,
                                 'weather_code': None,
-                                'flood_index': None
+                                'flood_index': None,
+                                'wind_direction': None
                             }
                         },
                         {
@@ -447,7 +454,8 @@ class TioShortTermCollectorTest(BaseTestWithPatchResponses, TestCase):
                                 'wind_speed_avg': 4.01,
                                 'solar_radiation': None,
                                 'weather_code': None,
-                                'flood_index': None
+                                'flood_index': None,
+                                'wind_direction': None
                             }
                         },
                         {
@@ -463,7 +471,8 @@ class TioShortTermCollectorTest(BaseTestWithPatchResponses, TestCase):
                                 'wind_speed_avg': 3.82,
                                 'solar_radiation': None,
                                 'weather_code': None,
-                                'flood_index': None
+                                'flood_index': None,
+                                'wind_direction': None
                             }
                         },
                         {
@@ -479,7 +488,8 @@ class TioShortTermCollectorTest(BaseTestWithPatchResponses, TestCase):
                                 'wind_speed_avg': 4.12,
                                 'solar_radiation': None,
                                 'weather_code': None,
-                                'flood_index': None
+                                'flood_index': None,
+                                'wind_direction': None
                             }
                         },
                         {
@@ -495,7 +505,8 @@ class TioShortTermCollectorTest(BaseTestWithPatchResponses, TestCase):
                                 'wind_speed_avg': 5.29,
                                 'solar_radiation': None,
                                 'weather_code': None,
-                                'flood_index': None
+                                'flood_index': None,
+                                'wind_direction': None
                             }
                         },
                         {
@@ -511,7 +522,8 @@ class TioShortTermCollectorTest(BaseTestWithPatchResponses, TestCase):
                                 'wind_speed_avg': 4.96,
                                 'solar_radiation': None,
                                 'weather_code': None,
-                                'flood_index': None
+                                'flood_index': None,
+                                'wind_direction': None
                             }
                         },
                         {
@@ -527,7 +539,8 @@ class TioShortTermCollectorTest(BaseTestWithPatchResponses, TestCase):
                                 'wind_speed_avg': 4.1,
                                 'solar_radiation': None,
                                 'weather_code': None,
-                                'flood_index': None
+                                'flood_index': None,
+                                'wind_direction': None
                             }
                         },
                         {
@@ -543,7 +556,8 @@ class TioShortTermCollectorTest(BaseTestWithPatchResponses, TestCase):
                                 'wind_speed_avg': 4.42,
                                 'solar_radiation': None,
                                 'weather_code': None,
-                                'flood_index': None
+                                'flood_index': None,
+                                'wind_direction': None
                             }
                         },
                         {
@@ -559,7 +573,8 @@ class TioShortTermCollectorTest(BaseTestWithPatchResponses, TestCase):
                                 'wind_speed_avg': 4.52,
                                 'solar_radiation': None,
                                 'weather_code': None,
-                                'flood_index': None
+                                'flood_index': None,
+                                'wind_direction': None
                             }
                         },
                         {
@@ -575,7 +590,8 @@ class TioShortTermCollectorTest(BaseTestWithPatchResponses, TestCase):
                                 'wind_speed_avg': 4.74,
                                 'solar_radiation': None,
                                 'weather_code': None,
-                                'flood_index': None
+                                'flood_index': None,
+                                'wind_direction': None
                             }
                         },
                         {
@@ -591,7 +607,8 @@ class TioShortTermCollectorTest(BaseTestWithPatchResponses, TestCase):
                                 'wind_speed_avg': 3.17,
                                 'solar_radiation': None,
                                 'weather_code': None,
-                                'flood_index': None
+                                'flood_index': None,
+                                'wind_direction': None
                             }
                         }
                     ]
