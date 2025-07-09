@@ -18,7 +18,8 @@ from gap_api.api_views.measurement import (
     MeasurementAPI,
     product_type_list,
     dataset_attribute_by_product,
-    JobStatusAPI
+    JobStatusAPI,
+    MeasurementOptionsView
 )
 from gap_api.api_views.user import UserInfo
 from gap_api.api_views.location import LocationAPI
@@ -103,6 +104,11 @@ measurement_urls = [
         'measurement/',
         MeasurementAPI.as_view(),
         name='get-measurement'
+    ),
+    path(
+        'measurement/options/',
+        MeasurementOptionsView.as_view(),
+        name='measurement-options'
     ),
 ]
 

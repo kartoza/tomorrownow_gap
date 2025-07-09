@@ -34,7 +34,7 @@ from gap.models import (
     Attribute,
     DatasetAttribute,
     DatasetType,
-    Preferences
+    Preferences,
 )
 from gap.providers import get_reader_builder
 from gap.utils.reader import (
@@ -882,3 +882,35 @@ class JobStatusAPI(APIView):
             status=200,
             data=response_data
         )
+
+
+class MeasurementOptionsView(APIView):
+    """API class for measurement options."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        """Fetch available products and attributes."""
+        # grab all "products" from DatasetType
+        products_qs = DatasetType.objects \
+            .exclude(variable_name='default') \
+            .values('variable_name', 'name') \
+            .order_by('name')
+        products = list(products_qs)
+
+        # build a map from each variable_name
+        # its available attributes
+        attributes: dict[str, list[str]] = {}
+        for prod in products:
+            var = prod['variable_name']
+            vals = DatasetAttribute.objects \
+                .filter(dataset__type__variable_name=var) \
+                .values_list('attribute__variable_name', flat=True) \
+                .distinct() \
+                .order_by('attribute__variable_name')
+            attributes[var] = list(vals)
+
+        return Response({
+            'products': products,
+            'attributes': attributes,
+        })
