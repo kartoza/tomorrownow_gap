@@ -357,8 +357,11 @@ class MeasurementAPI(GAPAPILoggingMixin, APIView):
         max_wait_time = self._preferences.job_executor_config.get(
             'max_wait_time', 1200
         )
+        host = self._preferences.job_executor_config.get(
+            'async_wait_host', 'django_jobs:8001'
+        )
         response['X-Accel-Redirect'] = (
-            f'/userjobs/http/django:8001/job/{job_id}/wait?'
+            f'/userjobs/http/{host}/job/{job_id}/wait?'
             f'poll_interval={poll_interval}&'
             f'max_wait_time={max_wait_time}'
         )
