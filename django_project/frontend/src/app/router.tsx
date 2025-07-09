@@ -10,6 +10,7 @@ import ErrorPage from '@/pages/ErrorPage'
 import ProtectedRoute from '@/components/ProtectedRoute'
 import {SearchForm} from '@/pages/DataBrowserPage'
 import ApiKeys from '@/pages/ApiKeys'
+import DataFormsPage from '@/pages/DataFormsPage'
 
 
 export const router = createBrowserRouter([
@@ -90,5 +91,16 @@ export const router = createBrowserRouter([
         element: <ApiKeys />,
       }
     ]
-  }
+  },
+  {
+    path: "/data-forms",
+    element: <MainLayout />,
+    errorElement: <ErrorPage />,
+    children: [
+      {
+        index: true,
+        element: <DataFormsPage />,
+      }
+    ]
+  },
 ])

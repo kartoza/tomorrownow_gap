@@ -5,11 +5,17 @@ Tomorrow Now GAP API.
 .. note:: Models for Job submitted by user
 """
 
+import os
 import uuid
+import time
+import json
+from redis import Redis
+from django.core.cache import cache
 from django.db import models
 from django.conf import settings
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
+from django.core.serializers.json import DjangoJSONEncoder
 
 from core.models.background_task import TaskStatus
 from gap_api.models.user_file import UserFile
@@ -23,6 +29,8 @@ class JobType(models.TextChoices):
 
 class Job(models.Model):
     """Model represents job submitted by user."""
+
+    MAX_REDIS_KEY_EXPIRY = 60 * 60 * 1  # 1 hour
 
     uuid = models.UUIDField(
         primary_key=True,
@@ -115,3 +123,46 @@ class Job(models.Model):
         if user_file is None:
             self.errors = 'No results from given query parameters.'
         self.save(update_fields=['output_file', 'size', 'errors'])
+
+    @property
+    def cache_key(self):
+        """Return cache key for this job."""
+        return f'job:{self.uuid}'
+
+    @property
+    def cache_payload(self):
+        """Return cache payload for this job."""
+        url = None
+        content_type = None
+        file_name = None
+        if self.status == TaskStatus.COMPLETED:
+            if self.output_file:
+                url = self.output_file.generate_url()
+                file_name = os.path.basename(self.output_file.name)
+                content_type = (
+                    'application/x-netcdf' if file_name.endswith('.nc') else
+                    'text/csv'
+                )
+            elif self.output_json:
+                content_type = 'application/json'
+        return {
+            'status': self.status,
+            'errors': self.errors,
+            'url': url,
+            'output_json': self.output_json,
+            'content_type': content_type,
+            'file_name': file_name,
+            'updated_on': int(time.time())
+        }
+
+    def save(self, *args, **kwargs):
+        """Override the save method to handle Redis cache."""
+        super().save(*args, **kwargs)
+
+        # store job in Redis cache
+        redis_client: Redis = cache._cache.get_client()
+        redis_client.set(
+            self.cache_key,
+            json.dumps(self.cache_payload, cls=DjangoJSONEncoder),
+            ex=self.MAX_REDIS_KEY_EXPIRY
+        )
