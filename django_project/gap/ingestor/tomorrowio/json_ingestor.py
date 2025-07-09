@@ -70,7 +70,8 @@ class TioShortTermIngestor(BaseZarrIngestor):
         'wind_speed_avg',
         'solar_radiation',
         'weather_code',
-        'flood_index'
+        'flood_index',
+        'wind_direction'
     ]
 
     def __init__(self, session: IngestorSession, working_dir: str = '/tmp'):
