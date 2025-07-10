@@ -127,6 +127,11 @@ class DCASErrorLogOutputFile(models.Model):
         blank=True,
         help_text="The time when the file processing finished."
     )
+    errors = models.TextField(
+        null=True,
+        blank=True,
+        help_text="Errors encountered during file processing."
+    )
 
     @property
     def file_exists(self):
