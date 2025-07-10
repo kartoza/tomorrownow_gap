@@ -19,7 +19,8 @@ from dcas.models import (
     GDDConfig,
     GDDMatrix,
     DCASMessagePriority,
-    DCASDownloadLog
+    DCASDownloadLog,
+    DCASErrorLogOutputFile
 )
 from dcas.resources import DCASErrorLogResource
 from core.utils.file import format_size
@@ -212,3 +213,21 @@ class DCASDownloadLogAdmin(admin.ModelAdmin):
     list_display = ("output", "user", "requested_at")
     list_filter = ("user",)
     search_fields = ("output__file_name", "user__email")
+
+
+@admin.register(DCASErrorLogOutputFile)
+class DCASErrorLogOutputFileAdmin(admin.ModelAdmin):
+    """Admin page for DCASErrorLogOutputFile."""
+
+    list_display = (
+        'request', 'file_name', 'status',
+        'get_size', 'file_exists'
+    )
+    list_filter = ('request', 'status')
+
+    def get_size(self, obj: DCASErrorLogOutputFile):
+        """Get the size."""
+        return format_size(obj.size)
+
+    get_size.short_description = 'Size'
+    get_size.admin_order_field = 'size'
