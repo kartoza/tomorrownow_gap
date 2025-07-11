@@ -14,6 +14,10 @@ import xarray as xr
 import pandas as pd
 from xarray.core.dataset import Dataset as xrDataset
 from shapely.geometry import shape
+from django.db.models import Q
+from django.db.models.functions import Cast
+from django.db.models.fields import DateField
+from django.contrib.postgres.fields.jsonb import KeyTextTransform
 
 from gap.models import (
     Dataset,
@@ -289,11 +293,22 @@ class SalientZarrReader(BaseZarrReader, SalientNetCDFReader):
         zarr_file = None
         if self.request_forecast_date:
             # use the historical zarr file
-            zarr_file = DataSourceFile.objects.filter(
+            zarr_file = DataSourceFile.objects.annotate(
+                start_date_cast=Cast(
+                    KeyTextTransform('start_date', 'metadata'),
+                    output_field=DateField()
+                ),
+                end_date_cast=Cast(
+                    KeyTextTransform('end_date', 'metadata'),
+                    output_field=DateField()
+                ),
+            ).filter(
                 dataset=self.dataset,
                 format=DatasetStore.ZARR,
                 is_latest=False,
-                metadata__is_historical=True
+                metadata__is_historical=True,
+                start_date_cast__lte=self.request_forecast_date,
+                end_date_cast__gte=self.request_forecast_date
             ).order_by('id').last()
         else:
             zarr_file = DataSourceFile.objects.filter(
