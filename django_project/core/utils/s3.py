@@ -80,3 +80,32 @@ def create_s3_bucket(bucket_name, region=None):
     except ClientError:
         return False
     return True
+
+
+def remove_s3_folder_by_batch(bucket_name, prefix, s3_client):
+    """Delete all objects in a folder S3."""
+    paginator = s3_client.get_paginator('list_objects_v2')
+    total_deleted = 0
+    total_batches = 0
+
+    for page in paginator.paginate(Bucket=bucket_name, Prefix=prefix):
+        contents = page.get('Contents', [])
+        objects = [{'Key': obj['Key']} for obj in contents]
+        if not objects:
+            continue
+
+        # Delete in batches (max 1000 per request)
+        for i in range(0, len(objects), 1000):
+            batch = objects[i:i + 1000]
+            response = s3_client.delete_objects(
+                Bucket=bucket_name,
+                Delete={'Objects': batch}
+            )
+            deleted = response.get('Deleted', [])
+            total_deleted += len(deleted)
+            total_batches += 1
+
+    return {
+        'total_deleted': total_deleted,
+        'total_batches': total_batches
+    }

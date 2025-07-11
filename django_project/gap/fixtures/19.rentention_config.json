@@ -1,0 +1,18 @@
+[
+{
+    "model": "gap.datasourcefilerententionconfig",
+    "pk": 1,
+    "fields": {
+        "dataset": 12,
+        "days_to_keep": 0
+    }
+},
+{
+    "model": "gap.datasourcefilerententionconfig",
+    "pk": 2,
+    "fields": {
+        "dataset": 3,
+        "days_to_keep": 1
+    }
+}
+]

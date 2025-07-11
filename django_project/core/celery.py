@@ -117,6 +117,11 @@ app.conf.beat_schedule = {
         # run once a day at 00:00
         'schedule': crontab(minute=0, hour=0),
     },
+    'cleanup-deleted-zarr': {
+        'task': 'cleanup_deleted_zarr',
+        # run once a day at 23:00
+        'schedule': crontab(minute=0, hour=23),
+    },
 }
 
 
