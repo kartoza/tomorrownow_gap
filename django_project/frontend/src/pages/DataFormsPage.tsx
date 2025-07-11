@@ -1,8 +1,8 @@
 import React from "react"
 import { Center, VStack, Text } from "@chakra-ui/react"
-import MeasurementForm from "@/features/gap_api/MeasurementForm"
-import CropPlanForm from "@/features/gap_api/CropPlanForm"
-import LocationForm from "@/features/gap_api/LocationForm"
+import MeasurementForm from "@/features/data_browser/MeasurementForm"
+import CropPlanForm from "@/features/data_browser/CropPlanForm"
+import LocationForm from "@/features/data_browser/LocationForm"
 
 const DataFormsPage: React.FC = () => {
   return (
