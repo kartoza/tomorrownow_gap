@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import {
   Button,
   Field,
@@ -13,7 +13,6 @@ import {
   Text,
   Box,
 } from '@chakra-ui/react'
-import { useMeasurementOptions } from '@/utils/useMeasurementOptions'
 
 
 const hourlyProducts = ['cbam_shortterm_hourly_forecast']
@@ -48,12 +47,41 @@ type FormState = typeof initialForm
 
 type Errors = Partial<Record<keyof FormState, string>>
 
+export interface Product {
+  variable_name: string
+  name: string
+}
+
+export interface MeasurementOptions {
+  products: Product[]
+  attributes: Record<string, string[]>
+}
+
+
 const MeasurementForm: React.FC = () => {
-  const { products, attributes, error } = useMeasurementOptions()
+  const [products, setProducts] = useState<Product[]>([])
+  const [attributes, setAttributes] = useState<Record<string, string[]>>({})
+  const [error, setError] = useState<string>()
   const [form, setForm] = useState<FormState>(initialForm)
   const [errors, setErrors] = useState<Errors>({})
   const [loading, setLoading] = useState(false)
   const [jsonResult, setJsonResult] = useState<any>(null)
+
+  useEffect(() => {
+      fetch('/api/v1/measurement/options/', {
+        credentials: 'include',
+      })
+        .then((r) => {
+          if (!r.ok) throw new Error(r.statusText)
+          return r.json() as Promise<MeasurementOptions>
+        })
+        .then(({ products: p, attributes: a }) => {
+          setProducts(p)
+          setAttributes(a)
+        })
+        .catch((e) => setError(e.message))
+        .finally(() => setLoading(false))
+    }, [])
 
   const handle = (key: keyof FormState, value: any) => {
     setForm((f) => ({ ...f, [key]: value }))

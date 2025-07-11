@@ -216,21 +216,6 @@ const Navigation: React.FC = () => {
                                             </Button>
                                         )}
 
-                                        {/* Data Forms */}
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            w="100%"
-                                            justifyContent="flex-start"
-                                            p={3}
-                                            onClick={() => {
-                                            onToggle();
-                                            navigate('/data-forms');
-                                            }}
-                                        >
-                                            <Text fontSize="sm" fontWeight="semibold">Data Forms</Text>
-                                        </Button>
-
                                         <Button
                                             variant="ghost"
                                             size="sm"
