@@ -14,7 +14,6 @@ import xarray as xr
 import pandas as pd
 from xarray.core.dataset import Dataset as xrDataset
 from shapely.geometry import shape
-from django.db.models import Q
 from django.db.models.functions import Cast
 from django.db.models.fields import DateField
 from django.contrib.postgres.fields.jsonb import KeyTextTransform
