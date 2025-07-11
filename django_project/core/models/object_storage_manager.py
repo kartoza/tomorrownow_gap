@@ -8,6 +8,7 @@ Tomorrow Now GAP.
 
 import os
 import boto3
+import logging
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 from django.http import StreamingHttpResponse
@@ -16,6 +17,7 @@ from django.utils import timezone
 from core.models.background_task import TaskStatus
 
 
+logger = logging.getLogger(__name__)
 DEFAULT_CONNECTION_NAME = 'default'
 DEFAULT_CHUNK_SIZE = 1024 * 1024  # 1 MB
 
@@ -376,7 +378,7 @@ class DeletionLog(models.Model):
     )
 
     def __str__(self):
-        return f'Deletion Log: {self.file_path} at {self.deleted_at}'
+        return f'Deletion Log: {self.path} at {self.deleted_at}'
 
     def clean(self):
         """Validate the deletion log."""
@@ -430,8 +432,11 @@ class DeletionLog(models.Model):
             s3_client = self.object_storage_manager.get_s3_client(
                 connection_name=self.object_storage_manager.connection_name
             )
+            s3_vars = self.object_storage_manager.get_s3_env_vars(
+                connection_name=self.object_storage_manager.connection_name
+            )
             self.stats = remove_s3_folder_by_batch(
-                self.object_storage_manager.bucket_name,
+                s3_vars['S3_BUCKET_NAME'],
                 self.path,
                 s3_client
             )
@@ -440,6 +445,11 @@ class DeletionLog(models.Model):
         except Exception as e:
             self.status = TaskStatus.STOPPED
             self.errors = str(e)
+            logger.error(
+                f"Error deleting {self.path} in "
+                f"{self.object_storage_manager.connection_name}: {e}",
+                exc_info=True
+            )
 
         self.finished_at = timezone.now()
         self.save()

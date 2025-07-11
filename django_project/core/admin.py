@@ -16,7 +16,10 @@ from core.forms import CreateKnoxTokenForm, CreateAuthToken
 from core.group_email_receiver import crop_plan_receiver
 from core.models.background_task import BackgroundTask
 from core.models.table_usage import TableUsage
-from core.models.object_storage_manager import ObjectStorageManager
+from core.models.object_storage_manager import (
+    ObjectStorageManager,
+    DeletionLog
+)
 from core.settings.utils import absolute_path
 
 User = get_user_model()
@@ -230,3 +233,22 @@ class ObjectStorageManagerAdmin(admin.ModelAdmin):
     search_fields = ('connection_name', 'bucket_name')
     list_filter = ('protocol',)
     ordering = ['-created_on']
+
+
+@admin.register(DeletionLog)
+class DeletionLogAdmin(admin.ModelAdmin):
+    """Admin class for DeletionLog model."""
+
+    list_display = (
+        'path', 'get_connection_name',
+        'is_directory',
+        'deleted_at', 'status', 'started_at',
+        'finished_at'
+    )
+    search_fields = ('path',)
+    ordering = ['-deleted_at']
+
+    def get_connection_name(self, obj):
+        """Get Connection Name."""
+        return obj.object_storage_manager.connection_name
+    get_connection_name.short_description = 'Connection Name'

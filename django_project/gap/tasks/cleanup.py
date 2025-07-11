@@ -11,6 +11,7 @@ from core.celery import app
 from django.utils import timezone
 from datetime import timedelta
 
+from core.models.background_task import TaskStatus
 from core.models.object_storage_manager import (
     ObjectStorageManager,
     DeletionLog
@@ -47,8 +48,15 @@ def cleanup_deleted_zarr():
         return count
 
     logger.info(f"Deleting {count} Zarr files marked as deleted")
+    deleted_ids = []
+    failed_deletions = []
     for ds_file in qs:
-        logger.info(f"Deleting Zarr file: {ds_file.name}")
+        if not ds_file.should_delete():
+            logger.info(
+                f"Skipping {ds_file.name} as it is not ready for deletion"
+            )
+            continue
+
         connection_name = ds_file.metadata.get(
             'connection_name', 'default'
         )
@@ -83,6 +91,26 @@ def cleanup_deleted_zarr():
         logger.info(f"Deleting {ds_file.name} with path: {path}")
         deletion_log.run()
 
+        # check if success
+        deletion_log.refresh_from_db()
+        if deletion_log.status != TaskStatus.COMPLETED:
+            logger.error(
+                f"Failed to delete {ds_file.name} with path: {path}. "
+                f"Status: {deletion_log.status}"
+            )
+            failed_deletions.append(ds_file.id)
+        else:
+            deleted_ids.append(ds_file.id)
+
     # Delete the files
-    qs.delete()
-    return count
+    if deleted_ids:
+        DataSourceFile.objects.filter(id__in=deleted_ids).delete()
+        logger.info(
+            f"{len(deleted_ids)} DataSourceFiles have been deleted..."
+        )
+    if failed_deletions:
+        logger.error(
+            f"Failed to delete {len(failed_deletions)} DataSourceFiles: "
+            f"{failed_deletions}"
+        )
+    return len(deleted_ids), len(failed_deletions)
