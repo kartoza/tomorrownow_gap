@@ -481,13 +481,18 @@ class SalientIngestor(BaseZarrIngestor):
                     new_data = {}
 
                     for var_name in subset_vars:
+                        if var_name not in da.variables:
+                            logger.warning(
+                                f'Variable {var_name} not found in dataset!'
+                            )
+                            continue
                         subset_da = da[var_name]
                         new_data[var_name] = subset_da.data
 
                     # write to zarr
                     self._update_by_region(
                         new_forecast_date, forecast_date_idx,
-                        lat_arr, lon_arr, subset_vars, new_data
+                        lat_arr, lon_arr, list(new_data.keys()), new_data
                     )
 
                     total_processed += 1
