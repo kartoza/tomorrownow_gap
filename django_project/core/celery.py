@@ -122,6 +122,11 @@ app.conf.beat_schedule = {
         # run once a day at 23:00
         'schedule': crontab(minute=0, hour=23),
     },
+    'salient-collector-monthly-historical': {
+        'task': 'salient_collector_monthly_historical',
+        # Run every first day of each month at 07:00 UTC
+        'schedule': crontab(minute='0', hour='7', day_of_month=1),
+    }
 }
 
 
