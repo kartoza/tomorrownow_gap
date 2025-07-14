@@ -364,7 +364,6 @@ class CBAMZarrReader(BaseZarrReader, CBAMNetCDFReader):
 class CBAMHourlyForecastHistoricalReader(CBAMZarrReader):
     """Class that represents CBAM Hourly Forecast Historical Reader."""
 
-
     def __init__(
             self, dataset: Dataset, attributes: List[DatasetAttribute],
             location_input: DatasetReaderInput, start_date: datetime,
