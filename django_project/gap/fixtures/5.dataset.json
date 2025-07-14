@@ -194,5 +194,19 @@
       "is_internal_use": false,
       "observation_type": "NOT_SPECIFIED"
     }
+  },
+  {
+    "model": "gap.dataset",
+    "pk": 15,
+    "fields": {
+      "name": "CBAM Reanalysis Hourly | 2020-2022",
+      "description": "",
+      "provider": 2,
+      "type": 13,
+      "time_step": "HOURLY",
+      "store_type": "ZARR",
+      "is_internal_use": false,
+      "observation_type": "NOT_SPECIFIED"
+    }
   }
 ]

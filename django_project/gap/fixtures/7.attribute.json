@@ -757,5 +757,291 @@
       "unit": 11,
       "is_active": true
     }
+  },
+  {
+    "model": "gap.attribute",
+    "pk": 70,
+    "fields": {
+      "name": "Air pressure as measured just above the surface",
+      "description": "",
+      "variable_name": "surface_air_pressure",
+      "unit": 17,
+      "is_active": true
+    }
+  },
+  {
+    "model": "gap.attribute",
+    "pk": 71,
+    "fields": {
+      "name": "The direct component of the total solar irradiance reaching the surface",
+      "description": "",
+      "variable_name": "direct_shortwave_radiation",
+      "unit": 14,
+      "is_active": true
+    }
+  },
+  {
+    "model": "gap.attribute",
+    "pk": 72,
+    "fields": {
+      "name": "The diffuse component of the total solar irradiance reaching the surface",
+      "description": "",
+      "variable_name": "diffuse_shortwave_radiation",
+      "unit": 14,
+      "is_active": true
+    }
+  },
+  {
+    "model": "gap.attribute",
+    "pk": 73,
+    "fields": {
+      "name": "Visibility near the surface",
+      "description": "",
+      "variable_name": "sfc_visibility",
+      "unit": 25,
+      "is_active": true
+    }
+  },
+  {
+    "model": "gap.attribute",
+    "pk": 74,
+    "fields": {
+      "name": "Total cloud area",
+      "description": "",
+      "variable_name": "cloud_cover",
+      "unit": 6,
+      "is_active": true
+    }
+  },
+  {
+    "model": "gap.attribute",
+    "pk": 75,
+    "fields": {
+      "name": "Altitude of lowest cloud base",
+      "description": "",
+      "variable_name": "cloud_base",
+      "unit": 25,
+      "is_active": true
+    }
+  },
+  {
+    "model": "gap.attribute",
+    "pk": 76,
+    "fields": {
+      "name": "Altitude of lowest cloud ceiling",
+      "description": "",
+      "variable_name": "cloud_ceiling",
+      "unit": 25,
+      "is_active": true
+    }
+  },
+  {
+    "model": "gap.attribute",
+    "pk": 77,
+    "fields": {
+      "name": "Total (cloud-cloud, cloud-ground) instantaneous lightning flashes per unit area",
+      "description": "",
+      "variable_name": "frequency_of_lightning_flashes_per_unit_area",
+      "unit": 26,
+      "is_active": true
+    }
+  },
+  {
+    "model": "gap.attribute",
+    "pk": 78,
+    "fields": {
+      "name": "Volumetric soil moisture content in slab between sfc and 10cm",
+      "description": "",
+      "variable_name": "soil_moisture_depth_below_surface_layer_10cm",
+      "unit": 6,
+      "is_active": true
+    }
+  },
+  {
+    "model": "gap.attribute",
+    "pk": 79,
+    "fields": {
+      "name": "Volumetric soil moisture content in slab between 10cm and 40cm",
+      "description": "",
+      "variable_name": "soil_moisture_depth_below_surface_layer_40cm",
+      "unit": 6,
+      "is_active": true
+    }
+  },
+  {
+    "model": "gap.attribute",
+    "pk": 80,
+    "fields": {
+      "name": "Volumetric soil moisture content in slab between 40cm and 100cm",
+      "description": "",
+      "variable_name": "soil_moisture_depth_below_surface_layer_100cm",
+      "unit": 6,
+      "is_active": true
+    }
+  },
+  {
+    "model": "gap.attribute",
+    "pk": 81,
+    "fields": {
+      "name": "Volumetric soil moisture content in slab between 100cm and 200cm",
+      "description": "",
+      "variable_name": "soil_moisture_depth_below_surface_layer_200cm",
+      "unit": 6,
+      "is_active": true
+    }
+  },
+  {
+    "model": "gap.attribute",
+    "pk": 82,
+    "fields": {
+      "name": "Soil temperature in slab between sfc and 10cm",
+      "description": "",
+      "variable_name": "soil_temperature_depth_below_surface_layer_10cm",
+      "unit": 5,
+      "is_active": true
+    }
+  },
+  {
+    "model": "gap.attribute",
+    "pk": 83,
+    "fields": {
+      "name": "Soil temperature in slab between 10cm and 40cm",
+      "description": "",
+      "variable_name": "soil_temperature_depth_below_surface_layer_40cm",
+      "unit": 5,
+      "is_active": true
+    }
+  },
+  {
+    "model": "gap.attribute",
+    "pk": 84,
+    "fields": {
+      "name": "Soil temperature in slab between 40cm and 100cm",
+      "description": "",
+      "variable_name": "soil_temperature_depth_below_surface_layer_100cm",
+      "unit": 5,
+      "is_active": true
+    }
+  },
+  {
+    "model": "gap.attribute",
+    "pk": 85,
+    "fields": {
+      "name": "Soil temperature in slab between 100cm and 200cm",
+      "description": "",
+      "variable_name": "soil_temperature_depth_below_surface_layer_200cm",
+      "unit": 5,
+      "is_active": true
+    }
+  },
+  {
+    "model": "gap.attribute",
+    "pk": 86,
+    "fields": {
+      "name": "Column integrated volumetric soil moisture content",
+      "description": "",
+      "variable_name": "soil_moisture_total_column",
+      "unit": 6,
+      "is_active": true
+    }
+  },
+  {
+    "model": "gap.attribute",
+    "pk": 87,
+    "fields": {
+      "name": "Column integrated soil temperature",
+      "description": "",
+      "variable_name": "soil_temperature_total_column",
+      "unit": 5,
+      "is_active": true
+    }
+  },
+  {
+    "model": "gap.attribute",
+    "pk": 88,
+    "fields": {
+      "name": "Dewpoint temperature at surface",
+      "description": "",
+      "variable_name": "sfc_dewpoint",
+      "unit": 5,
+      "is_active": true
+    }
+  },
+  {
+    "model": "gap.attribute",
+    "pk": 89,
+    "fields": {
+      "name": "Feels Like temperature",
+      "description": "",
+      "variable_name": "sfc_feels_like",
+      "unit": 5,
+      "is_active": true
+    }
+  },
+  {
+    "model": "gap.attribute",
+    "pk": 90,
+    "fields": {
+      "name": "Fire weather risk index",
+      "description": "",
+      "variable_name": "fosberg_fire_index",
+      "unit": 27,
+      "is_active": true
+    }
+  },
+  {
+    "model": "gap.attribute",
+    "pk": 91,
+    "fields": {
+      "name": "Precipitation Rate (liquid water equivalent)",
+      "description": "",
+      "variable_name": "precip_rate",
+      "unit": 4,
+      "is_active": true
+    }
+  },
+  {
+    "model": "gap.attribute",
+    "pk": 92,
+    "fields": {
+      "name": "Precipitation type",
+      "description": "",
+      "variable_name": "precip_type",
+      "unit": 22,
+      "is_active": true
+    }
+  },
+  {
+    "model": "gap.attribute",
+    "pk": 93,
+    "fields": {
+      "name": "Accumulated rainfall",
+      "description": "",
+      "variable_name": "thickness_of_rainfall_amount",
+      "unit": 1,
+      "is_active": true
+    }
+  },
+  {
+    "model": "gap.attribute",
+    "pk": 94,
+    "fields": {
+      "name": "Accumulated snowfall",
+      "description": "",
+      "variable_name": "thickness_of_snowfall_amount",
+      "unit": 1,
+      "is_active": true
+    }
+  },
+  {
+    "model": "gap.attribute",
+    "pk": 95,
+    "fields": {
+      "name": "Accumulated freezing rain",
+      "description": "",
+      "variable_name": "thickness_of_freezing_rain_amount",
+      "unit": 1,
+      "is_active": true
+    }
   }
 ]

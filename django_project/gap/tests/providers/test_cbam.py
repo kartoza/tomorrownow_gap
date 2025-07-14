@@ -14,7 +14,7 @@ from django.contrib.gis.geos import Point, MultiPoint, Polygon, MultiPolygon
 from unittest.mock import Mock, patch
 
 from core.settings.utils import absolute_path
-from gap.models.dataset import Dataset
+from gap.models.dataset import Dataset, DatasetStore
 from gap.models.measurement import DatasetAttribute
 from gap.utils.reader import DatasetReaderInput, LocationInputType
 from gap.utils.netcdf import (
@@ -22,7 +22,8 @@ from gap.utils.netcdf import (
 )
 from gap.providers import (
     CBAMNetCDFReader,
-    CBAMZarrReader
+    CBAMZarrReader,
+    CBAMHourlyForecastHistoricalReader,
 )
 from gap.factories import (
     ProviderFactory,
@@ -204,3 +205,70 @@ class TestCBAMZarrReader(TestCase):
         val = ds['max_total_temperature'].values
         self.assertAlmostEqual(val[0][0][0], 0.26790932)
         self.assertAlmostEqual(val[0][1][1], 0.50810691)
+
+
+class TestCBAMHourlyZarrReader(TestCase):
+    """Test class for CBAMHourlyForecastHistoricalReader."""
+
+    fixtures = [
+        '1.object_storage_manager.json',
+        '2.provider.json',
+        '3.station_type.json',
+        '4.dataset_type.json',
+        '5.dataset.json',
+        '6.unit.json',
+        '7.attribute.json',
+        '8.dataset_attribute.json'
+    ]
+
+    def setUp(self):
+        """Set test cbam zarr reader."""
+        self.dataset = Dataset.objects.get(
+            name='CBAM Reanalysis Hourly | 2020-2022'
+        )
+        self.datasource_file = DataSourceFileFactory.create(
+            dataset=self.dataset,
+            start_date_time=datetime(2020, 9, 1, 0, 0, 0),
+            end_date_time=datetime(2020, 9, 1, 23, 59, 59),
+            is_latest=True,
+            format=DatasetStore.ZARR
+        )
+        self.attribute1 = DatasetAttribute.objects.filter(
+            dataset=self.dataset,
+            attribute__variable_name='precip_rate'
+        ).first()
+        self.dt1 = np.datetime64('2020-09-01')
+        self.dt2 = np.datetime64('2020-09-01')
+        times = np.array([np.timedelta64(h, 'h') for h in range(24)])
+        self.xrDataset = xr.Dataset(
+            {
+                'precip_rate': (
+                    ('date', 'lat', 'lon', 'time'),
+                    np.random.rand(1, 2, 2, 24)
+                ),
+            },
+            coords={
+                'date': pd.date_range('2020-09-01', periods=1),
+                'time': times,
+                'lat': [0, 1],
+                'lon': [0, 1],
+            }
+        )
+        self.start_dt = datetime(2020, 9, 1, 0, 0, 0)
+        self.end_dt = datetime(2020, 9, 2, 0, 0, 0)
+        self.reader = CBAMHourlyForecastHistoricalReader(
+            self.dataset, [self.attribute1],
+            DatasetReaderInput.from_point(Point(0, 1)),
+            self.start_dt, self.end_dt
+        )
+
+    def test_read_from_point(self):
+        """Test read cbam data from single point."""
+        with patch.object(self.reader, 'open_dataset') as mock_open:
+            mock_open.return_value = self.xrDataset
+            self.reader.read_historical_data(
+                self.start_dt, self.end_dt
+            )
+        reader_value = self.reader.get_data_values()
+        json_data = reader_value.to_json()
+        self.assertEqual(len(json_data['data']), 24)

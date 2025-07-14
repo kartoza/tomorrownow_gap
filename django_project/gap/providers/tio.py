@@ -502,31 +502,13 @@ class TioZarrReaderValue(DatasetReaderValue):
         :type attributes: List[DatasetAttribute]
         """
         self.forecast_date = forecast_date
-        super().__init__(val, location_input, attributes)
-        self.start_datetime = start_datetime
-        self.end_datetime = end_datetime
-
-    def _filter_df(self, df: pd.DataFrame) -> pd.DataFrame:
-        if not self.has_time_column:
-            return df
-
-        # filter the dataframe based on the start and end datetime
-        if 'datetime' in df.columns:
-            return df[
-                (df['datetime'] >= self.start_datetime) &
-                (df['datetime'] <= self.end_datetime)
-            ]
-        df_reset = df.reset_index()
-        df_reset['datetime'] = pd.to_datetime(
-            df_reset['date'].astype(str) + ' ' + df_reset['time'].astype(str)
+        super().__init__(
+            val,
+            location_input,
+            attributes,
+            start_datetime=start_datetime,
+            end_datetime=end_datetime
         )
-        df_reset = df_reset[
-            (df_reset['datetime'] >= self.start_datetime) &
-            (df_reset['datetime'] <= self.end_datetime)
-        ]
-        df_reset = df_reset.drop(columns=['datetime'])
-
-        return df_reset.set_index(['date', 'time'])
 
 
 class TioZarrReader(BaseZarrReader):
@@ -621,12 +603,16 @@ class TioZarrReader(BaseZarrReader):
         start_dt = np.datetime64(self.start_date, 'ns')
         end_dt = np.datetime64(self.end_date, 'ns')
 
+        if val is None:
+            return TioZarrReaderValue(
+                val, self.location_input, self.attributes,
+                self.latest_forecast_date, start_dt, end_dt
+            )
+
         if self.has_time_column:
-            date_b, time_b = xr.broadcast(val['date'], val['time'])
-            full_datetime = date_b + time_b
-            mask = (full_datetime >= start_dt) & \
-                (full_datetime <= end_dt)
-            val = val.where(mask, drop=False)
+            val = self._mask_by_datetime_range(
+                val, start_dt, end_dt
+            )
 
         return TioZarrReaderValue(
             val, self.location_input, self.attributes,

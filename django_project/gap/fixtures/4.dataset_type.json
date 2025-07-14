@@ -118,5 +118,15 @@
       "type": "historical",
       "variable_name": "tamsat_ltn"
     }
+  },
+  {
+    "model": "gap.datasettype",
+    "pk": 13,
+    "fields": {
+      "name": "CBAM Reanalysis Hourly | 2020-2022",
+      "description": "",
+      "type": "historical",
+      "variable_name": "cbam_historical_hourly_analysis"
+    }
   }
 ]

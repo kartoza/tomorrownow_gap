@@ -182,5 +182,29 @@
       "name": "Pa",
       "description": ""
     }
+  },
+  {
+    "model": "gap.unit",
+    "pk": 25,
+    "fields": {
+      "name": "m",
+      "description": ""
+    }
+  },
+  {
+    "model": "gap.unit",
+    "pk": 26,
+    "fields": {
+      "name": "flashes/km2/5min",
+      "description": ""
+    }
+  },
+  {
+    "model": "gap.unit",
+    "pk": 27,
+    "fields": {
+      "name": "Fire Index",
+      "description": ""
+    }
   }
 ]

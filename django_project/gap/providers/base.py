@@ -9,7 +9,10 @@ from typing import List
 from datetime import datetime
 
 from gap.models import Dataset, DatasetAttribute
-from gap.utils.reader import BaseDatasetReader, DatasetReaderInput
+from gap.utils.reader import (
+    BaseDatasetReader,
+    DatasetReaderInput
+)
 
 
 class BaseReaderBuilder:

@@ -1549,5 +1549,390 @@
       "source_unit": 11,
       "ensembles": false
     }
+  },
+  {
+    "model": "gap.datasetattribute",
+    "pk": 142,
+    "fields": {
+      "dataset": 15,
+      "attribute": 70,
+      "source": "sfc_pressure",
+      "source_unit": 17,
+      "ensembles": false
+    }
+  },
+  {
+    "model": "gap.datasetattribute",
+    "pk": 143,
+    "fields": {
+      "dataset": 15,
+      "attribute": 49,
+      "source": "shortwave_radiation",
+      "source_unit": 14,
+      "ensembles": false
+    }
+  },
+  {
+    "model": "gap.datasetattribute",
+    "pk": 144,
+    "fields": {
+      "dataset": 15,
+      "attribute": 71,
+      "source": "direct_shortwave_radiation",
+      "source_unit": 14,
+      "ensembles": false
+    }
+  },
+  {
+    "model": "gap.datasetattribute",
+    "pk": 145,
+    "fields": {
+      "dataset": 15,
+      "attribute": 72,
+      "source": "diffuse_shortwave_radiation",
+      "source_unit": 14,
+      "ensembles": false
+    }
+  },
+  {
+    "model": "gap.datasetattribute",
+    "pk": 146,
+    "fields": {
+      "dataset": 15,
+      "attribute": 40,
+      "source": "sea_level_pressure",
+      "source_unit": 17,
+      "ensembles": false
+    }
+  },
+  {
+    "model": "gap.datasetattribute",
+    "pk": 147,
+    "fields": {
+      "dataset": 15,
+      "attribute": 73,
+      "source": "sfc_visibility",
+      "source_unit": 25,
+      "ensembles": false
+    }
+  },
+  {
+    "model": "gap.datasetattribute",
+    "pk": 148,
+    "fields": {
+      "dataset": 15,
+      "attribute": 74,
+      "source": "cloud_cover",
+      "source_unit": 6,
+      "ensembles": false
+    }
+  },
+  {
+    "model": "gap.datasetattribute",
+    "pk": 149,
+    "fields": {
+      "dataset": 15,
+      "attribute": 75,
+      "source": "cloud_base",
+      "source_unit": 25,
+      "ensembles": false
+    }
+  },
+  {
+    "model": "gap.datasetattribute",
+    "pk": 150,
+    "fields": {
+      "dataset": 15,
+      "attribute": 76,
+      "source": "cloud_ceiling",
+      "source_unit": 25,
+      "ensembles": false
+    }
+  },
+  {
+    "model": "gap.datasetattribute",
+    "pk": 151,
+    "fields": {
+      "dataset": 15,
+      "attribute": 53,
+      "source": "wind_gust_10m",
+      "source_unit": 8,
+      "ensembles": false
+    }
+  },
+  {
+    "model": "gap.datasetattribute",
+    "pk": 152,
+    "fields": {
+      "dataset": 15,
+      "attribute": 77,
+      "source": "frequency_of_lightning_flashes_per_unit_area",
+      "source_unit": 26,
+      "ensembles": false
+    }
+  },
+  {
+    "model": "gap.datasetattribute",
+    "pk": 153,
+    "fields": {
+      "dataset": 15,
+      "attribute": 78,
+      "source": "soil_moisture_depth_below_surface_layer_10cm",
+      "source_unit": 6,
+      "ensembles": false
+    }
+  },
+  {
+    "model": "gap.datasetattribute",
+    "pk": 154,
+    "fields": {
+      "dataset": 15,
+      "attribute": 79,
+      "source": "soil_moisture_depth_below_surface_layer_40cm",
+      "source_unit": 6,
+      "ensembles": false
+    }
+  },
+  {
+    "model": "gap.datasetattribute",
+    "pk": 155,
+    "fields": {
+      "dataset": 15,
+      "attribute": 80,
+      "source": "soil_moisture_depth_below_surface_layer_100cm",
+      "source_unit": 6,
+      "ensembles": false
+    }
+  },
+  {
+    "model": "gap.datasetattribute",
+    "pk": 156,
+    "fields": {
+      "dataset": 15,
+      "attribute": 81,
+      "source": "soil_moisture_depth_below_surface_layer_200cm",
+      "source_unit": 6,
+      "ensembles": false
+    }
+  },
+  {
+    "model": "gap.datasetattribute",
+    "pk": 157,
+    "fields": {
+      "dataset": 15,
+      "attribute": 82,
+      "source": "soil_temperature_depth_below_surface_layer_10cm",
+      "source_unit": 5,
+      "ensembles": false
+    }
+  },
+  {
+    "model": "gap.datasetattribute",
+    "pk": 158,
+    "fields": {
+      "dataset": 15,
+      "attribute": 83,
+      "source": "soil_temperature_depth_below_surface_layer_40cm",
+      "source_unit": 5,
+      "ensembles": false
+    }
+  },
+  {
+    "model": "gap.datasetattribute",
+    "pk": 159,
+    "fields": {
+      "dataset": 15,
+      "attribute": 84,
+      "source": "soil_temperature_depth_below_surface_layer_100cm",
+      "source_unit": 5,
+      "ensembles": false
+    }
+  },
+  {
+    "model": "gap.datasetattribute",
+    "pk": 160,
+    "fields": {
+      "dataset": 15,
+      "attribute": 85,
+      "source": "soil_temperature_depth_below_surface_layer_200cm",
+      "source_unit": 5,
+      "ensembles": false
+    }
+  },
+  {
+    "model": "gap.datasetattribute",
+    "pk": 161,
+    "fields": {
+      "dataset": 15,
+      "attribute": 86,
+      "source": "soil_moisture_total_column",
+      "source_unit": 6,
+      "ensembles": false
+    }
+  },
+  {
+    "model": "gap.datasetattribute",
+    "pk": 162,
+    "fields": {
+      "dataset": 15,
+      "attribute": 87,
+      "source": "soil_temperature_total_column",
+      "source_unit": 5,
+      "ensembles": false
+    }
+  },
+  {
+    "model": "gap.datasetattribute",
+    "pk": 163,
+    "fields": {
+      "dataset": 15,
+      "attribute": 8,
+      "source": "evapotranspiration_flux",
+      "source_unit": 4,
+      "ensembles": false
+    }
+  },
+  {
+    "model": "gap.datasetattribute",
+    "pk": 164,
+    "fields": {
+      "dataset": 15,
+      "attribute": 33,
+      "source": "wind_speed_10m",
+      "source_unit": 8,
+      "ensembles": false
+    }
+  },
+  {
+    "model": "gap.datasetattribute",
+    "pk": 165,
+    "fields": {
+      "dataset": 15,
+      "attribute": 69,
+      "source": "wind_direction_10m",
+      "source_unit": 11,
+      "ensembles": false
+    }
+  },
+  {
+    "model": "gap.datasetattribute",
+    "pk": 166,
+    "fields": {
+      "dataset": 15,
+      "attribute": 28,
+      "source": "sfc_rel_humidity",
+      "source_unit": 6,
+      "ensembles": false
+    }
+  },
+  {
+    "model": "gap.datasetattribute",
+    "pk": 167,
+    "fields": {
+      "dataset": 15,
+      "attribute": 88,
+      "source": "sfc_dewpoint",
+      "source_unit": 5,
+      "ensembles": false
+    }
+  },
+  {
+    "model": "gap.datasetattribute",
+    "pk": 168,
+    "fields": {
+      "dataset": 15,
+      "attribute": 89,
+      "source": "sfc_feels_like",
+      "source_unit": 5,
+      "ensembles": false
+    }
+  },
+  {
+    "model": "gap.datasetattribute",
+    "pk": 169,
+    "fields": {
+      "dataset": 15,
+      "attribute": 52,
+      "source": "sfc_air_temperature",
+      "source_unit": 5,
+      "ensembles": false
+    }
+  },
+  {
+    "model": "gap.datasetattribute",
+    "pk": 170,
+    "fields": {
+      "dataset": 15,
+      "attribute": 90,
+      "source": "fosberg_fire_index",
+      "source_unit": 27,
+      "ensembles": false
+    }
+  },
+  {
+    "model": "gap.datasetattribute",
+    "pk": 171,
+    "fields": {
+      "dataset": 15,
+      "attribute": 91,
+      "source": "precip_rate",
+      "source_unit": 4,
+      "ensembles": false
+    }
+  },
+  {
+    "model": "gap.datasetattribute",
+    "pk": 172,
+    "fields": {
+      "dataset": 15,
+      "attribute": 92,
+      "source": "precip_type",
+      "source_unit": 22,
+      "ensembles": false
+    }
+  },
+  {
+    "model": "gap.datasetattribute",
+    "pk": 173,
+    "fields": {
+      "dataset": 15,
+      "attribute": 36,
+      "source": "precip_probability",
+      "source_unit": 6,
+      "ensembles": false
+    }
+  },
+  {
+    "model": "gap.datasetattribute",
+    "pk": 174,
+    "fields": {
+      "dataset": 15,
+      "attribute": 93,
+      "source": "thickness_of_rainfall_amount",
+      "source_unit": 1,
+      "ensembles": false
+    }
+  },
+  {
+    "model": "gap.datasetattribute",
+    "pk": 175,
+    "fields": {
+      "dataset": 15,
+      "attribute": 94,
+      "source": "thickness_of_snowfall_amount",
+      "source_unit": 1,
+      "ensembles": false
+    }
+  },
+  {
+    "model": "gap.datasetattribute",
+    "pk": 176,
+    "fields": {
+      "dataset": 15,
+      "attribute": 95,
+      "source": "thickness_of_freezing_rain_amount",
+      "source_unit": 1,
+      "ensembles": false
+    }
   }
 ]

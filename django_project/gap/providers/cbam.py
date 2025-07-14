@@ -18,7 +18,8 @@ from gap.models import (
     Dataset,
     DatasetAttribute,
     DataSourceFile,
-    DatasetStore
+    DatasetStore,
+    DatasetTimeStep
 )
 from gap.providers.base import BaseReaderBuilder
 from gap.utils.reader import (
@@ -39,9 +40,12 @@ class CBAMReaderValue(DatasetReaderValue):
     date_variable = 'date'
 
     def __init__(
-            self, val: xrDataset | List[DatasetTimelineValue],
-            location_input: DatasetReaderInput,
-            attributes: List[DatasetAttribute]) -> None:
+        self, val: xrDataset | List[DatasetTimelineValue],
+        location_input: DatasetReaderInput,
+        attributes: List[DatasetAttribute],
+        start_datetime: np.datetime64 = None,
+        end_datetime: np.datetime64 = None
+    ) -> None:
         """Initialize CBAMReaderValue class.
 
         :param val: value that has been read
@@ -51,7 +55,13 @@ class CBAMReaderValue(DatasetReaderValue):
         :param attributes: list of dataset attributes
         :type attributes: List[DatasetAttribute]
         """
-        super().__init__(val, location_input, attributes)
+        super().__init__(
+            val,
+            location_input,
+            attributes,
+            start_datetime=start_datetime,
+            end_datetime=end_datetime
+        )
 
 
 class CBAMNetCDFReader(BaseNetCDFReader):
@@ -351,6 +361,75 @@ class CBAMZarrReader(BaseZarrReader, CBAMNetCDFReader):
         return CBAMReaderValue(val, self.location_input, self.attributes)
 
 
+class CBAMHourlyForecastHistoricalReader(CBAMZarrReader):
+    """Class that represents CBAM Hourly Forecast Historical Reader."""
+
+    def __init__(
+            self, dataset: Dataset, attributes: List[DatasetAttribute],
+            location_input: DatasetReaderInput, start_date: datetime,
+            end_date: datetime, use_cache: bool = True
+    ) -> None:
+        """Initialize CBAMHourlyForecastHistoricalReader class."""
+        super().__init__(
+            dataset, attributes, location_input, start_date, end_date,
+            use_cache=use_cache
+        )
+
+    def get_data_values(self) -> DatasetReaderValue:
+        """Fetch data values from dataset.
+
+        :return: Data Value.
+        :rtype: DatasetReaderValue
+        """
+        val = None
+        start_dt = np.datetime64(self.start_date, 'ns')
+        end_dt = np.datetime64(self.end_date, 'ns')
+        if len(self.xrDatasets) > 0:
+            val = self.xrDatasets[0]
+
+        if val is None:
+            return CBAMReaderValue(
+                val, self.location_input, self.attributes,
+                start_dt, end_dt
+            )
+
+        if self.has_time_column:
+            val = self._mask_by_datetime_range(
+                val, start_dt, end_dt
+            )
+
+        return CBAMReaderValue(
+            val, self.location_input, self.attributes,
+            start_dt, end_dt
+        )
+
+    def read_historical_data(self, start_date: datetime, end_date: datetime):
+        """Read historical data from dataset.
+
+        :param start_date: start date for reading historical data
+        :type start_date: datetime
+        :param end_date:  end date for reading historical data
+        :type end_date: datetime
+        """
+        self.setup_reader()
+        zarr_file = DataSourceFile.objects.filter(
+            dataset=self.dataset,
+            format=DatasetStore.ZARR,
+            is_latest=True
+        ).order_by('id').last()
+        if zarr_file is None:
+            return
+        ds = self.open_dataset(zarr_file)
+        start_dt = start_date.replace(
+            hour=0, minute=0, second=0, microsecond=0
+        )
+        end_dt = end_date.replace(hour=0, minute=0, second=0, microsecond=0)
+        val = self.read_variables(ds, start_dt, end_dt)
+        if val is None:
+            return
+        self.xrDatasets.append(val)
+
+
 class CBAMReaderBuilder(BaseReaderBuilder):
     """CBAM Reader Builder."""
 
@@ -360,6 +439,12 @@ class CBAMReaderBuilder(BaseReaderBuilder):
         :return: Reader Class Type
         :rtype: CBAMZarrReader
         """
+        if self.dataset.time_step == DatasetTimeStep.HOURLY:
+            # For hourly forecast, we use CBAMHourlyForecastHistoricalReader
+            return CBAMHourlyForecastHistoricalReader(
+                self.dataset, self.attributes, self.location_input,
+                self.start_date, self.end_date, use_cache=self.use_cache
+            )
         return CBAMZarrReader(
             self.dataset, self.attributes, self.location_input,
             self.start_date, self.end_date, use_cache=self.use_cache
