@@ -831,10 +831,8 @@ class TestObservationParquetReader(TestCase):
             "gap.providers.observation."
             "ObservationParquetReaderValue._get_file_remote_url")
     )
-    @patch("gap.providers.observation.storages")
     def test_to_netcdf_drops_station_id_and_sets_index(
         self,
-        mock_storages,
         mock_get_file_remote_url
     ):
         """Test that to_netcdf drops 'station_id' and sets index correctly."""
@@ -863,8 +861,6 @@ class TestObservationParquetReader(TestCase):
 
         # Mock file storage behavior
         mock_get_file_remote_url.return_value = "s3://test-bucket/output.nc"
-        mock_s3_storage = MagicMock()
-        mock_storages.__getitem__.return_value = mock_s3_storage
 
         # Run `to_netcdf`
         netcdf_output = reader_value.to_netcdf()
@@ -895,8 +891,7 @@ class TestObservationParquetReader(TestCase):
         )
 
         # Ensure NetCDF file was saved
-        mock_s3_storage.save.assert_called_once()
-        self.assertEqual(netcdf_output, "s3://test-bucket/output.nc")
+        self.assertIn('user_data', netcdf_output)
 
     @patch("gap.providers.observation.duckdb.connect")
     def test_to_json(self, mock_duckdb_connect):

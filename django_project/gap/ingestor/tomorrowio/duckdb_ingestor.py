@@ -13,12 +13,12 @@ import geohash
 import duckdb
 import time
 import pandas as pd
-from typing import List
+from typing import List, Tuple
 from datetime import date
-
 from django.core.files.storage import storages
 from storages.backends.s3boto3 import S3Boto3Storage
 from django.contrib.gis.db.models.functions import Centroid
+from django.utils import timezone
 
 from gap.ingestor.base import (
     CoordMapping
@@ -31,7 +31,8 @@ from gap.models import (
     CollectorSession, Grid,
     DatasetTimeStep, Preferences,
     IngestorSessionStatus,
-    Dataset, DatasetStore
+    Dataset, DatasetStore,
+    GridSet, DataSourceFile
 )
 from gap.ingestor.tomorrowio.json_ingestor import TioShortTermIngestor
 
@@ -130,9 +131,10 @@ class TioShortTermDuckDBIngestor(TioShortTermIngestor):
         return None
 
     def _process_tio_shortterm_data_from_conn(
-            self, forecast_date: date, lat_arr: List[CoordMapping],
-            lon_arr: List[CoordMapping], grids: dict,
-            conn: duckdb.DuckDBPyConnection) -> dict:
+        self, forecast_date: date, lat_arr: List[CoordMapping],
+        lon_arr: List[CoordMapping], grids: dict,
+        conn: duckdb.DuckDBPyConnection
+    ) -> Tuple[dict, int]:
         """Process Tio data and update into zarr.
 
         :param forecast_date: forecast date
@@ -176,6 +178,10 @@ class TioShortTermDuckDBIngestor(TioShortTermIngestor):
         weather_df = self._fetch_data(conn, list(grid_ids.values()))
 
         if weather_df is None:
+            logger.warning(
+                f'No data found for forecast date: {forecast_date} '
+                f'for lat: {len(lat_arr)} and lon: {len(lon_arr)}'
+            )
             return warnings, count
 
         for idx_lat, lat in enumerate(lat_arr):
@@ -245,6 +251,11 @@ class TioShortTermDuckDBIngestor(TioShortTermIngestor):
         self._update_by_region(forecast_date, lat_arr, lon_arr, new_data)
         del new_data
 
+        logger.info(
+            f'Processed {count} grids for '
+            f'{len(lat_arr)} lat and {len(lon_arr)} lon. '
+            f'Total: {len(lat_arr) * len(lon_arr)}'
+        )
         return warnings, count
 
     def _run(self):
@@ -268,87 +279,178 @@ class TioShortTermDuckDBIngestor(TioShortTermIngestor):
         # get connection
         conn = self._get_connection(collector)
 
-        # get lat and lon array from grids
-        lat_arr = set()
-        lon_arr = set()
-        grid_dict = {}
-
-        # query grids
-        grids = Grid.objects.annotate(
-            centroid=Centroid('geometry')
+        # query grids by countries
+        countries = self.get_config(
+            'countries', None
         )
-        for grid in grids:
-            lat = round(grid.centroid.y, 8)
-            lon = round(grid.centroid.x, 8)
-            grid_hash = geohash.encode(lat, lon, precision=8)
-            lat_arr.add(lat)
-            lon_arr.add(lon)
-            grid_dict[grid_hash] = grid.id
-        lat_arr = sorted(lat_arr)
-        lon_arr = sorted(lon_arr)
-
-        # transform lat lon arrays
-        lat_arr = self._transform_coordinates_array(lat_arr, 'lat')
-        lon_arr = self._transform_coordinates_array(lon_arr, 'lon')
-
-        lat_indices = [lat.nearest_idx for lat in lat_arr]
-        lon_indices = [lon.nearest_idx for lon in lon_arr]
-        assert self._is_sorted_and_incremented(lat_indices)
-        assert self._is_sorted_and_incremented(lon_indices)
-
-        # create slices for chunks
-        lat_chunk_size = self.get_config(
-            'lat_chunk_size',
-            self.default_chunks['lat']
-        )
-        lon_chunk_size = self.get_config(
-            'lon_chunk_size',
-            self.default_chunks['lon']
-        )
-        lat_slices = self._find_chunk_slices(
-            len(lat_arr), lat_chunk_size
-        )
-        lon_slices = self._find_chunk_slices(
-            len(lon_arr), lon_chunk_size
-        )
-
-        total_progress = (
-            len(lat_slices) * len(lon_slices)
-        )
-        progress = self._add_progress(
-            f'Processing {forecast_date.isoformat()} - '
-            f'{total_progress} chunks',
-        )
-        start_time = time.time()
-        total_processed = 0
-
-        # process the data by chunks
-        for lat_slice in lat_slices:
-            for lon_slice in lon_slices:
-                chunk_progress = self._add_progress(
-                    f'Chunk {total_processed + 1}/'
-                    f'{total_progress}'
-                )
-                chunk_start_time = time.time()
-                lat_chunks = lat_arr[lat_slice]
-                lon_chunks = lon_arr[lon_slice]
-                warnings, count = self._process_tio_shortterm_data_from_conn(
-                    forecast_date, lat_chunks, lon_chunks,
-                    grid_dict, conn
-                )
-                self.metadata['chunks'].append({
-                    'lat_slice': str(lat_slice),
-                    'lon_slice': str(lon_slice),
-                    'warnings': warnings
+        queryset_list = []
+        if countries:
+            for country_name in countries:
+                queryset_list.append({
+                    'country': country_name,
+                    'queryset': Grid.objects.filter(
+                        country__name=country_name
+                    )
                 })
-                self.metadata['total_json_processed'] += count
+        else:
+            queryset_list.append({
+                'country': 'All Countries',
+                'queryset': Grid.objects.all()
+            })
 
-                total_processed += 1
-                chunk_progress.notes = (
-                    f"Execution time: {time.time() - chunk_start_time}"
+        # process for each country queryset
+        for country_qs in queryset_list:
+            country = country_qs['country']
+            logger.info(f'Processing grids for country: {country}')
+            grids = country_qs['queryset']
+            if not grids.exists():
+                logger.warning(
+                    f'No grids found for country: {country}'
                 )
-                chunk_progress.status = IngestorSessionStatus.SUCCESS
-                chunk_progress.save()
+                continue
+
+            # add progress for country
+            country_progress = self._add_progress(
+                f'Processing grids for country: {country}'
+            )
+
+            grids = grids.annotate(
+                centroid=Centroid('geometry')
+            )
+
+            # get lat and lon array from grids
+            lat_arr = set()
+            lon_arr = set()
+            grid_dict = {}
+            for grid in grids:
+                lat = round(grid.centroid.y, 8)
+                lon = round(grid.centroid.x, 8)
+                grid_hash = geohash.encode(lat, lon, precision=8)
+                lat_arr.add(lat)
+                lon_arr.add(lon)
+                grid_dict[grid_hash] = grid.id
+            lat_arr = sorted(lat_arr)
+            lon_arr = sorted(lon_arr)
+
+            # find reindex_tolerance config from GridSet
+            reindex_tolerance = None
+            grid_set = GridSet.objects.filter(
+                country__name=country
+            ).first()
+            if grid_set:
+                reindex_tolerance = grid_set.config.get(
+                    'reindex_tolerance', None
+                )
+
+            # transform lat lon arrays
+            lat_arr = self._transform_coordinates_array(
+                lat_arr, 'lat',
+                tolerance=reindex_tolerance,
+                fix_incremented=True
+            )
+            lon_arr = self._transform_coordinates_array(
+                lon_arr, 'lon',
+                tolerance=reindex_tolerance,
+                fix_incremented=True
+            )
+
+            lat_indices = [lat.nearest_idx for lat in lat_arr]
+            lon_indices = [lon.nearest_idx for lon in lon_arr]
+            assert self._is_sorted_and_incremented(lat_indices)
+            assert self._is_sorted_and_incremented(lon_indices)
+
+            # check the number of gap filled
+            lat_gap_filled = sum(
+                1 for lat in lat_arr if lat.is_gap_filled
+            )
+            lon_gap_filled = sum(
+                1 for lon in lon_arr if lon.is_gap_filled
+            )
+            self._add_progress(
+                'Check latitudes gap filled',
+                f'Latitudes gap filled: {lat_gap_filled} '
+                f'out of {len(lat_arr)} '
+                f'({lat_gap_filled / len(lat_arr) * 100:.2f}%)'
+            )
+            self._add_progress(
+                'Check longitudes gap filled',
+                f'Longitudes gap filled: {lon_gap_filled} '
+                f'out of {len(lon_arr)} '
+                f'({lon_gap_filled / len(lon_arr) * 100:.2f}%)'
+            )
+
+            # create slices for chunks
+            lat_chunk_size = self.get_config(
+                'lat_chunk_size',
+                self.default_chunks['lat']
+            )
+            lon_chunk_size = self.get_config(
+                'lon_chunk_size',
+                self.default_chunks['lon']
+            )
+            lat_slices = self._find_chunk_slices(
+                len(lat_arr), lat_chunk_size
+            )
+            lon_slices = self._find_chunk_slices(
+                len(lon_arr), lon_chunk_size
+            )
+
+            total_progress = (
+                len(lat_slices) * len(lon_slices)
+            )
+            country_progress.notes = (
+                f'Processing {country} - '
+                f'{len(lat_arr)} lat, {len(lon_arr)} lon, '
+                f'{total_progress} chunks'
+            )
+            country_progress.status = IngestorSessionStatus.RUNNING
+            country_progress.save()
+            start_time = time.time()
+            total_processed = 0
+
+            # process the data by chunks
+            for lat_slice in lat_slices:
+                for lon_slice in lon_slices:
+                    chunk_progress = self._add_progress(
+                        f'Chunk {total_processed + 1}/'
+                        f'{total_progress}'
+                    )
+                    chunk_start_time = time.time()
+                    lat_chunks = lat_arr[lat_slice]
+                    lon_chunks = lon_arr[lon_slice]
+                    warnings, count = (
+                        self._process_tio_shortterm_data_from_conn(
+                            forecast_date, lat_chunks, lon_chunks,
+                            grid_dict, conn
+                        )
+                    )
+                    self.metadata['chunks'].append({
+                        'lat_slice': str(lat_slice),
+                        'lon_slice': str(lon_slice),
+                        'warnings': warnings,
+                        'count': count,
+                        'total': len(lat_chunks) * len(lon_chunks),
+                        'country': country
+                    })
+                    self.metadata['total_json_processed'] += count
+
+                    total_processed += 1
+                    chunk_progress.notes = (
+                        f"Execution time: {time.time() - chunk_start_time}"
+                    )
+                    chunk_progress.status = IngestorSessionStatus.SUCCESS
+                    chunk_progress.save()
+
+            # update progress
+            total_time = time.time() - start_time
+            country_progress.notes = (
+                f"Processed {total_processed} chunks in "
+                f"{total_time:.2f} seconds. "
+                "Total JSON processed: "
+                f"{self.metadata['total_json_processed']}."
+            )
+            country_progress.status = IngestorSessionStatus.SUCCESS
+            country_progress.save()
 
         # close connection
         conn.close()
@@ -363,12 +465,6 @@ class TioShortTermDuckDBIngestor(TioShortTermIngestor):
 
         # invalidate zarr cache
         self._invalidate_zarr_cache()
-
-        # update progress
-        total_time = time.time() - start_time
-        progress.notes = f"Execution time: {total_time}"
-        progress.status = IngestorSessionStatus.SUCCESS
-        progress.save()
 
     def _remove_source_files(self, collector: CollectorSession):
         s3_storage: S3Boto3Storage = storages["gap_products"]
@@ -501,3 +597,29 @@ class TioHourlyShortTermIngestor(TioShortTermDuckDBIngestor):
             'lon': slice(
                 nearest_lon_indices[0], nearest_lon_indices[-1] + 1)
         }
+
+    def set_data_source_retention(self):
+        """Delete the latest data source file and set the new one."""
+        # find the latest data source file
+        latest_data_source = DataSourceFile.objects.filter(
+            dataset=self.dataset,
+            is_latest=True,
+            format=DatasetStore.ZARR
+        ).last()
+        if (
+            latest_data_source and
+            latest_data_source.id != self.datasource_file.id
+        ):
+            # set the latest data source file to not latest
+            latest_data_source.is_latest = False
+            # set deleted_at to now
+            latest_data_source.deleted_at = timezone.now()
+            latest_data_source.save()
+
+        # Update the data source file to latest
+        self.datasource_file.is_latest = True
+        self.datasource_file.save()
+
+    def _run(self):
+        super()._run()
+        self.set_data_source_retention()

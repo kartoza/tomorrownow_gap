@@ -39,7 +39,8 @@ class BaseZarrReader(BaseNetCDFReader):
     def __init__(
             self, dataset: Dataset, attributes: List[DatasetAttribute],
             location_input: DatasetReaderInput,
-            start_date: datetime, end_date: datetime
+            start_date: datetime, end_date: datetime,
+            use_cache: bool = True
     ) -> None:
         """Initialize BaseZarrReader class.
 
@@ -55,7 +56,8 @@ class BaseZarrReader(BaseNetCDFReader):
         :type end_date: datetime
         """
         super().__init__(
-            dataset, attributes, location_input, start_date, end_date
+            dataset, attributes, location_input,
+            start_date, end_date, use_cache
         )
 
     @classmethod
@@ -132,29 +134,56 @@ class BaseZarrReader(BaseNetCDFReader):
         :return: xArray Dataset object
         :rtype: xrDataset
         """
-        self._check_zarr_cache_expiry(source_file)
+        if self.use_cache:
+            self._check_zarr_cache_expiry(source_file)
+
+        s3 = self.s3
+        s3_options = self.s3_options
+        override_conn_name = source_file.metadata.get(
+            'connection_name', None
+        )
+        if (
+            override_conn_name and
+            override_conn_name != s3.get('S3_CONNECTION_NAME')
+        ):
+            # if there is a connection name override, we need to get the
+            # s3 variables from the ObjectStorageManager
+            s3 = ObjectStorageManager.get_s3_env_vars(
+                connection_name=override_conn_name
+            )
+            s3_options = {
+                'key': s3.get('S3_ACCESS_KEY_ID'),
+                'secret': s3.get('S3_SECRET_ACCESS_KEY'),
+                'client_kwargs': self.get_s3_client_kwargs(
+                    s3=s3
+                )
+            }
+
         # get zarr url
-        zarr_url = self.get_zarr_base_url(self.s3)
+        zarr_url = self.get_zarr_base_url(s3)
         zarr_url += f'{source_file.name}'
 
-        # create s3 filecache
-        s3_fs = s3fs.S3FileSystem(
-            **self.s3_options,
-        )
-        fs = fsspec.filesystem(
-            'filecache',
-            target_protocol='s3',
-            target_options=self.s3_options,
-            cache_storage=self.get_zarr_cache_dir(source_file.name),
-            cache_check=3600,
-            expiry_time=86400,
-            target_kwargs={
-                's3': s3_fs
-            }
-        )
+        if self.use_cache:
+            # create s3 filecache
+            s3_fs = s3fs.S3FileSystem(
+                **s3_options,
+            )
+            fs = fsspec.filesystem(
+                'filecache',
+                target_protocol='s3',
+                target_options=s3_options,
+                cache_storage=self.get_zarr_cache_dir(source_file.name),
+                cache_check=3600,
+                expiry_time=86400,
+                target_kwargs={
+                    's3': s3_fs
+                }
+            )
+            # create fsspec mapper file list
+            s3_mapper = fs.get_mapper(zarr_url)
+        else:
+            s3_mapper = fsspec.get_mapper(zarr_url, **s3_options)
 
-        # create fsspec mapper file list
-        s3_mapper = fs.get_mapper(zarr_url)
         drop_variables = []
         if source_file.metadata:
             drop_variables = source_file.metadata.get(

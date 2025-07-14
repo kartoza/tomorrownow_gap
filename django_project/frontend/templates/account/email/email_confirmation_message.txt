@@ -1,0 +1,16 @@
+Hi {{ user.get_full_name|default:user.username|default:"there" }},
+
+Thanks for signing up! You’re one step away from confirming your spot on the waitlist for Global Access Platform.
+
+To complete your registration, please verify your email by clicking the link below:
+
+{{ activate_url|safe }}
+
+Once verified, you’ll officially be on the list, and we’ll keep you updated with the latest news and early access.
+
+If you didn’t sign up for this, feel free to ignore this email.
+
+Thanks again, and we’re excited to have you on board!
+
+Warm regards,
+The Global Access Platform Team

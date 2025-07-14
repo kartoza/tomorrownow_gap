@@ -6,6 +6,7 @@ Tomorrow Now GAP.
 
 """
 
+import logging
 from django.contrib.gis.db import models
 from django.conf import settings
 from django.utils import timezone
@@ -16,6 +17,12 @@ from django.core.mail import send_mail
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 
+from gap.models.user_profile import UserProfile
+
+
+User = get_user_model()
+logger = logging.getLogger(__name__)
+
 
 class RequestStatus(models.TextChoices):
     """Request status choices."""
@@ -23,6 +30,7 @@ class RequestStatus(models.TextChoices):
     PENDING = 'PENDING', _('Pending')
     APPROVED = 'APPROVED', _('Approved')
     REJECTED = 'REJECTED', _('Rejected')
+    INCOMPLETE = 'INCOMPLETE', _('Incomplete')
 
 
 class SignUpRequest(models.Model):
@@ -39,6 +47,13 @@ class SignUpRequest(models.Model):
     email = models.EmailField(
         verbose_name=_('Email'),
         unique=True
+    )
+    organization = models.CharField(
+        verbose_name=_('Organization'),
+        blank=True,
+        null=True,
+        max_length=200,
+        help_text=_("Name of the organization you represent.")
     )
     description = models.TextField(
         help_text=_("Describe your request or interest.")
@@ -80,7 +95,19 @@ class SignUpRequest(models.Model):
 @receiver(post_save, sender=SignUpRequest)
 def notify_user_managers_on_signup(sender, instance, created, **kwargs):
     """Notify user managers on sign up."""
-    if not created:
+    email_verified = False
+    # check if the user's email has already been verified
+    if User.objects.filter(email=instance.email).exists():
+        user = User.objects.get(email=instance.email)
+        if UserProfile.objects.filter(user=user).exists():
+            email_verified = user.userprofile.email_verified
+
+    if not email_verified:
+        # If the email is not verified, skip sending the notification
+        logger.info(
+            f"Skipping notification for {instance.email} "
+            "as email is not verified."
+        )
         return
 
     try:
@@ -103,68 +130,3 @@ def notify_user_managers_on_signup(sender, instance, created, **kwargs):
             )
     except Group.DoesNotExist:
         pass
-
-
-@receiver(post_save, sender=SignUpRequest)
-def send_approval_email_and_activate_user(sender, instance, created, **kwargs):
-    """Activate user and send email if sign-up request is approved."""
-    if created:
-        return  # Skip newly created SignUpRequests
-
-    if instance.status == RequestStatus.APPROVED and instance.email:
-        User = get_user_model()
-
-        try:
-            # Activate the corresponding user
-            user = User.objects.get(email=instance.email)
-            if not user.is_active:
-                user.is_active = True
-                user.save()
-
-            # Send approval email
-            send_mail(
-                subject="Your Account Signup Has Been Approved",
-                message=(
-                    f"Hello {instance.first_name},\n\n"
-                    "Your sign-up request has been approved. "
-                    "You can now log in to the platform.\n\n"
-                    f"API Documentation: [API Docs Link]\n\n"
-                    "Best regards,\n"
-                    "Tomorrow Now GAP Team"
-                ),
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                recipient_list=[instance.email],
-                fail_silently=False,
-            )
-        except User.DoesNotExist:
-            # Optionally log if no user was found for this email
-            pass
-    elif instance.status == RequestStatus.REJECTED and instance.email:
-        User = get_user_model()
-
-        try:
-            # Ensure user is not active
-            user = User.objects.get(email=instance.email)
-            if not user.is_active:
-                user.save()
-            else:
-                user.is_active = False
-                user.save()
-
-            # Send approval email
-            send_mail(
-                subject="Your Account Signup Has Been Rejected",
-                message=(
-                    f"Hello {instance.first_name},\n\n"
-                    "Your sign-up request has been rejected. "
-                    "You cannot log in to the platform.\n\n"
-                    "Best regards,\n"
-                    "Tomorrow Now GAP Team"
-                ),
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                recipient_list=[instance.email],
-                fail_silently=False,
-            )
-        except User.DoesNotExist:
-            # Optionally log if no user was found for this email
-            pass

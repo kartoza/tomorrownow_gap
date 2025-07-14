@@ -6,9 +6,15 @@ Tomorrow Now GAP.
 """
 
 from django.contrib.gis.db import models
+from datetime import timedelta
+from django.utils import timezone
 
 from core.models.common import Definition
 from gap.models.common import Provider
+
+
+# Default days to keep Zarr files marked as deleted
+DEFAULT_CUTOFF_DATASOURCEFILE_DAYS = 1
 
 
 class CastType:
@@ -179,9 +185,33 @@ class DataSourceFile(models.Model):
     )
     is_latest = models.BooleanField(default=False)
     metadata = models.JSONField(blank=True, default=dict, null=True)
+    deleted_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="If the file is deleted, this field will be set."
+    )
 
     def __str__(self):
         return f'{self.name} - {self.id}'
+
+    def should_delete(self) -> bool:
+        """Check if the file should be deleted based on retention policy."""
+        if self.deleted_at is None:
+            return False
+
+        # If no retention config is found, use the default days
+        days_to_keep = DEFAULT_CUTOFF_DATASOURCEFILE_DAYS
+        # find the retention config for this dataset
+        retention_config = DataSourceFileRententionConfig.objects.filter(
+            dataset=self.dataset
+        ).first()
+        if retention_config:
+            days_to_keep = retention_config.days_to_keep
+
+        # Check if the file is marked for deletion and
+        # if it has passed the retention period
+        cutoff_date = self.deleted_at + timedelta(days=days_to_keep)
+        return timezone.now() >= cutoff_date
 
 
 class DataSourceFileCache(models.Model):
@@ -209,3 +239,20 @@ class DataSourceFileCache(models.Model):
                 name='source_hostname'
             )
         ]
+
+
+class DataSourceFileRententionConfig(models.Model):
+    """Model representing retention configuration for DataSourceFile."""
+
+    dataset = models.ForeignKey(
+        Dataset, on_delete=models.CASCADE
+    )
+    days_to_keep = models.PositiveIntegerField(
+        default=1,
+        help_text="Number of days to keep the files before deletion."
+    )
+
+    class Meta:
+        """Meta class for DataSourceFileRententionConfig."""
+
+        unique_together = ('dataset',)  # Ensure one config per dataset

@@ -183,7 +183,8 @@ class GapInput(SPWDataInput):
             [],
             self.location_input,
             self.start_date,
-            self.end_date
+            self.end_date,
+            use_cache=False
         )
         reader.setup_reader()
         zarr_file = DataSourceFile.objects.filter(
@@ -222,7 +223,8 @@ class GapInput(SPWDataInput):
             list(attributes),
             self.location_input,
             self.start_date,
-            self.end_date
+            self.end_date,
+            use_cache=False
         )
         reader.read()
         reader_value = reader.get_data_values()

@@ -16,39 +16,43 @@ from django.contrib.gis.geos import (
 )
 from django.db.models.functions import Lower
 from django.db.utils import ProgrammingError
-from django.http import StreamingHttpResponse
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework.exceptions import ValidationError, PermissionDenied
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from django.core.files.storage import storages
-from storages.backends.s3boto3 import S3Boto3Storage
 from urllib.parse import urlparse
+from django.conf import settings
+from django.utils import timezone
 
+from core.models.object_storage_manager import ObjectStorageManager
+from core.models.background_task import TaskStatus
 from gap.models import (
     Dataset,
     DatasetObservationType,
     Attribute,
     DatasetAttribute,
     DatasetType,
-    Preferences
+    Preferences,
 )
 from gap.providers import get_reader_builder
 from gap.utils.reader import (
     LocationInputType,
     DatasetReaderInput,
-    DatasetReaderValue,
     BaseDatasetReader,
     DatasetReaderOutputType
 )
 from core.utils.date import closest_leap_year
-from gap_api.models import DatasetTypeAPIConfig, Location, UserFile
+from gap_api.models import (
+    DatasetTypeAPIConfig, Location, UserFile,
+    Job
+)
 from gap_api.serializers.common import APIErrorSerializer
 from gap_api.utils.helper import ApiTag
 from gap_api.mixins import GAPAPILoggingMixin, CounterSlidingWindowThrottle
 from permission.models import PermissionType
+from gap_api.tasks.job import DataRequestJobExecutor
 
 
 logger = logging.getLogger(__name__)
@@ -324,43 +328,8 @@ class MeasurementAPI(GAPAPILoggingMixin, APIView):
             'output_type', DatasetReaderOutputType.JSON)
         return product.lower()
 
-    def _read_data(self, reader: BaseDatasetReader) -> DatasetReaderValue:
-        reader.read()
-        return reader.get_data_values()
-
-    def _read_data_as_json(
-            self, reader_dict: Dict[int, BaseDatasetReader],
-            start_dt: datetime, end_dt: datetime) -> DatasetReaderValue:
-        """Read data from given reader.
-
-        :param reader: Dataset Reader
-        :type reader: BaseDatasetReader
-        :return: data value
-        :rtype: DatasetReaderValue
-        """
-        data = {
-            'metadata': {
-                'start_date': start_dt.isoformat(timespec='seconds'),
-                'end_date': end_dt.isoformat(timespec='seconds'),
-                'dataset': []
-            },
-            'results': []
-        }
-        for reader in reader_dict.values():
-            reader_value = self._read_data(reader)
-            if reader_value.is_empty():
-                return None
-            values = reader_value.to_json()
-            if values:
-                data['metadata']['dataset'].append({
-                    'provider': reader.dataset.provider.name,
-                    'attributes': reader.get_attributes_metadata()
-                })
-                data['results'].append(values)
-        return data
-
     def _get_accel_redirect_response(
-            self, presigned_url, file_name, content_type
+        self, presigned_url, file_name, content_type
     ):
         parse_result = urlparse(presigned_url)
         response = Response(
@@ -378,118 +347,25 @@ class MeasurementAPI(GAPAPILoggingMixin, APIView):
         )
         return response
 
-    def _read_data_as_netcdf(
-            self, reader_dict: Dict[int, BaseDatasetReader],
-            start_dt: datetime, end_dt: datetime,
-            user_file: UserFile = None) -> Response:
-        # check if can use UserFile cache
-        if user_file:
-            cache_exist = user_file.find_in_cache()
-            if cache_exist:
-                # set output file size
-                self.set_output_file_size(cache_exist.size)
-                return self._get_accel_redirect_response(
-                    cache_exist.generate_url(),
-                    os.path.basename(cache_exist.name),
-                    'application/x-netcdf'
-                )
-
-        reader: BaseDatasetReader = list(reader_dict.values())[0]
-        reader_value = self._read_data(reader)
-        if reader_value.is_empty():
-            return None
-
-        file_name = 'data.nc'
-        # check config for using X-Accel-Redirect
-        if user_file is None:
-            self.set_output_file_size(reader_value.size)
-            response = StreamingHttpResponse(
-                reader_value.to_netcdf_stream(),
-                content_type='application/x-netcdf'
-            )
-            response['Content-Disposition'] = (
-                f'attachment; filename="{file_name}"'
-            )
-        else:
-            s3_storage: S3Boto3Storage = storages["gap_products"]
-            file_path = reader_value.to_netcdf()
-            file_name = os.path.basename(file_path)
-            presigned_link = s3_storage.url(file_path)
-            response = self._get_accel_redirect_response(
-                presigned_link, file_name, 'application/x-netcdf'
-            )
-            # store the user_file
-            user_file.name = file_path
-            user_file.size = s3_storage.size(file_path)
-            user_file.save()
-            # set output file size
-            self.set_output_file_size(user_file.size)
-
-        return response
-
-    def _read_data_as_csv(
-            self, reader_dict: Dict[int, BaseDatasetReader],
-            start_dt: datetime, end_dt: datetime,
-            suffix='.csv', separator=',', content_type='text/csv',
-            user_file: UserFile = None) -> Response:
-        # check if can use UserFile cache
-        if user_file:
-            cache_exist = user_file.find_in_cache()
-            if cache_exist:
-                # set output file size
-                self.set_output_file_size(cache_exist.size)
-                return self._get_accel_redirect_response(
-                    cache_exist.generate_url(),
-                    os.path.basename(cache_exist.name),
-                    content_type
-                )
-
-        reader: BaseDatasetReader = list(reader_dict.values())[0]
-        reader_value = self._read_data(reader)
-        if reader_value.is_empty():
-            return None
-
-        file_name = f'data{suffix}'
-        # check config for using X-Accel-Redirect
-        if user_file is None:
-            self.set_output_file_size(reader_value.size)
-            response = StreamingHttpResponse(
-                reader_value.to_csv_stream(
-                    suffix=suffix,
-                    separator=separator
-                ),
-                content_type=content_type
-            )
-            response['Content-Disposition'] = (
-                f'attachment; filename="{file_name}"'
-            )
-        else:
-            s3_storage: S3Boto3Storage = storages["gap_products"]
-            file_path = reader_value.to_csv(
-                suffix=suffix,
-                separator=separator
-            )
-            file_name = os.path.basename(file_path)
-            presigned_link = s3_storage.url(file_path)
-            response = self._get_accel_redirect_response(
-                presigned_link, file_name, content_type
-            )
-            # store the user_file
-            user_file.name = file_path
-            user_file.size = s3_storage.size(file_path)
-            user_file.save()
-            # set output file size
-            self.set_output_file_size(user_file.size)
-
-        return response
-
-    def _read_data_as_ascii(
-            self, reader_dict: Dict[int, BaseDatasetReader],
-            start_dt: datetime, end_dt: datetime) -> Response:
-        return self._read_data_as_csv(
-            reader_dict, start_dt, end_dt,
-            suffix='.txt', separator='\t', content_type='text/ascii'
+    def _get_accel_redirect_response_job_wait(self, job_id):
+        response = Response(
+            status=200
         )
+        poll_interval = self._preferences.job_executor_config.get(
+            'poll_interval', 0.5
+        )
+        max_wait_time = self._preferences.job_executor_config.get(
+            'max_wait_time', 1200
+        )
+        host = self._preferences.job_executor_config.get(
+            'async_wait_host', 'django_jobs:8001'
+        )
+        response['X-Accel-Redirect'] = (
+            f'/userjobs/http/{host}/job/{job_id}/wait?'
+            f'poll_interval={poll_interval}&'
+            f'max_wait_time={max_wait_time}'
+        )
+        return response
 
     def validate_product_type(self, product_filter):
         """Validate user has access to product type.
@@ -551,6 +427,15 @@ class MeasurementAPI(GAPAPILoggingMixin, APIView):
                         f'for {product_type}!'
                     )
                 })
+        elif output_format not in [
+            DatasetReaderOutputType.CSV,
+            DatasetReaderOutputType.ASCII
+        ]:
+            raise ValidationError({
+                'Invalid Request Parameter': (
+                    f'Output format {output_format} is not supported!'
+                )
+            })
 
     def validate_dataset_attributes(self, dataset_attributes, output_format):
         """Validate the attributes for the query.
@@ -615,6 +500,50 @@ class MeasurementAPI(GAPAPILoggingMixin, APIView):
             request_params[k] = v
         return request_params
 
+    def _get_user_file(self, location: DatasetReaderInput):
+        query_params = self._get_request_params()
+        query_params['attributes'] = [
+            a.strip() for a in query_params['attributes'].split(',')
+        ]
+        query_params['geom_type'] = location.type
+        query_params['geometry'] = location.geometry.wkt
+        return UserFile(
+            user=self.request.user,
+            name="",
+            query_params=query_params
+        )
+
+    def prepare_response(self, user_file: UserFile):
+        """Prepare response for the user file.
+
+        :param user_file: UserFile object
+        :type user_file: UserFile
+        :return: Response object
+        :rtype: Response
+        """
+        if user_file is None:
+            return Response(
+                status=404,
+                data={
+                    'detail': 'No weather data is found for given queries.'
+                }
+            )
+
+        # Check if x_accel_redirect is enabled
+        if self._preferences.api_use_x_accel_redirect:
+            presigned_url = user_file.generate_url()
+            file_name = os.path.basename(user_file.name)
+            return self._get_accel_redirect_response(
+                presigned_url,
+                file_name,
+                'application/x-netcdf' if file_name.endswith('.nc') else
+                'text/csv'
+            )
+
+        return ObjectStorageManager.download_file_from_s3(
+            remote_file_path=user_file.name
+        )
+
     def get_response_data(self) -> Response:
         """Read data from dataset.
 
@@ -675,10 +604,10 @@ class MeasurementAPI(GAPAPILoggingMixin, APIView):
         dataset_dict: Dict[int, BaseDatasetReader] = {}
         for da in dataset_attributes:
             if da.dataset.id in dataset_dict:
-                dataset_dict[da.dataset.id].add_attribute(da)
+                continue
             else:
                 try:
-                    reader = get_reader_builder(
+                    get_reader_builder(
                         da.dataset, [da], location, start_dt, end_dt,
                         altitudes=(min_altitudes, max_altitudes),
                         use_parquet=self._preferences.api_use_parquet,
@@ -686,7 +615,7 @@ class MeasurementAPI(GAPAPILoggingMixin, APIView):
                             'forecast_date', None
                         )
                     )
-                    dataset_dict[da.dataset.id] = reader.build()
+                    dataset_dict[da.dataset.id] = 1
                 except TypeError as e:
                     logger.error(
                         f"Error in building dataset reader: {e}",
@@ -704,46 +633,101 @@ class MeasurementAPI(GAPAPILoggingMixin, APIView):
                 }
             )
 
-        # Check UserFile cache if x_accel_redirect is enabled
-        user_file: UserFile = None
-        if self._preferences.api_use_x_accel_redirect:
-            query_params = self._get_request_params()
-            query_params['attributes'] = [
-                a.strip() for a in query_params['attributes'].split(',')
-            ]
-            query_params['geom_type'] = location.type
-            query_params['geometry'] = location.geometry.wkt
-            user_file = UserFile(
-                user=self.request.user,
-                name="",
-                query_params=query_params
+        # Check if the request is async, API will return job ID
+        is_async = self.request.GET.get('async', 'false').lower() == 'true'
+        use_async_wait = False
+        if not is_async:
+            # Check if async wait is enabled in preferences
+            use_async_wait = self._preferences.job_executor_config.get(
+                'use_async_wait', False
+            )
+        is_execute_immediately = (
+            self._preferences.job_executor_config.get(
+                'execute_immediately', False
+            )
+        )
+
+        # Check cache using UserFile
+        user_file = self._get_user_file(location)
+        cache_exist = user_file.find_in_cache()
+        if cache_exist:
+            if is_async:
+                # prepare job with existing user file
+                # Create Job for data request
+                job = Job(
+                    user=self.request.user,
+                    parameters=self._get_request_params(),
+                    queue_name=settings.CELERY_DATA_REQUEST_QUEUE,
+                    wait_type=0 if is_async else 1,
+                    status=TaskStatus.COMPLETED,
+                    output_file=cache_exist,
+                    finished_at=cache_exist.created_on
+                )
+                job.save()
+                # we may need to update user file last accessed time
+                cache_exist.created_on = timezone.now()
+                cache_exist.save()
+                return Response(
+                    status=200,
+                    data={
+                        'detail': 'Job is submitted successfully.',
+                        'job_id': str(job.uuid)
+                    }
+                )
+            return self.prepare_response(cache_exist)
+
+        # Create Job for data request
+        job = Job(
+            user=self.request.user,
+            parameters=self._get_request_params(),
+            queue_name=settings.CELERY_DATA_REQUEST_QUEUE,
+            wait_type=0 if is_async or use_async_wait else 1,
+        )
+        job.save()
+
+        executor = DataRequestJobExecutor(
+            job, is_main_executor=is_execute_immediately
+        )
+        executor.run()
+
+        if is_async:
+            return Response(
+                status=200,
+                data={
+                    'detail': 'Job is submitted successfully.',
+                    'job_id': str(job.uuid)
+                }
+            )
+        elif use_async_wait:
+            # Return job ID for async wait
+            return self._get_accel_redirect_response_job_wait(
+                str(job.uuid)
             )
 
-        response = None
-        if output_format == DatasetReaderOutputType.JSON:
-            data_value = self._read_data_as_json(
-                dataset_dict, start_dt, end_dt)
-            if data_value:
-                response = Response(
-                    status=200,
-                    data=data_value
-                )
-        elif output_format == DatasetReaderOutputType.NETCDF:
-            response = self._read_data_as_netcdf(
-                dataset_dict, start_dt, end_dt, user_file=user_file)
-        elif output_format == DatasetReaderOutputType.CSV:
-            response = self._read_data_as_csv(
-                dataset_dict, start_dt, end_dt,
-                user_file=user_file
+        job.refresh_from_db()
+        if job.status != TaskStatus.COMPLETED:
+            return Response(
+                status=500,
+                data={
+                    'detail': 'Job failed to complete.',
+                    'errors': job.errors
+                }
             )
-        elif output_format == DatasetReaderOutputType.ASCII:
-            response = self._read_data_as_ascii(dataset_dict, start_dt, end_dt)
-        else:
-            raise ValidationError({
-                'Invalid Request Parameter': (
-                    f'Incorrect output_type value: {output_format}'
+
+        if output_format == DatasetReaderOutputType.JSON:
+            if job.output_json is None:
+                return Response(
+                    status=404,
+                    data={
+                        'detail': 'No weather data is found for given queries.'
+                    }
                 )
-            })
+            response = Response(
+                status=200,
+                data=job.output_json
+            )
+        else:
+            response = self.prepare_response(job.output_file)
 
         if response is None:
             return Response(
@@ -780,3 +764,156 @@ class MeasurementAPI(GAPAPILoggingMixin, APIView):
         self._preferences = Preferences.load()
 
         return self.get_response_data()
+
+
+class JobStatusAPI(APIView):
+    """API class for job status."""
+
+    permission_classes = [IsAuthenticated]
+    throttle_classes = [CounterSlidingWindowThrottle]
+    api_parameters = [
+        openapi.Parameter(
+            'job_id', openapi.IN_PATH,
+            required=True,
+            description='Job ID',
+            type=openapi.TYPE_STRING
+        )
+    ]
+
+    @swagger_auto_schema(
+        operation_id='get-job-status',
+        operation_description=(
+            "Fetch the status of a job by its ID."
+        ),
+        tags=[ApiTag.Measurement],
+        manual_parameters=[
+            *api_parameters
+        ],
+        responses={
+            200: openapi.Schema(
+                description=(
+                    'Job status information'
+                ),
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    'job_id': openapi.Schema(
+                        type=openapi.TYPE_STRING,
+                        description='The ID of the job'
+                    ),
+                    'status': openapi.Schema(
+                        type=openapi.TYPE_STRING,
+                        description='Current status of the job'
+                    ),
+                    'errors': openapi.Schema(
+                        type=openapi.TYPE_ARRAY,
+                        items=openapi.Items(type=openapi.TYPE_STRING),
+                        description='List of errors if any'
+                    ),
+                    'url': openapi.Schema(
+                        type=openapi.TYPE_STRING,
+                        description=(
+                            'URL to access the output file if available'
+                        )
+                    ),
+                    'data': openapi.Schema(
+                        type=openapi.TYPE_OBJECT,
+                        description=(
+                            'JSON Data if the job has completed successfully'
+                        )
+                    )
+                }
+            ),
+            400: APIErrorSerializer
+        }
+    )
+    def get(self, request, *args, **kwargs):
+        """Fetch job status by Job ID."""
+        job_id = kwargs.get('job_id', None)
+        if job_id is None:
+            return Response(
+                status=400,
+                data={
+                    'Invalid Request Parameter': 'Job ID is required.'
+                }
+            )
+
+        try:
+            job_query_filter = {
+                'uuid': job_id
+            }
+            if not request.user.is_superuser:
+                job_query_filter['user'] = request.user
+            job = Job.objects.get(**job_query_filter)
+        except Job.DoesNotExist:
+            return Response(
+                status=404,
+                data={
+                    'detail': 'Job not found.'
+                }
+            )
+
+        if job.status not in [TaskStatus.COMPLETED]:
+            return Response(
+                status=200,
+                data={
+                    'job_id': str(job.uuid),
+                    'status': job.status,
+                    'errors': job.errors,
+                    'url': None,
+                    'data': None
+                }
+            )
+
+        response_data = {
+            'job_id': str(job.uuid),
+            'status': job.status,
+            'errors': job.errors,
+            'url': None,
+            'data': None
+        }
+
+        if job.output_file:
+            response_data['url'] = job.output_file.generate_url()
+            if settings.DEBUG:
+                response_data['url'] = response_data['url'].replace(
+                    "http://minio:9000", "http://localhost:9010"
+                )
+        else:
+            response_data['data'] = job.output_json
+
+        return Response(
+            status=200,
+            data=response_data
+        )
+
+
+class MeasurementOptionsView(APIView):
+    """API class for measurement options."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        """Fetch available products and attributes."""
+        # grab all "products" from DatasetType
+        products_qs = DatasetType.objects \
+            .exclude(variable_name='default') \
+            .values('variable_name', 'name') \
+            .order_by('name')
+        products = list(products_qs)
+
+        # build a map from each variable_name
+        # its available attributes
+        attributes: dict[str, list[str]] = {}
+        for prod in products:
+            var = prod['variable_name']
+            vals = DatasetAttribute.objects \
+                .filter(dataset__type__variable_name=var) \
+                .values_list('attribute__variable_name', flat=True) \
+                .distinct() \
+                .order_by('attribute__variable_name')
+            attributes[var] = list(vals)
+
+        return Response({
+            'products': products,
+            'attributes': attributes,
+        })

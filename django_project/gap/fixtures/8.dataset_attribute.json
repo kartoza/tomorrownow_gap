@@ -1532,6 +1532,28 @@
     "model": "gap.datasetattribute",
     "pk": 140,
     "fields": {
+      "dataset": 4,
+      "attribute": 69,
+      "source": "wind_direction",
+      "source_unit": 11,
+      "ensembles": false
+    }
+  },
+  {
+    "model": "gap.datasetattribute",
+    "pk": 141,
+    "fields": {
+      "dataset": 6,
+      "attribute": 69,
+      "source": "windDirection",
+      "source_unit": 11,
+      "ensembles": false
+    }
+  },
+  {
+    "model": "gap.datasetattribute",
+    "pk": 142,
+    "fields": {
       "dataset": 15,
       "attribute": 70,
       "source": "sfc_pressure",
@@ -1541,7 +1563,7 @@
   },
   {
     "model": "gap.datasetattribute",
-    "pk": 141,
+    "pk": 143,
     "fields": {
       "dataset": 15,
       "attribute": 49,
@@ -1552,7 +1574,7 @@
   },
   {
     "model": "gap.datasetattribute",
-    "pk": 142,
+    "pk": 144,
     "fields": {
       "dataset": 15,
       "attribute": 71,
@@ -1563,7 +1585,7 @@
   },
   {
     "model": "gap.datasetattribute",
-    "pk": 143,
+    "pk": 145,
     "fields": {
       "dataset": 15,
       "attribute": 72,
@@ -1574,7 +1596,7 @@
   },
   {
     "model": "gap.datasetattribute",
-    "pk": 144,
+    "pk": 146,
     "fields": {
       "dataset": 15,
       "attribute": 40,
@@ -1585,7 +1607,7 @@
   },
   {
     "model": "gap.datasetattribute",
-    "pk": 145,
+    "pk": 147,
     "fields": {
       "dataset": 15,
       "attribute": 73,
@@ -1596,7 +1618,7 @@
   },
   {
     "model": "gap.datasetattribute",
-    "pk": 146,
+    "pk": 148,
     "fields": {
       "dataset": 15,
       "attribute": 74,
@@ -1607,7 +1629,7 @@
   },
   {
     "model": "gap.datasetattribute",
-    "pk": 147,
+    "pk": 149,
     "fields": {
       "dataset": 15,
       "attribute": 75,
@@ -1618,7 +1640,7 @@
   },
   {
     "model": "gap.datasetattribute",
-    "pk": 148,
+    "pk": 150,
     "fields": {
       "dataset": 15,
       "attribute": 76,
@@ -1629,7 +1651,7 @@
   },
   {
     "model": "gap.datasetattribute",
-    "pk": 149,
+    "pk": 151,
     "fields": {
       "dataset": 15,
       "attribute": 53,
@@ -1640,7 +1662,7 @@
   },
   {
     "model": "gap.datasetattribute",
-    "pk": 150,
+    "pk": 152,
     "fields": {
       "dataset": 15,
       "attribute": 77,
@@ -1651,7 +1673,7 @@
   },
   {
     "model": "gap.datasetattribute",
-    "pk": 151,
+    "pk": 153,
     "fields": {
       "dataset": 15,
       "attribute": 78,
@@ -1662,7 +1684,7 @@
   },
   {
     "model": "gap.datasetattribute",
-    "pk": 152,
+    "pk": 154,
     "fields": {
       "dataset": 15,
       "attribute": 79,
@@ -1673,7 +1695,7 @@
   },
   {
     "model": "gap.datasetattribute",
-    "pk": 153,
+    "pk": 155,
     "fields": {
       "dataset": 15,
       "attribute": 80,
@@ -1684,7 +1706,7 @@
   },
   {
     "model": "gap.datasetattribute",
-    "pk": 154,
+    "pk": 156,
     "fields": {
       "dataset": 15,
       "attribute": 81,
@@ -1695,7 +1717,7 @@
   },
   {
     "model": "gap.datasetattribute",
-    "pk": 155,
+    "pk": 157,
     "fields": {
       "dataset": 15,
       "attribute": 82,
@@ -1706,7 +1728,7 @@
   },
   {
     "model": "gap.datasetattribute",
-    "pk": 156,
+    "pk": 158,
     "fields": {
       "dataset": 15,
       "attribute": 83,
@@ -1717,7 +1739,7 @@
   },
   {
     "model": "gap.datasetattribute",
-    "pk": 157,
+    "pk": 159,
     "fields": {
       "dataset": 15,
       "attribute": 84,
@@ -1728,7 +1750,7 @@
   },
   {
     "model": "gap.datasetattribute",
-    "pk": 158,
+    "pk": 160,
     "fields": {
       "dataset": 15,
       "attribute": 85,
@@ -1739,7 +1761,7 @@
   },
   {
     "model": "gap.datasetattribute",
-    "pk": 159,
+    "pk": 161,
     "fields": {
       "dataset": 15,
       "attribute": 86,
@@ -1750,7 +1772,7 @@
   },
   {
     "model": "gap.datasetattribute",
-    "pk": 160,
+    "pk": 162,
     "fields": {
       "dataset": 15,
       "attribute": 87,
@@ -1761,7 +1783,7 @@
   },
   {
     "model": "gap.datasetattribute",
-    "pk": 161,
+    "pk": 163,
     "fields": {
       "dataset": 15,
       "attribute": 8,
@@ -1772,7 +1794,7 @@
   },
   {
     "model": "gap.datasetattribute",
-    "pk": 162,
+    "pk": 164,
     "fields": {
       "dataset": 15,
       "attribute": 33,
@@ -1783,7 +1805,7 @@
   },
   {
     "model": "gap.datasetattribute",
-    "pk": 163,
+    "pk": 165,
     "fields": {
       "dataset": 15,
       "attribute": 69,
@@ -1794,7 +1816,7 @@
   },
   {
     "model": "gap.datasetattribute",
-    "pk": 164,
+    "pk": 166,
     "fields": {
       "dataset": 15,
       "attribute": 28,
@@ -1805,7 +1827,7 @@
   },
   {
     "model": "gap.datasetattribute",
-    "pk": 165,
+    "pk": 167,
     "fields": {
       "dataset": 15,
       "attribute": 88,
@@ -1816,7 +1838,7 @@
   },
   {
     "model": "gap.datasetattribute",
-    "pk": 166,
+    "pk": 168,
     "fields": {
       "dataset": 15,
       "attribute": 89,
@@ -1827,7 +1849,7 @@
   },
   {
     "model": "gap.datasetattribute",
-    "pk": 167,
+    "pk": 169,
     "fields": {
       "dataset": 15,
       "attribute": 52,
@@ -1838,7 +1860,7 @@
   },
   {
     "model": "gap.datasetattribute",
-    "pk": 168,
+    "pk": 170,
     "fields": {
       "dataset": 15,
       "attribute": 90,
@@ -1849,7 +1871,7 @@
   },
   {
     "model": "gap.datasetattribute",
-    "pk": 169,
+    "pk": 171,
     "fields": {
       "dataset": 15,
       "attribute": 91,
@@ -1860,7 +1882,7 @@
   },
   {
     "model": "gap.datasetattribute",
-    "pk": 170,
+    "pk": 172,
     "fields": {
       "dataset": 15,
       "attribute": 92,
@@ -1871,7 +1893,7 @@
   },
   {
     "model": "gap.datasetattribute",
-    "pk": 171,
+    "pk": 173,
     "fields": {
       "dataset": 15,
       "attribute": 36,
@@ -1882,7 +1904,7 @@
   },
   {
     "model": "gap.datasetattribute",
-    "pk": 172,
+    "pk": 174,
     "fields": {
       "dataset": 15,
       "attribute": 93,
@@ -1893,7 +1915,7 @@
   },
   {
     "model": "gap.datasetattribute",
-    "pk": 173,
+    "pk": 175,
     "fields": {
       "dataset": 15,
       "attribute": 94,
@@ -1904,7 +1926,7 @@
   },
   {
     "model": "gap.datasetattribute",
-    "pk": 174,
+    "pk": 176,
     "fields": {
       "dataset": 15,
       "attribute": 95,

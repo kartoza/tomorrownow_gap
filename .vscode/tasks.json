@@ -23,6 +23,16 @@
         "problemMatcher": []
       },
       {
+        "label": "React: Build Theme Types",
+        "type": "shell",
+        "command": "npx -y @chakra-ui/cli typegen ./src/theme.ts",
+        "options": {
+          "cwd": "${workspaceFolder}/django_project/frontend"
+        },
+        "group": "build",
+        "problemMatcher": []
+      },
+      {
         "label": "Django: Migrate",
         "type": "shell",
         "command": "python manage.py migrate",
@@ -40,6 +50,16 @@
         "options": {
           "cwd": "${workspaceFolder}/django_project"
         },
+        "problemMatcher": []
+      },
+      {
+        "label": "React: Build UI Bundle",
+        "type": "shell",
+        "command": "bash",
+        "args": [
+          "${workspaceFolder}/django_project/build_ui_bundle.sh"
+        ],
+        "group": "build",
         "problemMatcher": []
       },
     ]

@@ -12,6 +12,7 @@ from django.conf import settings
 
 from core.celery import app
 from core.utils.emails import get_admin_emails
+from gap.models.preferences import Preferences
 from gap.models.crop_insight import CropInsightRequest
 from gap.models.farm_group import FarmGroup
 
@@ -71,7 +72,19 @@ def generate_crop_plan():
     """Generate crop plan for registered farms."""
     # create report request
     user = User.objects.filter(is_superuser=True).first()
-    for group in FarmGroup.objects.all():
+    farm_groups = FarmGroup.objects.all()
+    group_filter_names = Preferences.load().crop_plan_config.get(
+        'farm_groups', None
+    )
+    if group_filter_names:
+        logger.info(
+            f"Filtering SPW farm groups by names: {group_filter_names}"
+        )
+        farm_groups = farm_groups.filter(name__in=group_filter_names)
+    for group in farm_groups:
+        logger.info(
+            f"Generating crop plan for farm group: {group.name}"
+        )
         request = CropInsightRequest.objects.create(
             requested_by=user,
             farm_group=group,

@@ -24,6 +24,14 @@ services:
       - ../django_project:/home/web/django_project
       - ./volumes/static:/home/web/static
 
+  dataworker:
+    build:
+      context: ../
+      dockerfile: deployment/docker/Dockerfile
+    volumes:
+      - ../django_project:/home/web/django_project
+      - ./volumes/static:/home/web/static
+
   nginx:
     volumes:
       - ./nginx/sites-enabled:/etc/nginx/conf.d:ro
@@ -66,7 +74,7 @@ services:
       - redis
 
   minio:
-    image: quay.io/minio/minio:RELEASE.2024-03-30T09-41-56Z.fips
+    image: quay.io/minio/minio:RELEASE.2025-01-20T14-49-07Z
     command: minio server /data --console-address ":9001"
     ports:
       - "9010:9000"

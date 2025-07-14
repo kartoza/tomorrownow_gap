@@ -10,7 +10,7 @@ from django.contrib.gis.geos import Point, MultiPolygon, Polygon
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 
-from gap.factories.farm import FarmFactory, Farm
+from gap.factories.farm import FarmFactory
 from gap.ingestor.exceptions import FileNotFoundException
 from gap.ingestor.grid import Keys
 from gap.models.grid import Grid
@@ -29,7 +29,7 @@ class GridIngestorTest(TestCase):
 
     def setUp(self):
         """Init test case."""
-        Country.objects.create(
+        self.country = Country.objects.create(
             name='Country 1',
             iso_a3='COUNTRY_1',
             geometry=MultiPolygon(
@@ -60,7 +60,8 @@ class GridIngestorTest(TestCase):
     def test_no_file(self):
         """Test no file ingestor."""
         session = IngestorSession.objects.create(
-            ingestor_type=IngestorType.GRID
+            ingestor_type=IngestorType.GRID,
+            trigger_task=False
         )
         session.run()
         self.assertEqual(session.notes, FileNotFoundException().message)
@@ -75,7 +76,8 @@ class GridIngestorTest(TestCase):
         _file = open(filepath, 'rb')
         session = IngestorSession.objects.create(
             file=SimpleUploadedFile(_file.name, _file.read()),
-            ingestor_type=IngestorType.GRID
+            ingestor_type=IngestorType.GRID,
+            trigger_task=False
         )
         session.run()
         session.delete()
@@ -93,7 +95,8 @@ class GridIngestorTest(TestCase):
         _file = open(filepath, 'rb')
         session = IngestorSession.objects.create(
             file=SimpleUploadedFile(_file.name, _file.read()),
-            ingestor_type=IngestorType.GRID
+            ingestor_type=IngestorType.GRID,
+            trigger_task=False
         )
         session.run()
         session.delete()
@@ -112,7 +115,8 @@ class GridIngestorTest(TestCase):
         _file = open(filepath, 'rb')
         session = IngestorSession.objects.create(
             file=SimpleUploadedFile(_file.name, _file.read()),
-            ingestor_type=IngestorType.GRID
+            ingestor_type=IngestorType.GRID,
+            trigger_task=False
         )
         session.run()
         session.delete()
@@ -131,7 +135,8 @@ class GridIngestorTest(TestCase):
         _file = open(filepath, 'rb')
         session = IngestorSession.objects.create(
             file=SimpleUploadedFile(_file.name, _file.read()),
-            ingestor_type=IngestorType.GRID
+            ingestor_type=IngestorType.GRID,
+            trigger_task=False
         )
         session.run()
         session.delete()
@@ -167,24 +172,32 @@ class GridIngestorTest(TestCase):
             [25, 25]
         )
 
-        # check farm
-        farms = Farm.objects.all()
-        self.assertEqual(farms.count(), 5)
-        for farm in farms:
-            self.assertIsNotNone(farm.grid)
+    def test_correct_use_country_id(self):
+        """Test when ingestor error column."""
+        filepath = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            'data', 'grid', 'correct.csv'
+        )
+        _file = open(filepath, 'rb')
+        session = IngestorSession.objects.create(
+            file=SimpleUploadedFile(_file.name, _file.read()),
+            ingestor_type=IngestorType.GRID,
+            trigger_task=False,
+            additional_config={
+                'country_id': self.country.id
+            }
+        )
+        session.run()
+        session.delete()
+        self.assertEqual(session.notes, '3/3')
+        self.assertEqual(session.status, IngestorSessionStatus.SUCCESS)
 
-        self.assertEqual(
-            farms.get(unique_id='farm-1').grid.id, grids[0].id
-        )
-        self.assertEqual(
-            farms.get(unique_id='farm-2').grid.id, grids[1].id
-        )
-        self.assertEqual(
-            farms.get(unique_id='farm-3').grid.id, grids[2].id
-        )
-        self.assertEqual(
-            farms.get(unique_id='farm-4').grid.id, grids[1].id
-        )
-        self.assertEqual(
-            farms.get(unique_id='farm-5').grid.id, grids[2].id
-        )
+        grids = Grid.objects.order_by('unique_id')
+        self.assertEqual(grids.count(), 3)
+        grids = [
+            grids.get(unique_id='A0001'), grids.get(unique_id='A0002'),
+            grids.get(unique_id='A0003')
+        ]
+
+        for grid in grids:
+            self.assertEqual(grid.country.name, 'Country 1')

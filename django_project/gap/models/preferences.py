@@ -10,6 +10,7 @@ from datetime import datetime, tzinfo
 
 from django.contrib.gis.db import models
 from django.contrib.gis.geos import Polygon
+from django.utils.translation import gettext_lazy as _
 from boto3.s3.transfer import TransferConfig
 
 from core.models.singleton import SingletonModel
@@ -81,6 +82,11 @@ def default_dcas_config() -> dict:
         'store_csv_to_minio': False,
         'store_csv_to_sftp': False,
     }
+
+
+def social_auth_providers_default() -> dict:
+    """Return flags for social-auth links."""
+    return {"google": True, "github": False}
 
 
 class Preferences(SingletonModel):
@@ -201,6 +207,39 @@ class Preferences(SingletonModel):
         )
     )
 
+    # Google Analytics
+    google_analytics_id = models.CharField(
+        max_length=255,
+        default='',
+        blank=True,
+        null=True,
+        help_text='Google Analytics ID for tracking.'
+    )
+
+    # Social Auth Providers
+    social_auth_providers = models.JSONField(
+        default=social_auth_providers_default,
+        help_text=_(
+            "Enables / disables each social-auth provider in the UI. "
+            'Example: {"google": true, "github": false}'
+        ),
+    )
+
+    # Job executor config
+    job_executor_config = models.JSONField(
+        default=dict,
+        blank=True,
+        null=True,
+        help_text=(
+            'Dict of JobType and ExecutorConfig; '
+            'ExecutorConfig will be passed to the Job Executor.'
+        )
+    )
+
+    def social_auth_enabled(self, provider: str) -> bool:
+        """Return True if the given provider should be shown in the UI."""
+        return bool(self.social_auth_providers.get(provider, False))
+
     @property
     def enable_message_filtering(self) -> bool:
         """Check if message filtering should be enabled."""
@@ -235,12 +274,14 @@ class Preferences(SingletonModel):
     def user_file_s3_transfer_config() -> TransferConfig:
         """Get S3 transfer config for GAP Products."""
         conf = Preferences.load().user_file_uploader_config
+        # Files above 8 MB use multipart
         return TransferConfig(
+            multipart_threshold=8 * 1024 * 1024,
             multipart_chunksize=(
-                conf.get('default_block_size', 500 * 1024 * 1024)
+                conf.get('default_block_size', 50 * 1024 * 1024)
             ),
             use_threads=True,
             max_concurrency=(
-                conf.get('max_concurrency', 2)
+                conf.get('max_concurrency', 4)
             )
         )

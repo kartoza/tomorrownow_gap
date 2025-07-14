@@ -93,7 +93,7 @@ ACCOUNT_AUTHENTICATION_METHOD = 'email'
 ACCOUNT_AUTHENTICATED_LOGIN_REDIRECTS = False
 ACCOUNT_UNIQUE_EMAIL = True
 ACCOUNT_EMAIL_REQUIRED = True
-ACCOUNT_EMAIL_VERIFICATION = False
+ACCOUNT_EMAIL_VERIFICATION = 'mandatory'
 ACCOUNT_CONFIRM_EMAIL_ON_GET = True
 ACCOUNT_AUTHENTICATED_REMEMBER = True
 ACCOUNT_USERNAME_REQUIRED = False
@@ -101,6 +101,13 @@ ACCOUNT_EMAIL_CONFIRMATION_EXPIRE_DAYS = 3
 SOCIALACCOUNT_LOGIN_ON_GET = True
 SOCIALACCOUNT_EMAIL_VERIFICATION = True
 SOCIALACCOUNT_AUTO_SIGNUP = True
+SOCIALACCOUNT_ADAPTER = 'frontend.adapters.SocialSignupAdapter'
+ACCOUNT_ADAPTER = "frontend.adapters.InactiveRedirectAccountAdapter"
+
+# For users who are already logged in when confirming
+ACCOUNT_EMAIL_CONFIRMATION_AUTHENTICATED_REDIRECT_URL = '/'
+# For users who are not logged in when confirming
+ACCOUNT_EMAIL_CONFIRMATION_ANONYMOUS_REDIRECT_URL = '/signin/?confirmed=true'
 
 SOCIALACCOUNT_PROVIDERS = {
     "google": {
@@ -116,7 +123,8 @@ SOCIALACCOUNT_PROVIDERS = {
     },
     'github': {
         'SCOPE': [
-            'user',
+            'read:user',
+            'user:email',
         ],
         'EMAIL_AUTHENTICATION': True,
         'OAUTH_PKCE_ENABLED': True,

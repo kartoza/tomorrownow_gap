@@ -18,7 +18,8 @@ from dcas.models import (
     DCASErrorLog,
     GDDConfig,
     GDDMatrix,
-    DCASMessagePriority
+    DCASMessagePriority,
+    DCASDownloadLog
 )
 from dcas.resources import DCASErrorLogResource
 from core.utils.file import format_size
@@ -202,3 +203,12 @@ class DCASMessagePriorityAdmin(admin.ModelAdmin):
 
     list_display = ('code', 'priority', 'config')
     list_filter = ('config',)
+
+
+@admin.register(DCASDownloadLog)
+class DCASDownloadLogAdmin(admin.ModelAdmin):
+    """Admin interface for DCASDownloadLog."""
+
+    list_display = ("output", "user", "requested_at")
+    list_filter = ("user",)
+    search_fields = ("output__file_name", "user__email")

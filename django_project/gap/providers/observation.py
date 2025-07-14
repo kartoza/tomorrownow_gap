@@ -7,7 +7,6 @@ Tomorrow Now GAP.
 
 import json
 import duckdb
-import uuid
 import numpy as np
 from _collections_abc import dict_values
 from datetime import datetime
@@ -19,8 +18,6 @@ from django.db.models.functions.datetime import TruncDate, TruncTime
 from django.contrib.gis.geos import Polygon, Point
 from django.contrib.gis.db.models.functions import Distance
 from typing import List, Union
-from django.core.files.storage import storages
-from storages.backends.s3boto3 import S3Boto3Storage
 from django.conf import settings
 
 from core.models import ObjectStorageManager
@@ -208,16 +205,18 @@ class ObservationReaderValue(DatasetReaderValue):
                 sep=separator
             )
 
-    def to_csv(self, suffix='.csv', separator=','):
+    def to_csv(
+        self, suffix='.csv', separator=',',
+        date_chunk_size=None, lat_chunk_size=None,
+        lon_chunk_size=None
+    ):
         """Generate csv file to object storage."""
         headers, _ = self._get_headers(use_station_id=True)
 
         # get dataframe
         df_pivot = self._get_data_frame(use_station_id=True)
 
-        output = self._get_file_remote_url(suffix)
-        s3_storage: S3Boto3Storage = storages["gap_products"]
-
+        output_url = None
         with (
             tempfile.NamedTemporaryFile(
                 suffix=suffix, delete=True, delete_on_close=False)
@@ -241,12 +240,11 @@ class ObservationReaderValue(DatasetReaderValue):
                     write_headers = False
 
             # upload to s3
-            s3_storage.transfer_config = (
-                Preferences.user_file_s3_transfer_config()
+            output_url = self._upload_to_s3(
+                tmp_file.name, suffix
             )
-            s3_storage.save(output, tmp_file)
 
-        return output
+        return output_url
 
     def _get_xarray_dataset(self):
         time_col_exists = self.has_time_column
@@ -301,8 +299,7 @@ class ObservationReaderValue(DatasetReaderValue):
     def to_netcdf(self):
         """Generate netcdf file to object storage."""
         ds = self._get_xarray_dataset()
-        output_url = self._get_file_remote_url('.nc')
-        s3_storage: S3Boto3Storage = storages["gap_products"]
+        output_url = None
         with (
             tempfile.NamedTemporaryFile(
                 suffix=".nc", delete=True, delete_on_close=False)
@@ -314,10 +311,9 @@ class ObservationReaderValue(DatasetReaderValue):
             execute_dask_compute(x)
 
             # upload to s3
-            s3_storage.transfer_config = (
-                Preferences.user_file_s3_transfer_config()
+            output_url = self._upload_to_s3(
+                tmp_file.name, '.nc'
             )
-            s3_storage.save(output_url, tmp_file)
 
         return output_url
 
@@ -609,7 +605,11 @@ class ObservationParquetReaderValue(DatasetReaderValue):
                         break
                     yield chunk
 
-    def to_csv(self, suffix='.csv', separator=','):
+    def to_csv(
+        self, suffix='.csv', separator=',',
+        date_chunk_size=None, lat_chunk_size=None,
+        lon_chunk_size=None
+    ):
         """Generate CSV file save directly to object storage.
 
         :param suffix: File extension, defaults to '.csv'
@@ -677,7 +677,7 @@ class ObservationParquetReaderValue(DatasetReaderValue):
         :return: File path of the saved NetCDF file.
         :rtype: str
         """
-        output = self._get_file_remote_url(suffix)
+        output_url = None
 
         try:
             # Execute the DuckDB query and fetch data
@@ -697,36 +697,14 @@ class ObservationParquetReaderValue(DatasetReaderValue):
                 )
 
                 # Upload to S3 (MinIO)
-                s3_storage = storages["gap_products"]
-                s3_storage.transfer_config = (
-                    Preferences.user_file_s3_transfer_config()
+                output_url = self._upload_to_s3(
+                    tmp_file.name, suffix
                 )
-                s3_storage.save(output, tmp_file)
-
-            print(f"NetCDF successfully uploaded to S3: {output}")
-
         except Exception as e:
             print(f"Error generating NetCDF: {e}")
             raise
         finally:
             self.conn.close()
-
-        return output
-
-    def _get_file_remote_url(self, suffix):
-        """Generate a valid and secure S3 file path.
-
-        :param suffix: File extension.
-        :type suffix: str
-        :return: Secure and organized file path for S3 storage.
-        :rtype: str
-        """
-        s3 = self._get_s3_variables()
-
-        output_url = s3["S3_DIR_PREFIX"]
-        if output_url and not output_url.endswith('/'):
-            output_url += '/'
-        output_url += f'user_data/{uuid.uuid4().hex}{suffix}'
 
         return output_url
 
