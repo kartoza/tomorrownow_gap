@@ -85,43 +85,6 @@ class SalientReaderValue(DatasetReaderValue):
             self._val = self._val.assign_coords(
                 forecast_day=('forecast_day', forecast_day))
 
-    def _xr_dataset_to_dict(self) -> dict:
-        """Convert xArray Dataset to dictionary.
-
-        Implementation depends on provider.
-        :return: data dictionary
-        :rtype: dict
-        """
-        if self.is_empty():
-            return {
-                'geometry': json.loads(self.location_input.point.json),
-                'data': []
-            }
-        results: List[DatasetTimelineValue] = []
-        for dt_idx, dt in enumerate(
-            self.xr_dataset[self.date_variable].values):
-            value_data = {}
-            for attribute in self.attributes:
-                var_name = attribute.attribute.variable_name
-                if 'ensemble' in self.xr_dataset[var_name].dims:
-                    value_data[var_name] = (
-                        self.xr_dataset[var_name].values[:, dt_idx]
-                    )
-                else:
-                    v = self.xr_dataset[var_name].values[dt_idx]
-                    value_data[var_name] = (
-                        v if not np.isnan(v) else None
-                    )
-            results.append(DatasetTimelineValue(
-                dt,
-                value_data,
-                self.location_input.point
-            ))
-        return {
-            'geometry': json.loads(self.location_input.point.json),
-            'data': [result.to_dict() for result in results]
-        }
-
 
 class SalientNetCDFReader(BaseNetCDFReader):
     """Class to read NetCDF file from Salient provider."""
@@ -228,7 +191,8 @@ class SalientNetCDFReader(BaseNetCDFReader):
         # use the first variable to get its dimension
         if self._has_ensembles():
             # use 0 idx ensemble and 0 idx forecast_day
-            mask = np.zeros_like(dataset[variables[0]][0][0], dtype=bool)
+            attr = self._find_first_ensemble_variable()
+            mask = np.zeros_like(dataset[attr.source][0][0], dtype=bool)
         else:
             # use the 0 index for it's date variable
             mask = np.zeros_like(dataset[variables[0]][0], dtype=bool)
@@ -478,7 +442,8 @@ class SalientZarrReader(BaseZarrReader, SalientNetCDFReader):
         max_idx = self._get_forecast_day_idx(end_dt)
         if self._has_ensembles():
             # use 0 idx ensemble and 0 idx forecast_day
-            mask = np.zeros_like(dataset[variables[0]][0][0][0], dtype=bool)
+            attr = self._find_first_ensemble_variable()
+            mask = np.zeros_like(dataset[attr.source][0][0][0], dtype=bool)
         else:
             # use the 0 index for it's date variable
             mask = np.zeros_like(dataset[variables[0]][0][0], dtype=bool)

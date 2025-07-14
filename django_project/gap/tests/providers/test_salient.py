@@ -160,7 +160,7 @@ class TestSalientNetCDFReader(TestCase):
     """Unit test for Salient NetCDFReader class."""
 
     fixtures = [
-        '1.object_storage_manager.json',
+        '1.object_storage_manager.json'
     ]
 
     def setUp(self):
@@ -181,7 +181,8 @@ class TestSalientNetCDFReader(TestCase):
         self.dataset_attr2 = DatasetAttributeFactory.create(
             dataset=self.dataset,
             attribute=self.attribute2,
-            source='precip_anom'
+            source='precip_anom',
+            ensembles=True
         )
         self.attributes = [DatasetAttribute(source='var1'),
                            DatasetAttribute(source='var2')]
@@ -240,9 +241,9 @@ class TestSalientNetCDFReader(TestCase):
             result_data = data_value['data']
             self.assertEqual(len(result_data), 3)
             self.assertAlmostEqual(
-                result_data[0]['values']['temp_clim'], 19.461235, 6)
+                result_data[0]['temp_clim'], 19.461235, 6)
             self.assertEqual(
-                len(result_data[0]['values']['precip_anom']), 50)
+                len(result_data[0]['precip_anom']), 50)
 
     def test_read_from_bbox(self):
         """Test for reading forecast data using bbox."""
