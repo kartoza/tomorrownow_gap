@@ -191,7 +191,8 @@ class SalientNetCDFReader(BaseNetCDFReader):
         # use the first variable to get its dimension
         if self._has_ensembles():
             # use 0 idx ensemble and 0 idx forecast_day
-            mask = np.zeros_like(dataset[variables[0]][0][0], dtype=bool)
+            attr = self._find_first_ensemble_variable()
+            mask = np.zeros_like(dataset[attr.source][0][0], dtype=bool)
         else:
             # use the 0 index for it's date variable
             mask = np.zeros_like(dataset[variables[0]][0], dtype=bool)
@@ -441,7 +442,8 @@ class SalientZarrReader(BaseZarrReader, SalientNetCDFReader):
         max_idx = self._get_forecast_day_idx(end_dt)
         if self._has_ensembles():
             # use 0 idx ensemble and 0 idx forecast_day
-            mask = np.zeros_like(dataset[variables[0]][0][0][0], dtype=bool)
+            attr = self._find_first_ensemble_variable()
+            mask = np.zeros_like(dataset[attr.source][0][0][0], dtype=bool)
         else:
             # use the 0 index for it's date variable
             mask = np.zeros_like(dataset[variables[0]][0][0], dtype=bool)

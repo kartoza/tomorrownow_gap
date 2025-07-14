@@ -177,6 +177,13 @@ class BaseNetCDFReader(BaseDatasetReader):
         attr = [a for a in self.attributes if a.ensembles]
         return len(attr) > 0
 
+    def _find_first_ensemble_variable(self):
+        """Find first ensemble variable from attributes."""
+        for attr in self.attributes:
+            if attr.ensembles:
+                return attr
+        return None
+
     def read_variables(
             self, dataset: xrDataset, start_date: datetime = None,
             end_date: datetime = None) -> xrDataset:
