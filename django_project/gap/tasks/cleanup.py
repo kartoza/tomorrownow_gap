@@ -45,7 +45,7 @@ def cleanup_deleted_zarr():
     )
     count = qs.count()
     if count == 0:
-        return count
+        return count, 0
 
     logger.info(f"Deleting {count} Zarr files marked as deleted")
     deleted_ids = []
