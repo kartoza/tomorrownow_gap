@@ -8,11 +8,16 @@ Tomorrow Now GAP.
 
 import os
 import boto3
+import logging
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 from django.http import StreamingHttpResponse
+from django.utils import timezone
+
+from core.models.background_task import TaskStatus
 
 
+logger = logging.getLogger(__name__)
 DEFAULT_CONNECTION_NAME = 'default'
 DEFAULT_CHUNK_SIZE = 1024 * 1024  # 1 MB
 
@@ -223,6 +228,25 @@ class ObjectStorageManager(models.Model):
         return s3_url
 
     @classmethod
+    def get_s3_client(cls, s3: dict = None, connection_name: str = None):
+        """Get S3 client for Object Storage Manager.
+
+        :param s3: Dictionary of S3 env vars
+        :type s3: dict
+        :param connection_name: Connection name for Object Storage Manager
+        :type connection_name: str
+        :return: Boto3 S3 client
+        :rtype: boto3.client
+        """
+        if s3 is None:
+            s3 = cls.get_s3_env_vars(connection_name)
+
+        s3_client_kwargs = cls.get_s3_client_kwargs(connection_name, s3)
+        s3_client_kwargs['aws_access_key_id'] = s3['S3_ACCESS_KEY_ID']
+        s3_client_kwargs['aws_secret_access_key'] = s3['S3_SECRET_ACCESS_KEY']
+        return boto3.client("s3", **s3_client_kwargs)
+
+    @classmethod
     def upload_file_to_s3(
         cls, file_path: str, transfer_config: dict,
         remote_file_path: str, content_type: str,
@@ -241,11 +265,7 @@ class ObjectStorageManager(models.Model):
         """
         if s3 is None:
             s3 = cls.get_s3_env_vars(connection_name)
-
-        s3_client_kwargs = cls.get_s3_client_kwargs(connection_name, s3)
-        s3_client_kwargs['aws_access_key_id'] = s3['S3_ACCESS_KEY_ID']
-        s3_client_kwargs['aws_secret_access_key'] = s3['S3_SECRET_ACCESS_KEY']
-        s3_client = boto3.client("s3", **s3_client_kwargs)
+        s3_client = cls.get_s3_client(s3, connection_name)
 
         output_url = s3["S3_DIR_PREFIX"]
         if not output_url.endswith('/'):
@@ -282,11 +302,7 @@ class ObjectStorageManager(models.Model):
         """
         if s3 is None:
             s3 = cls.get_s3_env_vars(connection_name)
-
-        s3_client_kwargs = cls.get_s3_client_kwargs(connection_name, s3)
-        s3_client_kwargs['aws_access_key_id'] = s3['S3_ACCESS_KEY_ID']
-        s3_client_kwargs['aws_secret_access_key'] = s3['S3_SECRET_ACCESS_KEY']
-        s3_client = boto3.client("s3", **s3_client_kwargs)
+        s3_client = cls.get_s3_client(s3, connection_name)
 
         s3_object = s3_client.get_object(
             Bucket=s3["S3_BUCKET_NAME"],
@@ -310,3 +326,130 @@ class ObjectStorageManager(models.Model):
             f'attachment; filename="{remote_file_path.split("/")[-1]}"'
         )
         return response
+
+
+class DeletionLog(models.Model):
+    """Model to log deletions of files in Object Storage."""
+
+    object_storage_manager = models.ForeignKey(
+        ObjectStorageManager,
+        on_delete=models.CASCADE,
+        related_name='deletion_logs'
+    )
+    path = models.TextField(
+        help_text=_('Path of the file/folder that was deleted.')
+    )
+    is_directory = models.BooleanField(
+        default=False,
+        verbose_name=_('Is Directory'),
+        help_text=_('Indicates if the deletion was for a directory.')
+    )
+    deleted_at = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name=_('Deleted At')
+    )
+    status = models.CharField(
+        max_length=255,
+        choices=TaskStatus.choices,
+        default=TaskStatus.PENDING
+    )
+    started_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name=_('Started At')
+    )
+    finished_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name=_('Finished At')
+    )
+    errors = models.TextField(
+        null=True,
+        blank=True,
+        verbose_name=_('Errors'),
+        help_text=_('Any errors that occurred during deletion.')
+    )
+    stats = models.JSONField(
+        default=dict,
+        blank=True,
+        null=True,
+        verbose_name=_('Deletion Stats'),
+        help_text=_('Statistics about the deletion process.')
+    )
+
+    def __str__(self):
+        return f'Deletion Log: {self.path} at {self.deleted_at}'
+
+    def clean(self):
+        """Validate the deletion log."""
+        super().clean()
+        if not self.object_storage_manager:
+            raise ValueError(
+                'Object Storage Manager must be specified for Deletion Log.'
+            )
+        if not self.path:
+            raise ValueError('Path must be specified for Deletion Log.')
+
+        # Ensure path ends with a slash for folder deletion
+        if self.is_directory and not self.path.endswith('/'):
+            self.path += '/'
+
+        # Ensure path does not start with a slash
+        if self.path.startswith('/'):
+            raise ValueError(
+                f'Path "{self.path}" cannot start with a slash ("/"). '
+                'Use the S3 directory prefix instead.'
+            )
+
+        if self.path == '/':
+            raise ValueError('Path cannot be just a slash ("/").')
+
+        s3_env_vars = self.object_storage_manager.get_s3_env_vars(
+            connection_name=self.object_storage_manager.connection_name
+        )
+        prefix = s3_env_vars.get('S3_DIR_PREFIX', '')
+        if not self.path.startswith(prefix):
+            raise ValueError(
+                f'Path "{self.path}" must start with the S3 directory prefix '
+                f'"{prefix}".'
+            )
+
+        # validate path must not be prefix
+        if self.path == prefix:
+            raise ValueError(
+                f'Path "{self.path}" cannot be the S3 directory prefix '
+                f'"{prefix}".'
+            )
+
+    def run(self):
+        """Run the deletion process."""
+        from core.utils.s3 import remove_s3_folder_by_batch
+        self.status = TaskStatus.RUNNING
+        self.started_at = timezone.now()
+        self.save()
+
+        try:
+            s3_client = self.object_storage_manager.get_s3_client(
+                connection_name=self.object_storage_manager.connection_name
+            )
+            s3_vars = self.object_storage_manager.get_s3_env_vars(
+                connection_name=self.object_storage_manager.connection_name
+            )
+            self.stats = remove_s3_folder_by_batch(
+                s3_vars['S3_BUCKET_NAME'],
+                self.path,
+                s3_client
+            )
+
+            self.status = TaskStatus.COMPLETED
+        except Exception as e:
+            self.status = TaskStatus.STOPPED
+            self.errors = str(e)
+            logger.error(
+                f"Error deleting {self.path} in "
+                f"{self.object_storage_manager.connection_name}: {e}",
+                exc_info=True
+            )
+
+        self.finished_at = timezone.now()
+        self.save()

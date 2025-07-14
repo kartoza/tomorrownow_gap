@@ -88,6 +88,14 @@ def _do_run_zarr_collector(
         # check if hourly ingestor
         if ingestor_type == IngestorType.HOURLY_TOMORROWIO:
             config = config.get('hourly_config', {})
+            # Hourly will write to new zarr file
+            config['use_latest_datasource'] = False
+            if 'datasourcefile_id' in config:
+                # remove datasourcefile_id if exists
+                del config['datasourcefile_id']
+            if 'datasourcefile_exists' in config:
+                # remove datasourcefile_exists if exists
+                del config['datasourcefile_exists']
 
         use_latest_datasource = config.get('use_latest_datasource', True)
         if use_latest_datasource:

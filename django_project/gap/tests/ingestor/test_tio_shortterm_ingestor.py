@@ -19,7 +19,7 @@ from xarray.core.dataset import Dataset as xrDataset
 from django.test import TestCase
 from django.contrib.gis.geos import Polygon
 
-from gap.models import Dataset, DatasetStore
+from gap.models import Dataset, DatasetStore, DataSourceFile
 from gap.models.ingestor import (
     IngestorSession,
     IngestorType,
@@ -491,6 +491,14 @@ class TestTioIngestor(TestCase):
         self.assertEqual(session.collectors.count(), 1)
         mock_collector.assert_called_once()
         mock_ingestor.assert_called_once_with(session.id)
+        config = session.additional_config
+        self.assertFalse(config.get('use_latest_datasource'))
+        self.assertNotIn(
+            'datasourcefile_id', config
+        )
+        self.assertNotIn(
+            'datasourcefile_exists', config
+        )
 
 
 class TestDuckDBTioIngestor(TestCase):
@@ -662,7 +670,8 @@ class TestDuckDBTioHourlyIngestor(TestCase):
         self.zarr_source = DataSourceFileFactory.create(
             dataset=self.dataset,
             format=DatasetStore.ZARR,
-            name=f'tio_{uuid.uuid4()}.zarr'
+            name=f'tio_{uuid.uuid4()}.zarr',
+            is_latest=True
         )
         self.session = IngestorSession.objects.create(
             ingestor_type=IngestorType.TOMORROWIO,
@@ -682,7 +691,7 @@ class TestDuckDBTioHourlyIngestor(TestCase):
         self.ingestor.lat_metadata = LAT_METADATA
         self.ingestor.lon_metadata = LON_METADATA
 
-    def _create_duckdb_file(self):
+    def _create_duckdb_file(self, collector, datasourcefile):
         filepath = os.path.join(
             os.path.dirname(os.path.abspath(__file__)),
             'data',
@@ -701,7 +710,7 @@ class TestDuckDBTioHourlyIngestor(TestCase):
             '/tmp', 'tio_collector', f'{str(uuid.uuid4())}.duckdb'
         )
         duckdb_conn = duckdb.connect(tmp_filepath)
-        collector_runner = TioShortTermHourlyDuckDBCollector(self.collector)
+        collector_runner = TioShortTermHourlyDuckDBCollector(collector)
         collector_runner._init_table(duckdb_conn)
         json_data = json.load(json_f)
         forecast_day_indices = range(1, 5, 1)
@@ -739,8 +748,8 @@ class TestDuckDBTioHourlyIngestor(TestCase):
                 )
 
         duckdb_conn.close()
-        self.datasourcefile.name = os.path.basename(tmp_filepath)
-        collector_runner._upload_duckdb_file(self.datasourcefile)
+        datasourcefile.name = os.path.basename(tmp_filepath)
+        collector_runner._upload_duckdb_file(datasourcefile)
 
         json_f.close()
         return grid
@@ -748,7 +757,7 @@ class TestDuckDBTioHourlyIngestor(TestCase):
     @patch('xarray.Dataset.to_zarr')
     def test_success_ingestor(self, mock_dask_compute):
         """Test ingestor success run."""
-        self._create_duckdb_file()
+        self._create_duckdb_file(self.collector, self.datasourcefile)
 
         with patch.object(self.ingestor, '_open_zarr_dataset') as mock_open:
             mock_open.return_value = mock_hourly_open_zarr_dataset()
@@ -758,3 +767,56 @@ class TestDuckDBTioHourlyIngestor(TestCase):
         self.assertEqual(self.ingestor.metadata['total_json_processed'], 1)
         self.assertEqual(len(self.ingestor.metadata['chunks']), 1)
         self.assertEqual(self.collector.dataset_files.count(), 0)
+
+    @patch('xarray.Dataset.to_zarr')
+    def test_success_ingestor_retention(self, mock_dask_compute):
+        """Test ingestor success run with retention policy."""
+        collector = CollectorSession.objects.create(
+            ingestor_type=IngestorType.HOURLY_TOMORROWIO
+        )
+        datasourcefile = DataSourceFileFactory.create(
+            dataset=self.dataset,
+            name='2025-04-24.duckdb',
+            format=DatasetStore.DUCKDB,
+            metadata={
+                'forecast_date': '2025-04-24'
+            }
+        )
+        collector.dataset_files.set([datasourcefile])
+        session = IngestorSession.objects.create(
+            ingestor_type=IngestorType.TOMORROWIO,
+            trigger_task=False,
+            additional_config={
+                'use_latest_datasource': False
+            }
+        )
+        session.collectors.set([collector])
+
+        ingestor = TioHourlyShortTermIngestor(session)
+        ingestor.lat_metadata = LAT_METADATA
+        ingestor.lon_metadata = LON_METADATA
+        self._create_duckdb_file(collector, datasourcefile)
+
+        with patch.object(ingestor, '_open_zarr_dataset') as mock_open:
+            mock_open.return_value = mock_hourly_open_zarr_dataset()
+            ingestor._run()
+
+        # create new date and write region
+        self.assertEqual(mock_dask_compute.call_count, 2)
+        self.assertEqual(ingestor.metadata['total_json_processed'], 1)
+        self.assertEqual(len(ingestor.metadata['chunks']), 1)
+        self.assertEqual(collector.dataset_files.count(), 0)
+        # ensure self.zarr_source has deleted_at
+        self.zarr_source.refresh_from_db()
+        self.assertIsNotNone(self.zarr_source.deleted_at)
+        self.assertFalse(self.zarr_source.is_latest)
+        # find the latest datasourcefile
+        latest_datasourcefile = DataSourceFile.objects.filter(
+            dataset=self.dataset,
+            is_latest=True,
+            format=DatasetStore.ZARR
+        ).first()
+        self.assertIsNotNone(latest_datasourcefile)
+        self.assertNotEqual(
+            latest_datasourcefile.id, self.zarr_source.id
+        )

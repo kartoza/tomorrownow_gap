@@ -16,7 +16,8 @@ from gap.models import (
     Attribute, Country, Provider, Measurement, IngestorSession,
     IngestorSessionProgress, Dataset, DatasetAttribute, DataSourceFile,
     DatasetType, Unit, Village, CollectorSession, DatasetStore,
-    DataSourceFileCache, County, SubCounty, Ward, Language
+    DataSourceFileCache, County, SubCounty, Ward, Language,
+    DataSourceFileRententionConfig
 )
 from gap.tasks.collector import run_collector_session
 from gap.tasks.ingestor import (
@@ -238,7 +239,8 @@ class DataSourceFileAdmin(admin.ModelAdmin):
 
     list_display = (
         'name', 'dataset', 'format', 'start_date_time',
-        'end_date_time', 'is_latest', 'created_on'
+        'end_date_time', 'is_latest', 'created_on',
+        'deleted_at'
     )
     list_filter = ('dataset', 'format', 'is_latest')
     actions = (load_source_zarr_cache, clear_source_zarr_cache,)
@@ -347,3 +349,12 @@ class LanguageAdmin(AbstractDefinitionAdmin):
     """Language admin."""
 
     pass
+
+
+@admin.register(DataSourceFileRententionConfig)
+class DataSourceFileRententionConfigAdmin(admin.ModelAdmin):
+    """DataSourceFileRententionConfig admin."""
+
+    list_display = (
+        'dataset', 'days_to_keep'
+    )
