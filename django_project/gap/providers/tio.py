@@ -603,6 +603,12 @@ class TioZarrReader(BaseZarrReader):
         start_dt = np.datetime64(self.start_date, 'ns')
         end_dt = np.datetime64(self.end_date, 'ns')
 
+        if val is None:
+            return TioZarrReaderValue(
+                val, self.location_input, self.attributes,
+                self.latest_forecast_date, start_dt, end_dt
+            )
+
         if self.has_time_column:
             val = self._mask_by_datetime_range(
                 val, start_dt, end_dt
