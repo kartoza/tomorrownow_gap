@@ -482,6 +482,23 @@ class DatasetReaderValue:
         df = self._xr_dataset_process_datetime(df)
 
         df = self._filter_df(df)
+        if 'ensemble' in df.columns:
+            # Sort first to ensure ensemble order is preserved
+            df = df.sort_values(['datetime', 'ensemble'])
+            # Group by datetime, then aggregate the values:
+            # - as lists for ensemble attributes
+            # - as first value for non-ensemble attributes
+            df = df.groupby('datetime').agg({
+                **{
+                    col.attribute.variable_name: list
+                    for col in self.attributes if col.ensembles
+                },
+                **{
+                    col.attribute.variable_name: 'first'
+                    for col in self.attributes if col.ensembles is False
+                }
+            })
+            df = df.reset_index()
         return {
             'geometry': json.loads(self.location_input.point.json),
             'data': df.to_dict(orient='records')
