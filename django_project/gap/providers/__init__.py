@@ -19,7 +19,8 @@ from gap.providers.airborne_observation import (
 )  # noqa
 from gap.providers.cbam import (
     CBAMZarrReader, CBAMNetCDFReader,
-    CBAMReaderBuilder
+    CBAMReaderBuilder,
+    CBAMHourlyForecastHistoricalReader
 )  # noqa
 from gap.providers.observation import (
     ObservationDatasetReader, ObservationParquetReader,
