@@ -11,6 +11,7 @@ import tempfile
 import dask
 import uuid
 import pandas as pd
+from functools import cached_property
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
 from typing import Union, List, Tuple
@@ -293,9 +294,13 @@ class DatasetReaderValue:
     csv_chunk_size = 50000
 
     def __init__(
-            self, val: Union[xrDataset, List[DatasetTimelineValue], QuerySet],
-            location_input: DatasetReaderInput,
-            attributes: List[DatasetAttribute], result_count = None) -> None:
+        self, val: Union[xrDataset, List[DatasetTimelineValue], QuerySet],
+        location_input: DatasetReaderInput,
+        attributes: List[DatasetAttribute],
+        result_count = None,
+        start_datetime: np.datetime64 = None,
+        end_datetime: np.datetime64 = None
+    ) -> None:
         """Initialize DatasetReaderValue class.
 
         :param val: value that has been read
@@ -313,6 +318,8 @@ class DatasetReaderValue:
         self.output_metadata = {
             'size': 0
         }
+        self.start_datetime = start_datetime
+        self.end_datetime = end_datetime
         self._post_init()
 
     def _post_init(self):
@@ -370,7 +377,7 @@ class DatasetReaderValue:
         """
         return self._val
 
-    @property
+    @cached_property
     def has_time_column(self) -> bool:
         """Check if the output has time column.
 
@@ -384,7 +391,7 @@ class DatasetReaderValue:
             dataset else False
         )
 
-    @property
+    @cached_property
     def has_altitude_column(self) -> bool:
         """Check if the output has altitude column.
 
@@ -650,7 +657,26 @@ class DatasetReaderValue:
 
     def _filter_df(self, df: pd.DataFrame) -> pd.DataFrame:
         """Filter dataframe."""
-        return df
+        if not self.has_time_column:
+            return df
+
+        # filter the dataframe based on the start and end datetime
+        if 'datetime' in df.columns:
+            return df[
+                (df['datetime'] >= self.start_datetime) &
+                (df['datetime'] <= self.end_datetime)
+            ]
+        df_reset = df.reset_index()
+        df_reset['datetime'] = pd.to_datetime(
+            df_reset['date'].astype(str) + ' ' + df_reset['time'].astype(str)
+        )
+        df_reset = df_reset[
+            (df_reset['datetime'] >= self.start_datetime) &
+            (df_reset['datetime'] <= self.end_datetime)
+        ]
+        df_reset = df_reset.drop(columns=['datetime'])
+
+        return df_reset.set_index(['date', 'time'])
 
     def to_csv_stream(self, suffix='.csv', separator=','):
         """Generate csv bytes stream.

@@ -13,6 +13,7 @@ import shutil
 from typing import List
 from datetime import datetime
 import xarray as xr
+import numpy as np
 from xarray.core.dataset import Dataset as xrDataset
 from django.db import IntegrityError, transaction
 from django.utils import timezone
@@ -238,3 +239,26 @@ class BaseZarrReader(BaseNetCDFReader):
         cache_dir = self.get_zarr_cache_dir(source_file.name)
         if os.path.exists(cache_dir):
             shutil.rmtree(cache_dir)
+
+    def _mask_by_datetime_range(
+        self, val: xrDataset,
+        start_dt: np.datetime64,
+        end_dt: np.datetime64
+    ) -> xrDataset:
+        """Mask the dataset by datetime range.
+
+        :param val: xArray Dataset object
+        :type val: xrDataset
+        :param start_dt: Start datetime for filtering
+        :type start_dt: np.datetime64
+        :param end_dt: End datetime for filtering
+        :type end_dt: np.datetime64
+        :return: Filtered xArray Dataset object
+        :rtype: xrDataset
+        """
+        date_b, time_b = xr.broadcast(val['date'], val['time'])
+        full_datetime = date_b + time_b
+        mask = (full_datetime >= start_dt) & \
+            (full_datetime <= end_dt)
+        val = val.where(mask, drop=False)
+        return val
