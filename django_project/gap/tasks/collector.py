@@ -65,8 +65,9 @@ def run_cbam_collector_session():
 
 
 def _do_run_zarr_collector(
-        dataset: Dataset, collector_session: CollectorSession,
-        ingestor_type):
+    dataset: Dataset, collector_session: CollectorSession,
+    ingestor_type
+):
     """Run collector for zarr file.
 
     :param dataset: dataset
@@ -85,10 +86,19 @@ def _do_run_zarr_collector(
     if total_file > 0:
         additional_conf = {}
         config = get_ingestor_config_from_preferences(dataset.provider)
-        # check if hourly ingestor
+        # check ingestor retention policy for Hourly Tomorrow.io and Salient
+        force_new_zarr = False
         if ingestor_type == IngestorType.HOURLY_TOMORROWIO:
             config = config.get('hourly_config', {})
-            # Hourly will write to new zarr file
+            # Hourly will always write to new zarr file
+            force_new_zarr = True
+        elif ingestor_type == IngestorType.SALIENT:
+            # Salient will write to new zarr file
+            # if it's first week of the month
+            if timezone.now().day <= 7:
+                force_new_zarr = True
+
+        if force_new_zarr:
             config['use_latest_datasource'] = False
             if 'datasourcefile_id' in config:
                 # remove datasourcefile_id if exists

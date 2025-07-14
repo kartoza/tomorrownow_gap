@@ -763,11 +763,39 @@ class SalientIngestor(BaseZarrIngestor):
         )
         execute_dask_compute(x)
 
+    def set_data_source_retention(self):
+        """Delete the latest data source file and set the new one."""
+        is_historical_data = self.get_config('is_historical', False)
+        if is_historical_data:
+            # do not set retention for historical data
+            return
+
+        # find the latest data source file
+        latest_data_source = DataSourceFile.objects.filter(
+            dataset=self.dataset,
+            is_latest=True,
+            format=DatasetStore.ZARR
+        ).last()
+        if (
+            latest_data_source and
+            latest_data_source.id != self.datasource_file.id
+        ):
+            # set the latest data source file to not latest
+            latest_data_source.is_latest = False
+            # set deleted_at to now
+            latest_data_source.deleted_at = timezone.now()
+            latest_data_source.save()
+
+        # Update the data source file to latest
+        self.datasource_file.is_latest = True
+        self.datasource_file.save()
+
     def run(self):
         """Run Salient Ingestor."""
         # Run the ingestion
         try:
             self._run()
+            self.set_data_source_retention()
             self.session.notes = json.dumps(self.metadata, default=str)
         except Exception as e:
             logger.error('Ingestor Salient failed!')
