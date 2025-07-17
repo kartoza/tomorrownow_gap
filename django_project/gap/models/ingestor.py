@@ -42,6 +42,7 @@ class IngestorType:
     FARM_REGISTRY = 'Farm Registry'
     DCAS_MESSAGE = 'DCAS Message'
     HOURLY_TOMORROWIO = 'Hourly Tomorrow.io'
+    SALIENT_HISTORICAL = 'Salient Historical'
 
 
 class IngestorSessionStatus:
@@ -89,6 +90,7 @@ class BaseSession(models.Model):
             (IngestorType.FARM_REGISTRY, IngestorType.FARM_REGISTRY),
             (IngestorType.DCAS_MESSAGE, IngestorType.DCAS_MESSAGE),
             (IngestorType.HOURLY_TOMORROWIO, IngestorType.HOURLY_TOMORROWIO),
+            (IngestorType.SALIENT_HISTORICAL, IngestorType.SALIENT_HISTORICAL),
         ),
         max_length=512
     )
