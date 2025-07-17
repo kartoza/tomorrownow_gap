@@ -146,7 +146,10 @@ class CollectorSession(BaseSession):
         ingestor = None
         if self.ingestor_type == IngestorType.CBAM:
             ingestor = CBAMCollector(self, working_dir)
-        elif self.ingestor_type == IngestorType.SALIENT:
+        elif (
+            self.ingestor_type in
+            [IngestorType.SALIENT, IngestorType.SALIENT_HISTORICAL]
+        ):
             ingestor = SalientCollector(self, working_dir)
         elif self.ingestor_type == IngestorType.TIO_FORECAST_COLLECTOR:
             ingestor = TioShortTermDailyCollector(self, working_dir)
@@ -216,7 +219,9 @@ class IngestorSession(BaseSession):
         from gap.ingestor.tahmo import TahmoIngestor
         from gap.ingestor.farm import FarmIngestor
         from gap.ingestor.cbam import CBAMIngestor
-        from gap.ingestor.salient import SalientIngestor
+        from gap.ingestor.salient import (
+            SalientIngestor, SalientHistoricalIngestor
+        )
         from gap.ingestor.grid import GridIngestor
         from gap.ingestor.arable import ArableIngestor
         from gap.ingestor.tahmo_api import TahmoAPIIngestor
@@ -244,6 +249,8 @@ class IngestorSession(BaseSession):
             ingestor = CBAMIngestor
         elif self.ingestor_type == IngestorType.SALIENT:
             ingestor = SalientIngestor
+        elif self.ingestor_type == IngestorType.SALIENT_HISTORICAL:
+            ingestor = SalientHistoricalIngestor
         elif self.ingestor_type == IngestorType.ARABLE:
             ingestor = ArableIngestor
         elif self.ingestor_type == IngestorType.GRID:

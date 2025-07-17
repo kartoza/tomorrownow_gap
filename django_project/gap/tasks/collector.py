@@ -322,7 +322,7 @@ def run_salient_collector_historical():
         exist_in_list = False
         if collector is None:
             collector = CollectorSession.objects.create(
-                ingestor_type=IngestorType.SALIENT,
+                ingestor_type=IngestorType.SALIENT_HISTORICAL,
                 additional_config={
                     'forecast_date': forecast_date.isoformat()
                 }
@@ -357,7 +357,7 @@ def run_salient_collector_historical():
     )
     # create the ingestor session
     session = IngestorSession.objects.create(
-        ingestor_type=IngestorType.SALIENT,
+        ingestor_type=IngestorType.SALIENT_HISTORICAL,
         trigger_task=False,
         additional_config={
             'remove_temp_file': historical_task.get('remove_temp_file', True),
