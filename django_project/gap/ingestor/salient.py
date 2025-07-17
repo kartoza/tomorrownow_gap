@@ -765,7 +765,9 @@ class SalientIngestor(BaseZarrIngestor):
 
     def set_data_source_retention(self):
         """Delete the latest data source file and set the new one."""
-        is_historical_data = self.get_config('is_historical', False)
+        is_historical_data = self.datasource_file.metadata.get(
+            'is_historical', False
+        )
         if is_historical_data:
             # do not set retention for historical data
             return
