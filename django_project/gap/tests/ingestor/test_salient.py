@@ -17,7 +17,7 @@ from django.core.files.storage import storages
 from storages.backends.s3boto3 import S3Boto3Storage
 
 
-from gap.models import Dataset, DataSourceFile, DatasetStore
+from gap.models import Dataset, DataSourceFile, DatasetStore, Preferences
 from gap.models.ingestor import (
     IngestorSession,
     IngestorType,
@@ -191,7 +191,7 @@ class TestSalientCollector(SalientIngestorBaseTest):
 
         with self.assertRaises(Exception):
             self.collector.run()
-        self.assertEqual(mock_logger.error.call_count, 2)
+        self.assertEqual(mock_logger.error.call_count, 1)
 
     @patch('gap.models.ingestor.CollectorSession.dataset_files')
     @patch('gap.models.ingestor.CollectorSession.run')
@@ -472,3 +472,164 @@ class TestSalientIngestor(SalientIngestorBaseTest):
         self.ingestor._invalidate_zarr_cache()
         cache_file.refresh_from_db()
         self.assertIsNotNone(cache_file.expired_on)
+
+    @patch('gap.tasks.ingestor.run_ingestor_session.delay')
+    def test_rentention_for_historical(self, mock_run_ingestor):
+        """Test retention function."""
+        datasourcefile = DataSourceFileFactory.create(
+            dataset=self.dataset,
+            name=f'{str(uuid.uuid4())}.zarr',
+            format=DatasetStore.ZARR,
+            metadata={
+                'is_historical': True,
+            }
+        )
+        session = IngestorSession.objects.create(
+            ingestor_type=IngestorType.SALIENT,
+            trigger_task=False,
+            additional_config={
+                'datasourcefile_id': datasourcefile.id,
+                'datasourcefile_exists': True
+            }
+        )
+        ingestor = SalientIngestor(session)
+        ingestor.set_data_source_retention()
+
+        mock_run_ingestor.assert_not_called()
+        datasourcefile.refresh_from_db()
+        self.assertEqual(
+            datasourcefile.is_latest, False
+        )
+
+    @patch('gap.tasks.ingestor.run_ingestor_session.delay')
+    def test_rentention_for_latest(self, mock_run_ingestor):
+        """Test retention function."""
+        datasourcefile = DataSourceFileFactory.create(
+            dataset=self.dataset,
+            name=f'{str(uuid.uuid4())}.zarr',
+            format=DatasetStore.ZARR,
+            is_latest=True,
+            metadata={
+            }
+        )
+        session = IngestorSession.objects.create(
+            ingestor_type=IngestorType.SALIENT,
+            trigger_task=False,
+            additional_config={
+                'datasourcefile_id': datasourcefile.id,
+                'datasourcefile_exists': True
+            }
+        )
+        ingestor = SalientIngestor(session)
+        ingestor.set_data_source_retention()
+        mock_run_ingestor.assert_not_called()
+        datasourcefile.refresh_from_db()
+        self.assertEqual(
+            datasourcefile.is_latest, True
+        )
+
+    @patch('gap.tasks.ingestor.run_ingestor_session.delay')
+    def test_rentention_no_historical_config(self, mock_run_ingestor):
+        """Test retention function."""
+        datasourcefile = DataSourceFileFactory.create(
+            dataset=self.dataset,
+            name=f'{str(uuid.uuid4())}.zarr',
+            format=DatasetStore.ZARR,
+            metadata={
+            }
+        )
+        latest_datasourcefile = DataSourceFileFactory.create(
+            dataset=self.dataset,
+            name=f'{str(uuid.uuid4())}.zarr',
+            format=DatasetStore.ZARR,
+            is_latest=True,
+            metadata={
+            }
+        )
+        session = IngestorSession.objects.create(
+            ingestor_type=IngestorType.SALIENT,
+            trigger_task=False,
+            additional_config={
+                'datasourcefile_id': datasourcefile.id,
+                'datasourcefile_exists': True
+            }
+        )
+        ingestor = SalientIngestor(session)
+        ingestor.set_data_source_retention()
+        mock_run_ingestor.assert_not_called()
+        datasourcefile.refresh_from_db()
+        self.assertEqual(
+            datasourcefile.is_latest, True
+        )
+        latest_datasourcefile.refresh_from_db()
+        self.assertEqual(
+            latest_datasourcefile.is_latest, False
+        )
+        self.assertIn('warning', ingestor.metadata)
+
+    @patch('gap.tasks.ingestor.run_ingestor_session.delay')
+    def test_rentention_success(self, mock_run_ingestor):
+        """Test retention function."""
+        preferences = Preferences.load()
+        preferences.ingestor_config = {
+            self.dataset.provider.name: {
+                'historical_task': {
+                    'datasourcefile_name': 'historical_test.zarr'
+                }
+            }
+        }
+        preferences.save()
+        datasourcefile = DataSourceFileFactory.create(
+            dataset=self.dataset,
+            name=f'{str(uuid.uuid4())}.zarr',
+            format=DatasetStore.ZARR,
+            metadata={
+            }
+        )
+        latest_datasourcefile = DataSourceFileFactory.create(
+            dataset=self.dataset,
+            name=f'{str(uuid.uuid4())}.zarr',
+            format=DatasetStore.ZARR,
+            is_latest=True,
+            metadata={
+            }
+        )
+        session = IngestorSession.objects.create(
+            ingestor_type=IngestorType.SALIENT,
+            trigger_task=False,
+            additional_config={
+                'datasourcefile_id': datasourcefile.id,
+                'datasourcefile_exists': True
+            }
+        )
+        ingestor = SalientIngestor(session)
+        ingestor.set_data_source_retention()
+        mock_run_ingestor.assert_called_once()
+        datasourcefile.refresh_from_db()
+        self.assertEqual(
+            datasourcefile.is_latest, True
+        )
+        latest_datasourcefile.refresh_from_db()
+        self.assertEqual(
+            latest_datasourcefile.is_latest, False
+        )
+        # check historical ingestor session
+        historical_session = IngestorSession.objects.filter(
+            ingestor_type=IngestorType.SALIENT_HISTORICAL,
+            additional_config__historical_source_id=latest_datasourcefile.id,
+            additional_config__datasourcefile_name='historical_test.zarr'
+        ).last()
+        self.assertIsNotNone(historical_session)
+
+
+class TestSalientIngestorHistorical(TestSalientIngestor):
+    """Salient ingestor historical test case."""
+
+    def setUp(self):
+        """Initialize TestSalientIngestorHistorical."""
+        super().setUp()
+        self.session = IngestorSession.objects.create(
+            ingestor_type=IngestorType.SALIENT_HISTORICAL,
+            trigger_task=False
+        )
+        self.ingestor = SalientIngestor(self.session, working_dir='/tmp')

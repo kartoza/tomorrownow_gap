@@ -671,7 +671,7 @@ class SalientIngestor(BaseZarrIngestor):
 
         # update progress
         total_time = time.time() - start_time
-        progress.notes = progress.notes + f". Execution time: {total_time}"
+        progress.notes = f"Execution time: {total_time}"
         progress.status = IngestorSessionStatus.SUCCESS
         progress.save()
 
@@ -955,7 +955,7 @@ class SalientHistoricalIngestor(SalientIngestor):
         execute_dask_compute(x)
         # update progress
         total_time = time.time() - start_time
-        progress.notes = f"{progress_text}. Execution time: {total_time}"
+        progress.notes = f"Execution time: {total_time}"
         progress.status = IngestorSessionStatus.SUCCESS
         progress.save()
 
