@@ -36,15 +36,15 @@ app.config_from_object('django.conf:settings', namespace='CELERY')
 
 # use max task = 1 to avoid memory leak from numpy/ingestor
 # this should be set to main worker only
-if os.environ.get('celery_max_tasks_per_child', None):
+if os.environ.get('CELERY_MAX_TASKS_PER_CHILD', None):
     logger.info(
-        'celery_max_tasks_per_child is set to %s',
-        os.environ.get('celery_max_tasks_per_child')
+        'CELERY_MAX_TASKS_PER_CHILD is set to %s',
+        os.environ.get('CELERY_MAX_TASKS_PER_CHILD')
     )
     # Set the maximum number of tasks a worker can execute
     # before it is replaced
     app.conf.worker_max_tasks_per_child = int(
-        os.environ.get('celery_max_tasks_per_child')
+        os.environ.get('CELERY_MAX_TASKS_PER_CHILD')
     )
 
 # Load task modules from all registered Django app configs.

@@ -62,7 +62,7 @@ services:
     entrypoint: [ ]
     command: 'supervisord -c /supervisord.conf'
     environment:
-      - celery_max_tasks_per_child=1
+      - CELERY_MAX_TASKS_PER_CHILD=1
     links:
       - db
       - redis
