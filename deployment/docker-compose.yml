@@ -61,6 +61,8 @@ services:
     <<: *default-common-django
     entrypoint: [ ]
     command: 'supervisord -c /supervisord.conf'
+    environment:
+      - CELERY_MAX_TASKS_PER_CHILD=1
     links:
       - db
       - redis

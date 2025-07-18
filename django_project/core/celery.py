@@ -35,7 +35,17 @@ app = Celery('GAP')
 app.config_from_object('django.conf:settings', namespace='CELERY')
 
 # use max task = 1 to avoid memory leak from numpy/ingestor
-app.conf.worker_max_tasks_per_child = 1
+# this should be set to main worker only
+if os.environ.get('CELERY_MAX_TASKS_PER_CHILD', None):
+    logger.info(
+        'CELERY_MAX_TASKS_PER_CHILD is set to %s',
+        os.environ.get('CELERY_MAX_TASKS_PER_CHILD')
+    )
+    # Set the maximum number of tasks a worker can execute
+    # before it is replaced
+    app.conf.worker_max_tasks_per_child = int(
+        os.environ.get('CELERY_MAX_TASKS_PER_CHILD')
+    )
 
 # Load task modules from all registered Django app configs.
 app.autodiscover_tasks()
