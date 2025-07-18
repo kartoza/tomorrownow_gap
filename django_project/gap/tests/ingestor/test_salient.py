@@ -17,7 +17,7 @@ from django.core.files.storage import storages
 from storages.backends.s3boto3 import S3Boto3Storage
 
 
-from gap.models import Dataset, DataSourceFile, DatasetStore
+from gap.models import Dataset, DataSourceFile, DatasetStore, Preferences
 from gap.models.ingestor import (
     IngestorSession,
     IngestorType,
@@ -25,7 +25,11 @@ from gap.models.ingestor import (
     IngestorSessionStatus,
     IngestorSessionProgress
 )
-from gap.ingestor.salient import SalientIngestor, SalientCollector
+from gap.ingestor.salient import (
+    SalientIngestor,
+    SalientCollector,
+    SalientHistoricalIngestor
+)
 from gap.factories import DataSourceFileFactory, DataSourceFileCacheFactory
 from gap.tasks.collector import run_salient_collector_session
 from tempfile import NamedTemporaryFile
@@ -191,7 +195,7 @@ class TestSalientCollector(SalientIngestorBaseTest):
 
         with self.assertRaises(Exception):
             self.collector.run()
-        self.assertEqual(mock_logger.error.call_count, 2)
+        self.assertEqual(mock_logger.error.call_count, 1)
 
     @patch('gap.models.ingestor.CollectorSession.dataset_files')
     @patch('gap.models.ingestor.CollectorSession.run')
@@ -415,6 +419,8 @@ class TestSalientIngestor(SalientIngestorBaseTest):
     @patch('xarray.Dataset.to_zarr')
     def test_run(self, mock_dask_compute):
         """Test Run Salient Ingestor."""
+        self.session.refresh_from_db()
+        self.session.collectors.set([self.collector])
         self.ingestor.created = False
         self.ingestor.variables = ['temp']
         # Mock the open_dataset return value
@@ -472,3 +478,234 @@ class TestSalientIngestor(SalientIngestorBaseTest):
         self.ingestor._invalidate_zarr_cache()
         cache_file.refresh_from_db()
         self.assertIsNotNone(cache_file.expired_on)
+
+    @patch('gap.tasks.ingestor.run_ingestor_session.delay')
+    def test_rentention_for_historical(self, mock_run_ingestor):
+        """Test retention function."""
+        datasourcefile = DataSourceFileFactory.create(
+            dataset=self.dataset,
+            name=f'{str(uuid.uuid4())}.zarr',
+            format=DatasetStore.ZARR,
+            metadata={
+                'is_historical': True,
+            }
+        )
+        session = IngestorSession.objects.create(
+            ingestor_type=IngestorType.SALIENT,
+            trigger_task=False,
+            additional_config={
+                'datasourcefile_id': datasourcefile.id,
+                'datasourcefile_exists': True
+            }
+        )
+        ingestor = SalientIngestor(session)
+        ingestor.set_data_source_retention()
+
+        mock_run_ingestor.assert_not_called()
+        datasourcefile.refresh_from_db()
+        self.assertEqual(
+            datasourcefile.is_latest, False
+        )
+
+    @patch('gap.tasks.ingestor.run_ingestor_session.delay')
+    def test_rentention_for_latest(self, mock_run_ingestor):
+        """Test retention function."""
+        datasourcefile = DataSourceFileFactory.create(
+            dataset=self.dataset,
+            name=f'{str(uuid.uuid4())}.zarr',
+            format=DatasetStore.ZARR,
+            is_latest=True,
+            metadata={
+            }
+        )
+        session = IngestorSession.objects.create(
+            ingestor_type=IngestorType.SALIENT,
+            trigger_task=False,
+            additional_config={
+                'datasourcefile_id': datasourcefile.id,
+                'datasourcefile_exists': True
+            }
+        )
+        ingestor = SalientIngestor(session)
+        ingestor.set_data_source_retention()
+        mock_run_ingestor.assert_not_called()
+        datasourcefile.refresh_from_db()
+        self.assertEqual(
+            datasourcefile.is_latest, True
+        )
+
+    @patch('gap.tasks.ingestor.run_ingestor_session.delay')
+    def test_rentention_no_historical_config(self, mock_run_ingestor):
+        """Test retention function."""
+        datasourcefile = DataSourceFileFactory.create(
+            dataset=self.dataset,
+            name=f'{str(uuid.uuid4())}.zarr',
+            format=DatasetStore.ZARR,
+            metadata={
+            }
+        )
+        latest_datasourcefile = DataSourceFileFactory.create(
+            dataset=self.dataset,
+            name=f'{str(uuid.uuid4())}.zarr',
+            format=DatasetStore.ZARR,
+            is_latest=True,
+            metadata={
+            }
+        )
+        session = IngestorSession.objects.create(
+            ingestor_type=IngestorType.SALIENT,
+            trigger_task=False,
+            additional_config={
+                'datasourcefile_id': datasourcefile.id,
+                'datasourcefile_exists': True
+            }
+        )
+        ingestor = SalientIngestor(session)
+        ingestor.set_data_source_retention()
+        mock_run_ingestor.assert_not_called()
+        datasourcefile.refresh_from_db()
+        self.assertEqual(
+            datasourcefile.is_latest, True
+        )
+        latest_datasourcefile.refresh_from_db()
+        self.assertEqual(
+            latest_datasourcefile.is_latest, False
+        )
+        self.assertIn('warning', ingestor.metadata)
+
+    @patch('gap.tasks.ingestor.run_ingestor_session.delay')
+    def test_rentention_success(self, mock_run_ingestor):
+        """Test retention function."""
+        preferences = Preferences.load()
+        preferences.ingestor_config = {
+            self.dataset.provider.name: {
+                'historical_task': {
+                    'datasourcefile_name': 'historical_test.zarr'
+                }
+            }
+        }
+        preferences.save()
+        datasourcefile = DataSourceFileFactory.create(
+            dataset=self.dataset,
+            name=f'{str(uuid.uuid4())}.zarr',
+            format=DatasetStore.ZARR,
+            metadata={
+            }
+        )
+        latest_datasourcefile = DataSourceFileFactory.create(
+            dataset=self.dataset,
+            name=f'{str(uuid.uuid4())}.zarr',
+            format=DatasetStore.ZARR,
+            is_latest=True,
+            metadata={
+            }
+        )
+        session = IngestorSession.objects.create(
+            ingestor_type=IngestorType.SALIENT,
+            trigger_task=False,
+            additional_config={
+                'datasourcefile_id': datasourcefile.id,
+                'datasourcefile_exists': True
+            }
+        )
+        ingestor = SalientIngestor(session)
+        ingestor.set_data_source_retention()
+        mock_run_ingestor.assert_called_once()
+        datasourcefile.refresh_from_db()
+        self.assertEqual(
+            datasourcefile.is_latest, True
+        )
+        latest_datasourcefile.refresh_from_db()
+        self.assertEqual(
+            latest_datasourcefile.is_latest, False
+        )
+        # check historical ingestor session
+        historical_session = IngestorSession.objects.filter(
+            ingestor_type=IngestorType.SALIENT_HISTORICAL,
+            additional_config__historical_source_id=latest_datasourcefile.id,
+            additional_config__datasourcefile_name='historical_test.zarr'
+        ).last()
+        self.assertIsNotNone(historical_session)
+
+
+class TestSalientIngestorHistorical(TestSalientIngestor):
+    """Salient ingestor historical test case."""
+
+    def setUp(self):
+        """Initialize TestSalientIngestorHistorical."""
+        super().setUp()
+
+    @patch('xarray.open_zarr')
+    @patch('gap.ingestor.salient.execute_dask_compute')
+    def test_no_historical_source(self, mock_dask_compute, mock_open_zarr):
+        """Test no historical source."""
+        session = IngestorSession.objects.create(
+            ingestor_type=IngestorType.SALIENT_HISTORICAL,
+            trigger_task=False,
+        )
+        ingestor = SalientHistoricalIngestor(session, working_dir='/tmp')
+        with self.assertRaises(ValueError) as context:
+            ingestor.run()
+        self.assertIn(
+            'historical_source_id is required',
+            str(context.exception)
+        )
+        mock_open_zarr.assert_not_called()
+        mock_dask_compute.assert_not_called()
+
+        session.additional_config = {
+            'historical_source_id': 9999,
+        }
+        session.save()
+        ingestor = SalientHistoricalIngestor(session, working_dir='/tmp')
+        with self.assertRaises(ValueError) as context:
+            ingestor.run()
+        self.assertIn(
+            'DataSourceFile with id 9999 does not exist',
+            str(context.exception)
+        )
+        mock_open_zarr.assert_not_called()
+        mock_dask_compute.assert_not_called()
+
+    @patch('xarray.open_zarr')
+    @patch('gap.ingestor.salient.execute_dask_compute')
+    def test_ingestor_success(self, mock_dask_compute, mock_open_zarr):
+        """Test successful run of Salient Ingestor for historical data."""
+        source = DataSourceFileFactory.create(
+            dataset=self.dataset,
+            name=f'{str(uuid.uuid4())}.zarr',
+            format=DatasetStore.ZARR,
+        )
+        session = IngestorSession.objects.create(
+            ingestor_type=IngestorType.SALIENT_HISTORICAL,
+            trigger_task=False,
+            additional_config={
+                'historical_source_id': source.id
+            }
+        )
+        ingestor = SalientHistoricalIngestor(session, working_dir='/tmp')
+
+        # Mock the open_dataset return value
+        mock_dataset = xrDataset(
+            {
+                'temp': (
+                    ('ensemble', 'forecast_day', 'lat', 'lon'),
+                    np.random.rand(50, 275, 2, 2)
+                ),
+            },
+            coords={
+                'forecast_date': pd.date_range('2024-10-02', periods=1),
+                'forecast_day': pd.date_range('2024-10-02', periods=275),
+                'lat': [-27, -26.75],
+                'lon': [21.8, 22.05],
+            }
+        )
+        mock_open_zarr.return_value = mock_dataset
+
+        ingestor.run()
+
+        # Assertions
+        mock_open_zarr.assert_called_once()
+        mock_dask_compute.assert_called_once()
+        source.refresh_from_db()
+        self.assertIsNotNone(source.deleted_at)

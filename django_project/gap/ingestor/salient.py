@@ -11,8 +11,8 @@ import json
 import logging
 import datetime
 import pytz
-import traceback
 import s3fs
+import fsspec
 import numpy as np
 import pandas as pd
 import xarray as xr
@@ -30,13 +30,13 @@ from core.models import ObjectStorageManager
 from gap.models import (
     Dataset, DataSourceFile, DatasetStore,
     IngestorSession, CollectorSession, Preferences,
-    DatasetAttribute,
-    IngestorSessionStatus
+    DatasetAttribute, IngestorSessionStatus, IngestorType
 )
 from gap.ingestor.base import BaseIngestor, BaseZarrIngestor, CoordMapping
 from gap.utils.netcdf import find_start_latlng
 from gap.utils.zarr import BaseZarrReader
 from gap.utils.dask import execute_dask_compute
+from gap.utils.ingestor_config import get_ingestor_config_from_preferences
 
 
 logger = logging.getLogger(__name__)
@@ -204,8 +204,7 @@ class SalientCollector(BaseIngestor):
             self._run()
             self.session.notes = json.dumps(self.metadata, default=str)
         except Exception as e:
-            logger.error('Collector Salient failed!')
-            logger.error(traceback.format_exc())
+            logger.error('Collector Salient failed!', exc_info=True)
             raise e
         finally:
             pass
@@ -223,6 +222,7 @@ class SalientIngestor(BaseZarrIngestor):
     forecast_date_chunk = 10
     num_dates = SALIENT_NUMBER_OF_DAYS
     DATE_VARIABLE = 'forecast_date'
+    EXCLUDED_VARS = []
 
     def __init__(self, session: IngestorSession, working_dir: str = '/tmp'):
         """Initialize SalientIngestor."""
@@ -572,6 +572,8 @@ class SalientIngestor(BaseZarrIngestor):
             }
         }
         for var_name in self.variables:
+            if var_name in self.EXCLUDED_VARS:
+                continue
             if var_name.endswith('_clim'):
                 empty_shape = (
                     1 if init_number_of_months is None else
@@ -763,15 +765,239 @@ class SalientIngestor(BaseZarrIngestor):
         )
         execute_dask_compute(x)
 
+    def set_data_source_retention(self):
+        """Delete the latest data source file and set the new one."""
+        is_historical_data = self.datasource_file.metadata.get(
+            'is_historical', False
+        )
+        if is_historical_data:
+            # do not set retention for historical data
+            return
+
+        # find the latest data source file
+        latest_data_source = DataSourceFile.objects.filter(
+            dataset=self.dataset,
+            is_latest=True,
+            format=DatasetStore.ZARR
+        ).last()
+        if (
+            latest_data_source and
+            latest_data_source.id != self.datasource_file.id
+        ):
+            # set the latest data source file to not latest
+            latest_data_source.is_latest = False
+            # deleted_at will be set after HistoricalIngestor run
+            latest_data_source.save()
+            config = get_ingestor_config_from_preferences(
+                self.dataset.provider
+            )
+            historical_task = config.get('historical_task', None)
+            if historical_task:
+                from gap.tasks.ingestor import (
+                    run_ingestor_session
+                )
+                # create ingestor for Historical data
+                historical_ingestor = IngestorSession.objects.create(
+                    ingestor_type=IngestorType.SALIENT_HISTORICAL,
+                    trigger_task=False,
+                    additional_config={
+                        'historical_source_id': latest_data_source.id,
+                        'remove_temp_file': historical_task.get(
+                            'remove_temp_file', True
+                        ),
+                        'datasourcefile_name': (
+                            historical_task.get('datasourcefile_name', None)
+                        ),
+                        'datasourcefile_id': (
+                            historical_task.get('datasourcefile_id', None)
+                        ),
+                        'datasourcefile_exists': (
+                            historical_task.get(
+                                'datasourcefile_exists',
+                                False
+                            )
+                        )
+                    }
+                )
+                run_ingestor_session.delay(historical_ingestor.id)
+            else:
+                logger.warning(
+                    'Historical task is not configured for Salient ingestor!'
+                )
+                self.metadata['warning'] = (
+                    'Historical task is not configured for Salient ingestor! '
+                    'Skipping historical data retention.'
+                )
+
+        # Update the data source file to latest
+        self.datasource_file.is_latest = True
+        self.datasource_file.save()
+
     def run(self):
         """Run Salient Ingestor."""
         # Run the ingestion
         try:
             self._run()
+            self.set_data_source_retention()
             self.session.notes = json.dumps(self.metadata, default=str)
         except Exception as e:
-            logger.error('Ingestor Salient failed!')
-            logger.error(traceback.format_exc())
+            logger.error('Ingestor Salient failed!', exc_info=True)
+            raise e
+        finally:
+            pass
+
+
+class SalientHistoricalIngestor(SalientIngestor):
+    """Ingestor for Salient historical data."""
+
+    EXCLUDED_VARS = [
+        'evap',
+        'gdd'
+    ]
+
+    def __init__(self, session: IngestorSession, working_dir: str = '/tmp'):
+        """Initialize SalientHistoricalIngestor."""
+        super().__init__(session, working_dir)
+
+    def _open_source_zarr(self, data_source_file: DataSourceFile) -> xrDataset:
+        """Open the source zarr file.
+
+        :param data_source_file: DataSourceFile to open
+        :type data_source_file: DataSourceFile
+        :return: xarray dataset
+        :rtype: xrDataset
+        """
+        s3 = self.s3
+        s3_options = self.s3_options
+        override_conn_name = data_source_file.metadata.get(
+            'connection_name', None
+        )
+        if (
+            override_conn_name and
+            override_conn_name != s3.get('S3_CONNECTION_NAME')
+        ):
+            # if there is a connection name override, we need to get the
+            # s3 variables from the ObjectStorageManager
+            s3 = ObjectStorageManager.get_s3_env_vars(
+                connection_name=override_conn_name
+            )
+            s3_options = {
+                'key': s3.get('S3_ACCESS_KEY_ID'),
+                'secret': s3.get('S3_SECRET_ACCESS_KEY'),
+                'client_kwargs': ObjectStorageManager.get_s3_client_kwargs(
+                    s3=s3
+                )
+            }
+
+        zarr_url = (
+            BaseZarrReader.get_zarr_base_url(self.s3) +
+            data_source_file.name
+        )
+        s3_mapper = fsspec.get_mapper(zarr_url, **s3_options)
+        return xr.open_zarr(
+            s3_mapper, consolidated=True,
+            drop_variables=self.EXCLUDED_VARS
+        )
+
+    def _copy_forecast_date(
+        self, data_source_file: DataSourceFile
+    ):
+        """Copy the forecast_date from the source zarr to the new zarr.
+
+        :param data_source_file: DataSourceFile to copy from
+        :type data_source_file: DataSourceFile
+        """
+        ds = self._open_source_zarr(data_source_file)
+        # get the latest forecast_date
+        latest_forecast_date = ds['forecast_date'].values[-1]
+        # convert to date
+        forecast_date = pd.to_datetime(latest_forecast_date).date()
+
+        subset = ds.sel(
+            forecast_date=latest_forecast_date
+        )
+        # override 'forecast_date' with to be first day of the month
+        subset['forecast_date'] = pd.date_range(
+            forecast_date.replace(day=1).isoformat(),
+            periods=1
+        )
+
+        zarr_url = (
+            BaseZarrReader.get_zarr_base_url(self.s3) +
+            self.datasource_file.name
+        )
+        progress_text = (
+            f'Appending forecast_date {forecast_date.isoformat()} to zarr'
+        )
+        if self.created:
+            # write with encoding same as resource
+            x = subset.to_zarr(
+                zarr_url, mode='w', consolidated=True,
+                storage_options=self.s3_options,
+                compute=False
+            )
+            progress_text = (
+                f'Writing new forecast_date {forecast_date.isoformat()}'
+                ' to zarr'
+            )
+        else:
+            # append
+            x = subset.to_zarr(
+                zarr_url, mode='a', append_dim='forecast_date',
+                consolidated=True,
+                storage_options=self.s3_options,
+                compute=False
+            )
+
+        progress = self._add_progress(progress_text)
+        start_time = time.time()
+        # execute_dask_compute
+        execute_dask_compute(x)
+        # update progress
+        total_time = time.time() - start_time
+        progress.notes = f"Execution time: {total_time}"
+        progress.status = IngestorSessionStatus.SUCCESS
+        progress.save()
+
+        ds.close()
+
+    def run(self):
+        """Run Salient Historical Ingestor."""
+        # Run the ingestion
+        try:
+            if not self.session.collectors.exists():
+                logger.info(
+                    "Copying last month forecast_date to "
+                    "historical Salient zarr."
+                )
+                # find historical_source_id in additional_config
+                historical_source_id = self.session.additional_config.get(
+                    'historical_source_id', None
+                )
+                if not historical_source_id:
+                    raise ValueError(
+                        "historical_source_id is required for "
+                        "historical ingestor."
+                    )
+                data_source_file = DataSourceFile.objects.filter(
+                    id=historical_source_id,
+                    format=DatasetStore.ZARR
+                ).first()
+                if not data_source_file:
+                    raise ValueError(
+                        f"DataSourceFile with id {historical_source_id} "
+                        "does not exist."
+                    )
+                self._copy_forecast_date(data_source_file)
+
+                # set the deleted_at to now
+                data_source_file.deleted_at = timezone.now()
+                data_source_file.save()
+            else:
+                self._run()
+            self.session.notes = json.dumps(self.metadata, default=str)
+        except Exception as e:
+            logger.error('Ingestor Historical Salient failed!', exc_info=True)
             raise e
         finally:
             pass
