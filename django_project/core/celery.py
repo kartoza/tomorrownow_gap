@@ -41,7 +41,8 @@ if os.environ.get('celery_max_tasks_per_child', None):
         'celery_max_tasks_per_child is set to %s',
         os.environ.get('celery_max_tasks_per_child')
     )
-    # Set the maximum number of tasks a worker can execute before it is replaced
+    # Set the maximum number of tasks a worker can execute
+    # before it is replaced
     app.conf.worker_max_tasks_per_child = int(
         os.environ.get('celery_max_tasks_per_child')
     )
