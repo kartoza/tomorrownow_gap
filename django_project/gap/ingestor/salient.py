@@ -986,7 +986,7 @@ class SalientHistoricalIngestor(SalientIngestor):
                 if not data_source_file:
                     raise ValueError(
                         f"DataSourceFile with id {historical_source_id} "
-                        "not found."
+                        "does not exist."
                     )
                 self._copy_forecast_date(data_source_file)
 

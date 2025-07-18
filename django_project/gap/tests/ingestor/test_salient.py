@@ -25,7 +25,11 @@ from gap.models.ingestor import (
     IngestorSessionStatus,
     IngestorSessionProgress
 )
-from gap.ingestor.salient import SalientIngestor, SalientCollector
+from gap.ingestor.salient import (
+    SalientIngestor,
+    SalientCollector,
+    SalientHistoricalIngestor
+)
 from gap.factories import DataSourceFileFactory, DataSourceFileCacheFactory
 from gap.tasks.collector import run_salient_collector_session
 from tempfile import NamedTemporaryFile
@@ -415,6 +419,8 @@ class TestSalientIngestor(SalientIngestorBaseTest):
     @patch('xarray.Dataset.to_zarr')
     def test_run(self, mock_dask_compute):
         """Test Run Salient Ingestor."""
+        self.session.refresh_from_db()
+        self.session.collectors.set([self.collector])
         self.ingestor.created = False
         self.ingestor.variables = ['temp']
         # Mock the open_dataset return value
@@ -628,8 +634,78 @@ class TestSalientIngestorHistorical(TestSalientIngestor):
     def setUp(self):
         """Initialize TestSalientIngestorHistorical."""
         super().setUp()
-        self.session = IngestorSession.objects.create(
+
+    @patch('xarray.open_zarr')
+    @patch('gap.ingestor.salient.execute_dask_compute')
+    def test_no_historical_source(self, mock_dask_compute, mock_open_zarr):
+        """Test no historical source."""
+        session = IngestorSession.objects.create(
             ingestor_type=IngestorType.SALIENT_HISTORICAL,
-            trigger_task=False
+            trigger_task=False,
         )
-        self.ingestor = SalientIngestor(self.session, working_dir='/tmp')
+        ingestor = SalientHistoricalIngestor(session, working_dir='/tmp')
+        with self.assertRaises(ValueError) as context:
+            ingestor.run()
+        self.assertIn(
+            'historical_source_id is required',
+            str(context.exception)
+        )
+        mock_open_zarr.assert_not_called()
+        mock_dask_compute.assert_not_called()
+
+        session.additional_config = {
+            'historical_source_id': 9999,
+        }
+        session.save()
+        ingestor = SalientHistoricalIngestor(session, working_dir='/tmp')
+        with self.assertRaises(ValueError) as context:
+            ingestor.run()
+        self.assertIn(
+            'DataSourceFile with id 9999 does not exist',
+            str(context.exception)
+        )
+        mock_open_zarr.assert_not_called()
+        mock_dask_compute.assert_not_called()
+
+    @patch('xarray.open_zarr')
+    @patch('gap.ingestor.salient.execute_dask_compute')
+    def test_ingestor_success(self, mock_dask_compute, mock_open_zarr):
+        """Test successful run of Salient Ingestor for historical data."""
+        source = DataSourceFileFactory.create(
+            dataset=self.dataset,
+            name=f'{str(uuid.uuid4())}.zarr',
+            format=DatasetStore.ZARR,
+        )
+        session = IngestorSession.objects.create(
+            ingestor_type=IngestorType.SALIENT_HISTORICAL,
+            trigger_task=False,
+            additional_config={
+                'historical_source_id': source.id
+            }
+        )
+        ingestor = SalientHistoricalIngestor(session, working_dir='/tmp')
+
+        # Mock the open_dataset return value
+        mock_dataset = xrDataset(
+            {
+                'temp': (
+                    ('ensemble', 'forecast_day', 'lat', 'lon'),
+                    np.random.rand(50, 275, 2, 2)
+                ),
+            },
+            coords={
+                'forecast_date': pd.date_range('2024-10-02', periods=1),
+                'forecast_day': pd.date_range('2024-10-02', periods=275),
+                'lat': [-27, -26.75],
+                'lon': [21.8, 22.05],
+            }
+        )
+        mock_open_zarr.return_value = mock_dataset
+
+        ingestor.run()
+
+        # Assertions
+        mock_open_zarr.assert_called_once()
+        mock_dask_compute.assert_called_once()
+        source.refresh_from_db()
+        self.assertIsNotNone(source.deleted_at)
