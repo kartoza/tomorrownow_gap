@@ -229,6 +229,11 @@ class DataSourceFileCache(models.Model):
         blank=True
     )
     size = models.PositiveBigIntegerField(default=0)
+    cache_dir = models.TextField(
+        null=True,
+        blank=True,
+        help_text="Path to the cache directory for this source file."
+    )
 
     class Meta:
         """Meta class for DataSourceFileCache."""

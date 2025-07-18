@@ -5,6 +5,7 @@ Tomorrow Now GAP.
 .. note:: Unit tests for Zarr Utilities.
 """
 
+from unittest import mock
 from django.test import TestCase
 from datetime import datetime
 from xarray.core.dataset import Dataset as xrDataset
@@ -36,6 +37,7 @@ from gap.factories import (
     DataSourceFileFactory,
     DataSourceFileCacheFactory
 )
+from gap.utils.zarr import BaseZarrReader
 
 
 class TestCBAMZarrReader(TestCase):
@@ -121,10 +123,17 @@ class TestCBAMZarrReader(TestCase):
     @patch('xarray.open_zarr')
     @patch('fsspec.filesystem')
     @patch('s3fs.S3FileSystem')
+    @patch('os.uname')
+    @patch('os.getpid')
     def test_open_dataset(
-        self, mock_s3fs, mock_fsspec_filesystem, mock_open_zarr
+        self, mock_getpid, mock_uname, mock_s3fs,
+        mock_fsspec_filesystem, mock_open_zarr
     ):
         """Test open zarr dataset function."""
+        # Mock uname to get hostname
+        mock_uname.return_value = [0, 'test-host']
+        mock_getpid.return_value = 1234
+
         # Mock the s3fs.S3FileSystem constructor
         mock_s3fs_instance = MagicMock()
         mock_s3fs.return_value = mock_s3fs_instance
@@ -155,12 +164,11 @@ class TestCBAMZarrReader(TestCase):
                 'endpoint_url': 'https://test-endpoint.com'
             }
         )
-        cache_filename = 'test_dataset_zarr'
         mock_fsspec_filesystem.assert_called_once_with(
             'filecache',
             target_protocol='s3',
             target_options=self.reader.s3_options,
-            cache_storage=f'/tmp/{cache_filename}',
+            cache_storage=f'/tmp/test-host_1234_{source_file.id}',
             cache_check=3600,
             expiry_time=86400,
             target_kwargs={'s3': mock_s3fs_instance}
@@ -183,8 +191,9 @@ class TestCBAMZarrReader(TestCase):
     @patch('fsspec.filesystem')
     @patch('s3fs.S3FileSystem')
     @patch('os.uname')
+    @patch('os.getpid')
     def test_open_dataset_with_cache(
-        self, mock_uname, mock_s3fs, mock_fsspec_filesystem,
+        self, mock_getpid, mock_uname, mock_s3fs, mock_fsspec_filesystem,
         mock_open_zarr
     ):
         """Test open zarr dataset function."""
@@ -202,6 +211,7 @@ class TestCBAMZarrReader(TestCase):
 
         # Mock uname to get hostname
         mock_uname.return_value = [0, 'test-host']
+        mock_getpid.return_value = 1234
 
         source_file = DataSourceFileFactory.create(
             name='test_dataset.zarr',
@@ -211,7 +221,7 @@ class TestCBAMZarrReader(TestCase):
         )
         source_file_cache = DataSourceFileCacheFactory.create(
             source_file=source_file,
-            hostname='test-host',
+            hostname='test-host_1234',
             expired_on=timezone.now()
         )
         self.reader.setup_reader()
@@ -226,7 +236,7 @@ class TestCBAMZarrReader(TestCase):
                 'endpoint_url': 'https://test-endpoint.com'
             }
         )
-        cache_filename = 'test_dataset_zarr'
+        cache_filename = f'test-host_1234_{source_file.id}'
         mock_fsspec_filesystem.assert_called_once_with(
             'filecache',
             target_protocol='s3',
@@ -241,7 +251,7 @@ class TestCBAMZarrReader(TestCase):
         mock_open_zarr.assert_called_once_with(
             mock_fs_instance.get_mapper.return_value,
             consolidated=True, drop_variables=['test'])
-        mock_uname.assert_called_once()
+        mock_uname.assert_called()
         # assert cache does not expired_on
         source_file_cache.refresh_from_db()
         self.assertIsNone(source_file_cache.expired_on)
@@ -317,8 +327,16 @@ class TestAdminZarrFileActions(TestCase):
 
     @patch('shutil.rmtree')
     @patch('os.path.exists')
-    def test_clear_source_zarr_cache(self, mock_os_path_exists, mock_rmtree):
+    @patch('os.uname')
+    @patch('os.getpid')
+    def test_clear_source_zarr_cache(
+        self, mock_getpid, mock_uname, mock_os_path_exists, mock_rmtree
+    ):
         """Test clear cache DataSourceFile zarr."""
+        # Mock uname to get hostname
+        mock_uname.return_value = [0, 'test-host']
+        mock_getpid.return_value = 1234
+
         # Mock the queryset with a Zarr file
         data_source = DataSourceFileFactory.create(
             format=DatasetStore.ZARR,
@@ -337,20 +355,26 @@ class TestAdminZarrFileActions(TestCase):
         clear_source_zarr_cache(mock_modeladmin, mock_request, mock_queryset)
 
         # Assertions
-        mock_os_path_exists.assert_called_once_with('/tmp/test_zarr')
-        mock_rmtree.assert_called_once_with('/tmp/test_zarr')
+        cache_dir = f'/tmp/test-host_1234_{data_source.id}'
+        mock_os_path_exists.assert_called_once_with(cache_dir)
+        mock_rmtree.assert_called_once_with(cache_dir)
         mock_modeladmin.message_user.assert_called_once_with(
             mock_request,
-            '/tmp/test_zarr has been cleared!',
+            f'{cache_dir} has been cleared!',
             messages.SUCCESS
         )
 
     @patch('gap.admin.main.get_directory_size')
     @patch('os.path.exists')
+    @patch('os.uname')
+    @patch('os.getpid')
     def test_calculate_zarr_cache_size(
-        self, mock_os_path_exists, mock_calculate
+        self, mock_getpid, mock_uname, mock_os_path_exists, mock_calculate
     ):
         """Test calculate zarr cache size."""
+        # Mock uname to get hostname
+        mock_uname.return_value = [0, 'test-host']
+        mock_getpid.return_value = 1234
         # Mock the queryset with a Zarr file
         data_source = DataSourceFileFactory.create(
             format=DatasetStore.ZARR,
@@ -374,8 +398,9 @@ class TestAdminZarrFileActions(TestCase):
         calculate_zarr_cache_size(mock_modeladmin, mock_request, mock_queryset)
 
         # Assertions
-        mock_os_path_exists.assert_called_once_with('/tmp/test_zarr')
-        mock_calculate.assert_called_once_with('/tmp/test_zarr')
+        cache_dir = f'/tmp/test-host_1234_{data_source.id}'
+        mock_os_path_exists.assert_called_once_with(cache_dir)
+        mock_calculate.assert_called_once_with(cache_dir)
         mock_modeladmin.message_user.assert_called_once_with(
             mock_request,
             'Calculate zarr cache size successful!',
@@ -386,8 +411,15 @@ class TestAdminZarrFileActions(TestCase):
 
     @patch('shutil.rmtree')
     @patch('os.path.exists')
-    def test_clear_zarr_dir_cache(self, mock_os_path_exists, mock_rmtree):
+    @patch('os.uname')
+    @patch('os.getpid')
+    def test_clear_zarr_dir_cache(
+        self, mock_getpid, mock_uname, mock_os_path_exists, mock_rmtree
+    ):
         """Test clear_zarr_dir_cache."""
+        # Mock uname to get hostname
+        mock_uname.return_value = [0, 'test-host']
+        mock_getpid.return_value = 1234
         # Mock the queryset with a Zarr file
         data_source = DataSourceFileFactory.create(
             format=DatasetStore.ZARR,
@@ -410,10 +442,28 @@ class TestAdminZarrFileActions(TestCase):
         clear_zarr_dir_cache(mock_modeladmin, mock_request, mock_queryset)
 
         # Assertions
-        mock_os_path_exists.assert_called_once_with('/tmp/test_zarr')
-        mock_rmtree.assert_called_once_with('/tmp/test_zarr')
+        cache_dir = f'/tmp/test-host_1234_{data_source.id}'
+        mock_os_path_exists.assert_called_once_with(cache_dir)
+        mock_rmtree.assert_called_once_with(cache_dir)
         mock_modeladmin.message_user.assert_called_once_with(
             mock_request,
-            '/tmp/test_zarr has been cleared!',
+            f'{cache_dir} has been cleared!',
             messages.SUCCESS
         )
+
+
+class TestBaseZarrReader(TestCase):
+    """Test for BaseZarrReader utility functions."""
+
+    @mock.patch('os.getpid')
+    @mock.patch('os.uname')
+    def test_get_zarr_cache_dir(self, mock_uname, mock_getpid):
+        """Test get_zarr_cache_dir function."""
+        mock_uname.return_value = ['test-host', 'test-hostname']
+        mock_getpid.return_value = 1234
+        data_source = DataSourceFileFactory.create(
+            name='test.zarr'
+        )
+        expected_cache_dir = f'/tmp/test-hostname_1234_{data_source.id}'
+        cache_dir = BaseZarrReader.get_zarr_cache_dir(data_source)
+        self.assertEqual(cache_dir, expected_cache_dir)
