@@ -5,6 +5,7 @@ Tomorrow Now GAP.
 .. note:: Unit tests for Zarr Utilities.
 """
 
+from unittest import mock
 from django.test import TestCase
 from datetime import datetime
 from xarray.core.dataset import Dataset as xrDataset
@@ -36,6 +37,7 @@ from gap.factories import (
     DataSourceFileFactory,
     DataSourceFileCacheFactory
 )
+from gap.utils.zarr import BaseZarrReader
 
 
 class TestCBAMZarrReader(TestCase):
@@ -417,3 +419,20 @@ class TestAdminZarrFileActions(TestCase):
             '/tmp/test_zarr has been cleared!',
             messages.SUCCESS
         )
+
+
+class TestBaseZarrReader(TestCase):
+    """Test for BaseZarrReader utility functions."""
+
+    @mock.patch('os.getpid')
+    @mock.patch('os.uname')
+    def test_get_zarr_cache_dir(self, mock_uname, mock_getpid):
+        """Test get_zarr_cache_dir function."""
+        mock_uname.return_value = ['test-host', 'test-hostname']
+        mock_getpid.return_value = 1234
+        data_source = DataSourceFileFactory.create(
+            name='test.zarr'
+        )
+        expected_cache_dir = f'/tmp/test-hostname_1234_{data_source.id}'
+        cache_dir = BaseZarrReader.get_zarr_cache_dir(data_source)
+        self.assertEqual(cache_dir, expected_cache_dir)

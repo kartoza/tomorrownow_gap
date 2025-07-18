@@ -104,17 +104,32 @@ class BaseZarrReader(BaseNetCDFReader):
         return zarr_url
 
     @classmethod
-    def get_zarr_cache_dir(cls, zarr_filename: str) -> str:
+    def get_zarr_cache_dir(cls, data_source: DataSourceFile) -> str:
         """Get the directory for zarr cache.
 
-        :param zarr_filename: DataSourceFile name
-        :type zarr_filename: str
+        :param data_source: DataSourceFile instance
+        :type data_source: DataSourceFile
         :return: Path to the zarr cache
         :rtype: str
         """
-        cache_filename = zarr_filename.replace('.', '_')
+        hostname = cls.get_reader_hostname()
+        cache_filename = hostname.replace('.', '_') + f'_{data_source.id}'
         cache_filename = cache_filename.replace('/', '_')
         return f'/tmp/{cache_filename}'
+
+    @classmethod
+    def get_reader_hostname(cls) -> str:
+        """Get the hostname with process ID of the reader.
+
+        :return: Hostname of the reader
+        :rtype: str
+        """
+        # Using os.uname() to get the hostname
+        hostname = os.uname()[1]
+        # Append the process ID to the hostname
+        # because we run multiple workers in 1 container
+        hostname += f'_{os.getpid()}'
+        return hostname
 
     def setup_reader(self):
         """Initialize s3fs."""
@@ -173,7 +188,7 @@ class BaseZarrReader(BaseNetCDFReader):
                 'filecache',
                 target_protocol='s3',
                 target_options=s3_options,
-                cache_storage=self.get_zarr_cache_dir(source_file.name),
+                cache_storage=self.get_zarr_cache_dir(source_file),
                 cache_check=3600,
                 expiry_time=86400,
                 target_kwargs={
@@ -202,7 +217,7 @@ class BaseZarrReader(BaseNetCDFReader):
         :param source_file: zarr source file
         :type source_file: DataSourceFile
         """
-        hostname = os.uname()[1]
+        hostname = self.get_reader_hostname()
         cache_row = DataSourceFileCache.objects.filter(
             source_file=source_file,
             hostname=hostname
@@ -213,7 +228,8 @@ class BaseZarrReader(BaseNetCDFReader):
                 DataSourceFileCache.objects.create(
                     source_file=source_file,
                     hostname=hostname,
-                    created_on=timezone.now()
+                    created_on=timezone.now(),
+                    cache_dir=self.get_zarr_cache_dir(source_file)
                 )
                 self.clear_cache(source_file)
             except IntegrityError:
@@ -236,7 +252,7 @@ class BaseZarrReader(BaseNetCDFReader):
         :param source_file: DataSourceFile for the zarr
         :type source_file: DataSourceFile
         """
-        cache_dir = self.get_zarr_cache_dir(source_file.name)
+        cache_dir = self.get_zarr_cache_dir(source_file)
         if os.path.exists(cache_dir):
             shutil.rmtree(cache_dir)
 

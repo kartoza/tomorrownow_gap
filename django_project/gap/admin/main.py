@@ -208,8 +208,7 @@ def _clear_zarr_cache(source: DataSourceFile, modeladmin, request):
         )
         return
 
-    name = source.name
-    zarr_path = BaseZarrReader.get_zarr_cache_dir(name)
+    zarr_path = BaseZarrReader.get_zarr_cache_dir(source)
     if os.path.exists(zarr_path):
         shutil.rmtree(zarr_path)
 
@@ -250,8 +249,7 @@ class DataSourceFileAdmin(admin.ModelAdmin):
 def calculate_zarr_cache_size(modeladmin, request, queryset):
     """Calculate the size of zarr cache."""
     for query in queryset:
-        name = query.source_file.name
-        zarr_path = BaseZarrReader.get_zarr_cache_dir(name)
+        zarr_path = BaseZarrReader.get_zarr_cache_dir(query.source_file)
         if not os.path.exists(zarr_path):
             continue
 
@@ -278,10 +276,10 @@ class DataSourceFileCacheAdmin(admin.ModelAdmin):
     """DataSourceFileCache admin."""
 
     list_display = (
-        'get_name', 'get_dataset', 'hostname',
+        'get_name', 'get_dataset', 'get_path',
         'get_cache_size', 'created_on', 'expired_on'
     )
-    list_filter = ('hostname',)
+    list_filter = ('created_on',)
     actions = (calculate_zarr_cache_size, clear_zarr_dir_cache,)
 
     def get_name(self, obj: DataSourceFileCache):
@@ -308,12 +306,18 @@ class DataSourceFileCacheAdmin(admin.ModelAdmin):
         """Get the cache size."""
         return format_size(obj.size)
 
+    def get_path(self, obj: DataSourceFileCache):
+        """Get the cache directory path."""
+        return obj.cache_dir if obj.cache_dir else obj.hostname
+
     get_name.short_description = 'Name'
     get_name.admin_order_field = 'source_file__name'
     get_dataset.short_description = 'Dataset'
     get_dataset.admin_order_field = 'source_file__dataset__name'
     get_cache_size.short_description = 'Cache Size'
     get_cache_size.admin_order_field = 'size'
+    get_path.short_description = 'Cache Path'
+    get_path.admin_order_field = 'cache_dir'
 
 
 @admin.register(Village)
