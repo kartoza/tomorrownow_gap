@@ -29,6 +29,7 @@ class SPWIngestor(BaseIngestor):
     """Ingestor for SPW monthly data to GeoParquet files."""
 
     def __init__(self, session: IngestorSession, working_dir: str = '/tmp'):
+        """Initialize SPW Ingestor."""
         super().__init__(session, working_dir)
         self.use_ssl = None
 
