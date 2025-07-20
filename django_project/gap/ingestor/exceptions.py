@@ -53,3 +53,13 @@ class MissingCollectorSessionException(Exception):
             f'Missing collector session in IngestorSession {session_id}.'
         )
         super().__init__(self.message)
+
+
+class NoDataException(Exception):
+    """No data found."""
+
+    def __init__(self, date, data_type):  # noqa
+        self.message = (
+            f'No data found for {data_type} on {date}.'
+        )
+        super().__init__(self.message)

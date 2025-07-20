@@ -131,7 +131,12 @@ app.conf.beat_schedule = {
         'task': 'cleanup_deleted_zarr',
         # run once a day at 23:00
         'schedule': crontab(minute=0, hour=23),
-    }
+    },
+    'store-spw-to-parquet-monthly': {
+        'task': 'store_spw_to_parquet_monthly',
+        # Run every first day and 15th of each month at 12:00 UTC
+        'schedule': crontab(minute='0', hour='12', day_of_month='1,15'),
+    },
 }
 
 
