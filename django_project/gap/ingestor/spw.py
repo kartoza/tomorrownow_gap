@@ -277,4 +277,6 @@ class SPWIngestor(BaseIngestor):
             'Exporting spw_signal to GeoParquet'
         )
 
+        # Clean up
+        conn.execute("DETACH pg_conn;")
         conn.close()
