@@ -17,7 +17,7 @@ from core.celery import app
 from core.utils.emails import get_admin_emails
 from gap.models import (
     Dataset, DataSourceFile, Preferences,
-    DatasetStore
+    DatasetStore, FarmSuitablePlantingWindowSignal
 )
 from gap.models.ingestor import (
     IngestorSession, IngestorType,
@@ -188,3 +188,26 @@ def reset_measurements(dataset_id: int):
         cursor.execute(raw_sql, [dataset.id])
 
     logger.info(f"Measurements for dataset {dataset.name} have been reset.")
+
+
+@app.task(name='store_spw_to_parquet_monthly')
+def store_spw_to_parquet_monthly():
+    """Convert SPW monthly data to parquet files."""
+    today = timezone.now().date()
+    if today.day == 1:
+        # if today is the first day of the month,
+        # run the ingestor for previous month data
+        today = today - timezone.timedelta(days=1)
+    total_count = FarmSuitablePlantingWindowSignal.objects.filter(
+        generated_date__year=today.year,
+        generated_date__month=today.month
+    ).count()
+    if total_count > 0:
+        # create the ingestor session and the ingestor will run in background
+        IngestorSession.objects.create(
+            ingestor_type=IngestorType.SPW_GEOPARQUET,
+            additional_config={
+                'month': today.month,
+                'year': today.year
+            }
+        )

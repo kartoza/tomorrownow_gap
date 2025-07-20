@@ -31,7 +31,7 @@ class SPWIngestor(BaseIngestor):
     def __init__(self, session: IngestorSession, working_dir: str = '/tmp'):
         """Initialize SPW Ingestor."""
         super().__init__(session, working_dir)
-        self.use_ssl = None
+        self.use_ssl = self.get_config('use_ssl', None)
 
     def _init_config(self):
         self.month = self.get_config('month')
@@ -142,7 +142,7 @@ class SPWIngestor(BaseIngestor):
             )
             """
         )
-        total_farms = conn.sql(sql).fetchone()[0]
+        total_records = conn.sql(sql).fetchone()[0]
 
         # Fetch  data from pg_conn
         sql = (
@@ -183,7 +183,7 @@ class SPWIngestor(BaseIngestor):
         self._execute_sql(
             conn, sql,
             f'Inserting data for farm group {farm_group.name} '
-            f'({total_farms} farms)'
+            f'({total_records} records)'
         )
 
     def _run(self):
@@ -280,3 +280,11 @@ class SPWIngestor(BaseIngestor):
         # Clean up
         conn.execute("DETACH pg_conn;")
         conn.close()
+
+    def run(self):
+        """Run the ingestor."""
+        # Run the ingestion
+        try:
+            self._run()
+        except Exception as e:
+            raise Exception(e)

@@ -5,6 +5,8 @@ Tomorrow Now GAP.
 .. note:: Unit tests for SPW Ingestor.
 """
 
+import datetime
+from unittest.mock import patch
 from django.test import TransactionTestCase
 from django.contrib.gis.geos import Point
 
@@ -21,6 +23,7 @@ from gap.factories import (
     FarmSuitablePlantingWindowSignalFactory,
     FarmFactory
 )
+from gap.tasks.ingestor import store_spw_to_parquet_monthly
 
 
 class SPWIngestorTest(TransactionTestCase):
@@ -257,3 +260,68 @@ class SPWIngestorTest(TransactionTestCase):
         ).fetchone()[0]
         self.assertTrue(count > 0)
         conn.close()
+
+    @patch('gap.tasks.ingestor.run_ingestor_session.delay')
+    @patch('django.utils.timezone.now')
+    def test_store_spw_to_parquet_monthly(self, mock_now, mock_run_ingestor):
+        """Test the store_spw_to_parquet_monthly task."""
+        today = datetime.date(2023, 2, 1)
+        mock_now.return_value = datetime.datetime.combine(
+            today, datetime.time(0, 0)
+        )
+        FarmSuitablePlantingWindowSignalFactory.create(
+            farm=self.farm1,
+            generated_date=f'{today.year}-{today.month - 1}-01'
+        )
+        FarmSuitablePlantingWindowSignalFactory.create(
+            farm=self.farm2,
+            generated_date=f'{today.year}-{today.month - 1}-01'
+        )
+        FarmSuitablePlantingWindowSignalFactory.create(
+            farm=self.farm3,
+            generated_date=f'{today.year}-{today.month - 1}-01'
+        )
+        FarmSuitablePlantingWindowSignalFactory.create(
+            farm=self.farm4,
+            generated_date=f'{today.year}-{today.month - 1}-01'
+        )
+
+        store_spw_to_parquet_monthly()
+
+        # Check if the parquet file is created
+        previous_month = today - datetime.timedelta(days=1)
+        ingestor_session = IngestorSession.objects.filter(
+            ingestor_type=IngestorType.SPW_GEOPARQUET,
+            additional_config__month=previous_month.month,
+            additional_config__year=previous_month.year
+        ).first()
+        self.assertIsNotNone(ingestor_session)
+        mock_run_ingestor.assert_called_once()
+
+    @patch('gap.tasks.ingestor.run_ingestor_session.delay')
+    @patch('django.utils.timezone.now')
+    def test_store_spw_to_parquet_monthly_empty(
+        self, mock_now, mock_run_ingestor
+    ):
+        """Test the store_spw_to_parquet_monthly task."""
+        today = datetime.date(2023, 2, 1)
+        mock_now.return_value = datetime.datetime.combine(
+            today, datetime.time(0, 0)
+        )
+        store_spw_to_parquet_monthly()
+
+        # Check if the parquet file is created
+        previous_month = today - datetime.timedelta(days=1)
+        ingestor_session = IngestorSession.objects.filter(
+            ingestor_type=IngestorType.SPW_GEOPARQUET,
+            additional_config__month=previous_month.month,
+            additional_config__year=previous_month.year
+        ).first()
+        self.assertIsNone(ingestor_session)
+        ingestor_session = IngestorSession.objects.filter(
+            ingestor_type=IngestorType.SPW_GEOPARQUET,
+            additional_config__month=today.month,
+            additional_config__year=today.year
+        ).first()
+        self.assertIsNone(ingestor_session)
+        mock_run_ingestor.assert_not_called()
