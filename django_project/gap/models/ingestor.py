@@ -43,6 +43,7 @@ class IngestorType:
     DCAS_MESSAGE = 'DCAS Message'
     HOURLY_TOMORROWIO = 'Hourly Tomorrow.io'
     SALIENT_HISTORICAL = 'Salient Historical'
+    SPW_GEOPARQUET = 'SPW Geoparquet'
 
 
 class IngestorSessionStatus:
@@ -91,6 +92,7 @@ class BaseSession(models.Model):
             (IngestorType.DCAS_MESSAGE, IngestorType.DCAS_MESSAGE),
             (IngestorType.HOURLY_TOMORROWIO, IngestorType.HOURLY_TOMORROWIO),
             (IngestorType.SALIENT_HISTORICAL, IngestorType.SALIENT_HISTORICAL),
+            (IngestorType.SPW_GEOPARQUET, IngestorType.SPW_GEOPARQUET),
         ),
         max_length=512
     )
@@ -239,6 +241,7 @@ class IngestorSession(BaseSession):
             WindborneParquetIngestorAppender
         )
         from gap.ingestor.dcas_message import DCASMessageIngestor
+        from gap.ingestor.spw import SPWIngestor
 
         ingestor = None
         if self.ingestor_type == IngestorType.TAHMO:
@@ -273,6 +276,8 @@ class IngestorSession(BaseSession):
             ingestor = DCASMessageIngestor
         elif self.ingestor_type == IngestorType.HOURLY_TOMORROWIO:
             ingestor = TioHourlyShortTermIngestor
+        elif self.ingestor_type == IngestorType.SPW_GEOPARQUET:
+            ingestor = SPWIngestor
 
         if ingestor:
             ingestor_obj = ingestor(self, working_dir)
