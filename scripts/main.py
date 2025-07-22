@@ -9,6 +9,7 @@ import datetime
 from analytics.spw import fetch_spw_data, read_spw_geoparquet_by_farm_group
 from analytics.farmers import read_excel_stats, read_excel_farmers
 from analytics.dcas import read_dcas_geoparquet, get_dcas_stats
+from analytics.fixtures import SPW_MESSAGE_DICT
 
 
 def compare_spw_stats():
@@ -91,6 +92,10 @@ def pull_spw_data(date):
     # rename farm_unique_id to farmer_id
     print(f'Length of SPW Data: {len(df)}')
 
+    # Add columns SPWTopMessage and SPWDescription
+    df['SPWTopMessage'] = df['signal'].map(lambda x: SPW_MESSAGE_DICT.get(x, {}).get('message', ''))
+    df['SPWDescription'] = df['signal'].map(lambda x: SPW_MESSAGE_DICT.get(x, {}).get('description', ''))
+
     # pull DCAS data
     dcas_df = read_dcas_geoparquet(date, farmer_df['farmer_id'].tolist())
     dcas_columns = [
@@ -116,7 +121,7 @@ def pull_spw_data(date):
 
     # store the output dataframe to excel
     output_columns = [
-        'date', 'farmer_id', 'farm_group', 'signal',
+        'date', 'farmer_id', 'farm_group', 'signal',  'SPWTopMessage', 'SPWDescription',
         'last_2_days', 'last_4_days', 'today_tomorrow', 'too_wet_indicator',
         'planting_date', 'crop',
         'message', 'message_2', 'message_3', 'message_4', 'message_5'
@@ -168,5 +173,10 @@ def extract_farms():
 
 
 if __name__ == "__main__":
-    date = datetime.date(2025, 4, 30)
-    extract_farms()
+    start_date = datetime.date(2025, 4, 5)
+    end_date = datetime.date(2025, 4, 12)
+    current_date = start_date
+    while current_date <= end_date:
+        print(f'Processing date: {current_date}')
+        pull_spw_data(current_date)
+        current_date += datetime.timedelta(days=1)
