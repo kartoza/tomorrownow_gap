@@ -34,3 +34,7 @@ docs/mkdocs.yml
 locust_auth.json
 
 .vscode-extensions/
+
+# Ignore input and output directories in scripts
+scripts/input/
+scripts/output/

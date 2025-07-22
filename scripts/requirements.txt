@@ -1,0 +1,5 @@
+duckdb==1.1.3
+pydantic-settings
+openpyxl
+xlrd
+pandas
