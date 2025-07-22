@@ -6,7 +6,7 @@ Tomorrow Now GAP.
 """
 
 import datetime
-from analytics.spw import fetch_spw_data
+from analytics.spw import fetch_spw_data, read_spw_geoparquet_by_farm_group
 from analytics.farmers import read_excel_stats, read_excel_farmers
 from analytics.dcas import read_dcas_geoparquet, get_dcas_stats
 
@@ -128,8 +128,45 @@ def pull_spw_data(date):
     print(f'Output saved to {output_file}')
 
 
-if __name__ == "__main__":
-    date = datetime.date(2025, 4, 4)
-    pull_spw_data(date)
+def extract_farms():
+    """Extract farms from SPW data."""
+    date = datetime.date(2025, 4, 30)
+    farm_groups = [
+        'KALRO',
+        'Laikipia Trial Site',
+        'Meru Trial Site',
+        'Regen organics pilot',
+        'Trial site 1',
+        'Trial site 2'
+    ]
 
-    # get_dcas_stats(date)
+    for farm_group in farm_groups:
+        print(f'Processing farm group: {farm_group}')
+        df = read_spw_geoparquet_by_farm_group(date, farm_group)
+        if df.empty:
+            print(f'No data found for farm group: {farm_group}')
+            continue
+        
+        # convert farm_unique_id to string for merging
+        df['farm_unique_id'] = df['farm_unique_id'].astype(str)
+        
+        # store the output dataframe to excel
+        print(f'Length of SPW Data for farm group {farm_group}: {len(df)}')
+        # rename columns for clarity
+        df.rename(columns={
+            'farm_unique_id': 'FarmerID',
+            'farm_group': 'FarmGroup',
+            'latitude': 'Latitude',
+            'longitude': 'Longitude'
+        }, inplace=True)
+        output_file = f'output/SPW_FARM_GROUP_{farm_group}.xlsx'
+        output_columns = [
+            'FarmerID', 'FarmGroup', 'Latitude', 'Longitude',
+        ]
+        df[output_columns].to_excel(output_file, index=False)
+        print(f'Output saved to {output_file}')
+
+
+if __name__ == "__main__":
+    date = datetime.date(2025, 4, 30)
+    extract_farms()

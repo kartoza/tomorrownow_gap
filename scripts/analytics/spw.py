@@ -33,6 +33,31 @@ def read_spw_geoparquet(date, farmer_ids):
     return df
 
 
+def read_spw_geoparquet_by_farm_group(date, farm_group):
+    """Read SPW GeoParquet data for a specific month and year.
+
+    Args:
+        date (datetime.date): The date for which to fetch SPW data.
+        farm_group (str): farm group name to filter the data.
+    Returns:
+        pd.DataFrame: DataFrame containing SPW data for the specified date and farmers.
+    """
+    settings = get_settings()
+    conn = get_duckdb_connection()
+    query = f"""
+        SELECT *, ST_X(geometry) AS longitude, ST_Y(geometry) AS latitude
+        FROM read_parquet(
+            's3://{settings.S3_BUCKET_NAME}/{settings.SPW_GEOPARQUET_PATH}/year={date.year}/month={date.month}.parquet',
+            hive_partitioning=True
+        )
+        WHERE date=$1 AND farm_group=$2;
+    """
+    df = conn.execute(query, (date, farm_group)).df()
+
+    conn.close()
+    return df
+
+
 def fetch_spw_data(spw_date, df):
     """Fetch SPW data from FarmID in the excel file.
 
