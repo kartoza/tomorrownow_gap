@@ -88,16 +88,21 @@ def sm_decision(
 def routine_operations_v2(
     yearin, monthin, dayin, obsfile,
     tamsat_url, working_dir,
-    output_domain='Region', pfc_thresh=70,
-    pfc_prob_thresh=0.8, wrsi_thresh_factor=0.75,
-    wrsi_prob_thresh=0.5, local_flag=0,
-    csv_output=True
+    output_domain='Region', pfc_thresh=70, pfc_prob_thresh=0.8,
+    wrsi_thresh_factor=0.75, wrsi_prob_thresh=0.5, ecmwf_flag=1,
+    local_flag=0, user_col=None, csv_output=True
 ):
     """
     Calculate the TAMSAT-ALERT planting date DST (Decision Support Tool).
 
-    This function uses user-defined locations and parameters,
-    using soil moisture forecasts available at {tamsat_url}.
+    This functions uses user-defined locations and parameters,
+    using all Africa soil moisture and WRSI forecasts
+    available at: {tamsat_url}.
+
+    This tool supports both local files and automatic download of required
+    forecast files. Outputs include planting suitability decisions for
+    different soil moisture thresholds and simplified outputs suitable for
+    direct use by local partners (basic CSV file).
 
     Parameters
     ----------
@@ -109,54 +114,81 @@ def routine_operations_v2(
         Day for which the DST will be run.
     obsfile : str
         Full path to the CSV file containing the locations of the sites.
-        This file must contain a column called 'Longitude' and
-        a column called 'Latitude' (case sensitive).
+        This file must contain a column called 'Longitude' and a column
+        called 'Latitude' (case sensitive).
         Other columns (e.g. farmer identifiers) may also be present.
     tamsat_url : str
         URL of the TAMSAT website where the soil moisture data is stored.
     working_dir : str
         Directory where the soil moisture data files will be stored.
-    output_domain : str
-        Domain string to be included in the output filename.
-    pfc_thresh : float
-        Threshold soil moisture considered suitable for planting,
-        expressed as percent field capacity (range 0-100).
+    output_domain : str, optional (default='Region')
+        Domain string to be included in the output filenames.
+    pfc_thresh : float, optional (default=70)
+        Threshold soil moisture considered suitable for planting, expressed as
+        percent field capacity (range 0-100).
         For most regions, a sensible value is 70.
-    pfc_prob_thresh : float
-        Minimum probability that pfc_thresh will be exceeded
-        in order for planting to be advised (range 0-1).
-        For most regions, a sensible value is 0.8.
-    wrsi_thresh_factor : float
-        Fraction of the local maximum climatological WRSI to be attained
-        for planting to be advised (range 0-1).
-        For most regions, a sensible value is 0.75.
-    wrsi_prob_thresh : float
-        Minimum probability that the wrsi_thresh_factor will be exceeded
-        in order for planting to be advised (range 0-1).
-        For most regions, a sensible value is 0.5.
+    pfc_prob_thresh : float, optional (default=0.8)
+        Minimum probability that pfc_thresh will be exceeded in order for
+        planting to be advised (range 0-1).
+    wrsi_thresh_factor : float, optional (default=0.75)
+        Fraction of the local maximum climatological WRSI to be attained for
+        planting to be advised (range 0-1).
+    wrsi_prob_thresh : float, optional (default=0.5)
+        Minimum probability that the wrsi_thresh_factor will be exceeded in
+        order for planting to be advised (range 0-1).
+    ecmwf_flag : int, optional (default=1)
+        If set to 1, ECMWF ensemble-based forecasts are used.
+        If set to 0, non-ECMWF (climatology-based) forecasts are used.
     local_flag : int, optional (default=0)
-        If set to 1, local files are used; if set to 0,
-        files are retrieved from the TAMSAT website.
-        If local files are used, they must be present
+        If set to 1, local files are used; if set to 0, files are retrieved
+        from the TAMSAT website. If local files are used, they must be present
         in the working directory.
+    user_col : str, optional (default=None)
+        User-specified column from the input CSV file to be included in
+        the "basic" CSV file. This allows users to include an additional
+        identifying column (e.g. farmer reference, site name).
+        The full CSV file will contain all columns
+        from the original input file.
     csv_output : bool, optional (default=True)
         If True, the output will be saved as a CSV file.
 
     Output
     ------
-    A CSV file called <output_domain>_<yearin>_<monthin>_<dayin>.csv
-    is produced.
-    This file contains all columns from the input CSV file,
-    plus additional columns:
-        - pfc_probability
-        - wrsi_probability
-        - pfc_decision
-        - wrsi_decision
-        - overall_decision
+    Two CSV files are produced (if `csv_output` is True):
+
+    1. Full CSV file:
+        <output_domain><yearin>_<monthin>_<dayin>_PFC<pfc_thresh>.csv
+        - Contains *all columns from the input CSV file*.
+        - Adds the following columns:
+            - sm_25, sm_50, sm_70 : Planting suitability decisions at
+            25%, 50%, and 70% PFC thresholds.
+            - spw_20, spw_40, spw_60 : Short-period WRSI-based indicators.
+            - pfc_probability and wrsi_probability (with or without
+            ECMWF forecasts, depending on `ecmwf_flag`).
+            - pfc_decision, wrsi_decision, overall_sm_decision
+            (or their ECMWF equivalents).
+
+    2. Basic CSV file:
+        <output_domain><yearin>_<monthin>_<dayin>.csv
+        - A simplified file intended for sharing with local partners.
+        - Contains only the following columns:
+            - Longitude
+            - Latitude
+            - sm_25
+            - sm_50
+            - sm_70
+            - spw_20
+            - spw_40
+            - spw_60
+            - user_col (specified by the `user_col` argument)
 
     Returns
     -------
-    Pandas dataframe that is output to the CSV file (see above)
+    obsdata : pandas.DataFrame
+        The full dataframe containing all columns, written to
+        the "full CSV" file.
+    obsdata_basic : pandas.DataFrame
+        The simplified dataframe written to the "basic CSV" file.
 
     Example usage
     -------------
@@ -177,6 +209,15 @@ def routine_operations_v2(
                           working_dir, output_domain,
                           pfc_thresh, pfc_prob_thresh, wrsi_thresh_factor,
                           wrsi_prob_thresh, local_flag=local_flag)
+
+    Notes
+    -----
+    - The function will attempt to download required forecast files
+    if `local_flag` is set to 0.
+    - Forecast files are stored locally for reuse.
+    - The basic CSV file can be used as a light-weight, shareable version of
+    the output for extension services.
+    - The function returns both DataFrames for further processing if needed.
     """
     # Set up the date that the planting date DST is to be run for
     datein = dtmod.datetime(int(yearin), int(monthin), int(dayin))
@@ -265,6 +306,106 @@ def routine_operations_v2(
         working_dir
     )
 
+    # Set up pre-determined thresholds
+    column_name_pfc_mean = str('pfc_ecmwf_mean')
+    column_name_pfc_sd = str('pfc_ecmwf_std')
+    # pfc_thresh_in = 70
+    # pfc_prob_thresh_in = 0.8
+    # wrsi_thresh_factor_in = 0.75
+    wrsi_prob_thresh = 0.5
+
+    (
+        pfc_ecmwf_risk_out_70, wrsi_risk_out_70, pfc_ecmwf_decision_70,
+        wrsi_decision_70, overall_ecmwf_sm_decision_70
+    ) = sm_decision(
+        planting_dst_output, column_name_pfc_mean, column_name_pfc_sd,
+        pfc_thresh, pfc_prob_thresh, wrsi_thresh_factor, wrsi_prob_thresh,
+        working_dir
+    )
+
+    column_name_pfc_mean = str('pfc_ecmwf_mean')
+    column_name_pfc_sd = str('pfc_ecmwf_std')
+    # pfc_thresh_in = 50
+    # pfc_prob_thresh_in = 0.8
+    # wrsi_thresh_factor_in = 0.75
+    wrsi_prob_thresh = 0.5
+
+    (
+        pfc_ecmwf_risk_out_50, wrsi_risk_out_50, pfc_ecmwf_decision_50,
+        wrsi_decision_50, overall_ecmwf_sm_decision_50
+    ) = sm_decision(
+        planting_dst_output, column_name_pfc_mean, column_name_pfc_sd,
+        pfc_thresh, pfc_prob_thresh, wrsi_thresh_factor, wrsi_prob_thresh,
+        working_dir
+    )
+
+    column_name_pfc_mean = str('pfc_ecmwf_mean')
+    column_name_pfc_sd = str('pfc_ecmwf_std')
+    # pfc_thresh_in = 25
+    # pfc_prob_thresh_in = 0.8
+    # wrsi_thresh_factor_in = 0.75
+    wrsi_prob_thresh = 0.5
+
+    (
+        pfc_ecmwf_risk_out_25, wrsi_risk_out_25, pfc_ecmwf_decision_25,
+        wrsi_decision_25, overall_ecmwf_sm_decision_25
+    ) = sm_decision(
+        planting_dst_output, column_name_pfc_mean, column_name_pfc_sd,
+        pfc_thresh, pfc_prob_thresh, wrsi_thresh_factor, wrsi_prob_thresh,
+        working_dir
+    )
+
+    # 70PFC
+    planting_dst_output['pfc_ecmwf_risk_out_70'] = (
+        ['longitude', 'latitude'], 1 - pfc_ecmwf_risk_out_70
+    )
+    planting_dst_output['wrsi_risk_out_70'] = (
+        ['longitude', 'latitude'], 1 - wrsi_risk_out_70
+    )
+    planting_dst_output['pfc_ecmwf_decision_70'] = (
+        ['longitude', 'latitude'], pfc_ecmwf_decision_70
+    )
+    planting_dst_output['wrsi_decision_70'] = (
+        ['longitude', 'latitude'], wrsi_decision
+    )
+    planting_dst_output['overall_sm_decision_70'] = (
+        ['longitude', 'latitude'], overall_ecmwf_sm_decision_70
+    )
+
+    # 50PFC
+    planting_dst_output['pfc_ecmwf_risk_out_50'] = (
+        ['longitude', 'latitude'], 1 - pfc_ecmwf_risk_out_50
+    )
+    planting_dst_output['wrsi_risk_out_50'] = (
+        ['longitude', 'latitude'], 1 - wrsi_risk_out_50
+    )
+    planting_dst_output['pfc_ecmwf_decision_50'] = (
+        ['longitude', 'latitude'], pfc_ecmwf_decision_50
+    )
+    planting_dst_output['wrsi_decision_50'] = (
+        ['longitude', 'latitude'], wrsi_decision
+    )
+    planting_dst_output['overall_sm_decision_50'] = (
+        ['longitude', 'latitude'], overall_ecmwf_sm_decision_70
+    )
+
+    # 25PFC
+    planting_dst_output['pfc_ecmwf_risk_out_25'] = (
+        ['longitude', 'latitude'], 1 - pfc_ecmwf_risk_out_25
+    )
+    planting_dst_output['wrsi_risk_out_25'] = (
+        ['longitude', 'latitude'], 1 - wrsi_risk_out_25
+    )
+    planting_dst_output['pfc_ecmwf_decision_25'] = (
+        ['longitude', 'latitude'], pfc_ecmwf_decision_25
+    )
+    planting_dst_output['wrsi_decision_25'] = (
+        ['longitude', 'latitude'], wrsi_decision
+    )
+    planting_dst_output['overall_sm_decision_25'] = (
+        ['longitude', 'latitude'], overall_ecmwf_sm_decision_25
+    )
+
     # No ECMWF forecasts
     planting_dst_output['pfc_risk_out'] = (
         ['longitude', 'latitude'], 1 - pfc_risk_out
@@ -293,77 +434,32 @@ def routine_operations_v2(
         ['longitude', 'latitude'], overall_ecmwf_sm_decision
     )
 
-    arrayin_xr = planting_dst_output['pfc_risk_out']
+    arrayin_xr = planting_dst_output['overall_sm_decision_25']
     tmp = arrayin_xr.sel(
         longitude=np.array(obsdata['Longitude']),
         latitude=np.array(obsdata['Latitude']),
         method='nearest'
     )
     obslist = np.diag(tmp.squeeze())
-    obsdata['pfc_noecmwf_probability'] = obslist
+    obsdata['sm_25'] = obslist
 
-    arrayin_xr = planting_dst_output['wrsi_risk_out']
+    arrayin_xr = planting_dst_output['overall_sm_decision_50']
     tmp = arrayin_xr.sel(
         longitude=np.array(obsdata['Longitude']),
         latitude=np.array(obsdata['Latitude']),
         method='nearest'
     )
     obslist = np.diag(tmp.squeeze())
-    obsdata['wrsi_noecmwf_probability'] = obslist
+    obsdata['sm_50'] = obslist
 
-    arrayin_xr = planting_dst_output['pfc_decision']
+    arrayin_xr = planting_dst_output['overall_sm_decision_70']
     tmp = arrayin_xr.sel(
         longitude=np.array(obsdata['Longitude']),
         latitude=np.array(obsdata['Latitude']),
         method='nearest'
     )
     obslist = np.diag(tmp.squeeze())
-    obsdata['pfc_noecmwf_decision'] = obslist
-
-    arrayin_xr = planting_dst_output['wrsi_decision']
-    tmp = arrayin_xr.sel(
-        longitude=np.array(obsdata['Longitude']),
-        latitude=np.array(obsdata['Latitude']),
-        method='nearest'
-    )
-    obslist = np.diag(tmp.squeeze())
-    obsdata['wrsi_noecmwf_decision'] = obslist
-
-    arrayin_xr = planting_dst_output['overall_sm_decision']
-    tmp = arrayin_xr.sel(
-        longitude=np.array(obsdata['Longitude']),
-        latitude=np.array(obsdata['Latitude']),
-        method='nearest'
-    )
-    obslist = np.diag(tmp.squeeze())
-    obsdata['overall_sm_noecmwf_decision'] = obslist
-
-    arrayin_xr = planting_dst_output['pfc_ecmwf_risk_out']
-    tmp = arrayin_xr.sel(
-        longitude=np.array(obsdata['Longitude']),
-        latitude=np.array(obsdata['Latitude']),
-        method='nearest'
-    )
-    obslist = np.diag(tmp.squeeze())
-    obsdata['pfc_ecmwf_probability'] = obslist
-
-    arrayin_xr = planting_dst_output['pfc_ecmwf_decision']
-    tmp = arrayin_xr.sel(
-        longitude=np.array(obsdata['Longitude']),
-        latitude=np.array(obsdata['Latitude']),
-        method='nearest'
-    )
-    obslist = np.diag(tmp.squeeze())
-    obsdata['pfc_ecmwf_decision'] = obslist
-
-    arrayin_xr = planting_dst_output['overall_ecmwf_sm_decision']
-    tmp = arrayin_xr.sel(
-        longitude=np.array(obsdata['Longitude']),
-        latitude=np.array(obsdata['Latitude']),
-        method='nearest'
-    )
-    obslist = np.diag(tmp.squeeze())
-    obsdata['overall_sm_ecmwf_decision'] = obslist
+    obsdata['sm_70'] = obslist
 
     arrayin_xr = planting_dst_output['spw_20']
     tmp = arrayin_xr.sel(
@@ -392,6 +488,129 @@ def routine_operations_v2(
     obslist = np.diag(tmp.squeeze())
     obsdata['spw_60'] = obslist
 
+    if ecmwf_flag == 0:
+        arrayin_xr = planting_dst_output['pfc_risk_out']
+        tmp = arrayin_xr.sel(
+            longitude=np.array(obsdata['Longitude']),
+            latitude=np.array(obsdata['Latitude']),
+            method='nearest'
+        )
+        obslist = np.diag(tmp.squeeze())
+        obsdata['pfc_user_probability'] = obslist
+
+        arrayin_xr = planting_dst_output['wrsi_risk_out']
+        tmp = arrayin_xr.sel(
+            longitude=np.array(obsdata['Longitude']),
+            latitude=np.array(obsdata['Latitude']),
+            method='nearest'
+        )
+        obslist = np.diag(tmp.squeeze())
+        obsdata['wrsi_user_probability'] = obslist
+
+        arrayin_xr = planting_dst_output['pfc_decision']
+        tmp = arrayin_xr.sel(
+            longitude=np.array(obsdata['Longitude']),
+            latitude=np.array(obsdata['Latitude']),
+            method='nearest'
+        )
+        obslist = np.diag(tmp.squeeze())
+        obsdata['pfc_user_decision'] = obslist
+
+        arrayin_xr = planting_dst_output['wrsi_decision']
+        tmp = arrayin_xr.sel(
+            longitude=np.array(obsdata['Longitude']),
+            latitude=np.array(obsdata['Latitude']),
+            method='nearest'
+        )
+        obslist = np.diag(tmp.squeeze())
+        obsdata['wrsi_user_decision'] = obslist
+
+        arrayin_xr = planting_dst_output['overall_sm_decision']
+        tmp = arrayin_xr.sel(
+            longitude=np.array(obsdata['Longitude']),
+            latitude=np.array(obsdata['Latitude']),
+            method='nearest'
+        )
+        obslist = np.diag(tmp.squeeze())
+        obsdata['sm_user_decision'] = obslist
+
+    if ecmwf_flag == 1:
+        arrayin_xr = planting_dst_output['pfc_ecmwf_risk_out']
+        tmp = arrayin_xr.sel(
+            longitude=np.array(obsdata['Longitude']),
+            latitude=np.array(obsdata['Latitude']),
+            method='nearest'
+        )
+        obslist = np.diag(tmp.squeeze())
+        obsdata['pfc_user_probability'] = obslist
+
+        arrayin_xr = planting_dst_output['wrsi_risk_out']
+        tmp = arrayin_xr.sel(
+            longitude=np.array(obsdata['Longitude']),
+            latitude=np.array(obsdata['Latitude']),
+            method='nearest'
+        )
+        obslist = np.diag(tmp.squeeze())
+        obsdata['wrsi_user_probability'] = obslist
+
+        arrayin_xr = planting_dst_output['pfc_ecmwf_decision']
+        tmp = arrayin_xr.sel(
+            longitude=np.array(obsdata['Longitude']),
+            latitude=np.array(obsdata['Latitude']),
+            method='nearest'
+        )
+        obslist = np.diag(tmp.squeeze())
+        obsdata['pfc_user_decision'] = obslist
+
+        arrayin_xr = planting_dst_output['wrsi_decision']
+        tmp = arrayin_xr.sel(
+            longitude=np.array(obsdata['Longitude']),
+            latitude=np.array(obsdata['Latitude']),
+            method='nearest'
+        )
+        obslist = np.diag(tmp.squeeze())
+        obsdata['wrsi_user_decision'] = obslist
+
+        arrayin_xr = planting_dst_output['overall_ecmwf_sm_decision']
+        tmp = arrayin_xr.sel(
+            longitude=np.array(obsdata['Longitude']),
+            latitude=np.array(obsdata['Latitude']),
+            method='nearest'
+        )
+        obslist = np.diag(tmp.squeeze())
+        obsdata['sm_user_decision'] = obslist
+
+    # Select columns correctly using a list
+    if user_col is not None:
+        obsdata_basic = obsdata[
+            [
+                'Longitude',
+                'Latitude',
+                'sm_25',
+                'sm_50',
+                'sm_70',
+                'spw_20',
+                'spw_40',
+                'spw_60',
+                user_col
+            ]
+        ]
+    else:
+        obsdata_basic = obsdata[
+            [
+                'Longitude',
+                'Latitude',
+                'sm_25',
+                'sm_50',
+                'sm_70',
+                'spw_20',
+                'spw_40',
+                'spw_60'
+            ]
+        ]
+
+    # Round values
+    obsdata_basic = obsdata_basic.round(2)
     obsdata = obsdata.round(2)
     if csv_output:
         csv_out = (
@@ -399,6 +618,16 @@ def routine_operations_v2(
             str(datein.month).zfill(2) + str('_') + str(datein.day).zfill(2) +
             str('_') + str('PFC') + str(pfc_thresh) + str('.csv')
         )
-        obsdata.to_csv(os.path.join(working_dir, csv_out))
-    obsdata = pds.DataFrame(obsdata)
-    return obsdata
+        csv_out_basic = (
+            str(output_domain) + str(datein.year) + str('_') +
+            str(datein.month).zfill(2) + str('_') + str(datein.day).zfill(2) +
+            str('.csv')
+        )
+        # Write full obsdata
+        obsdata.to_csv(os.path.join(working_dir, csv_out), index=False)
+        # Write basic obsdata
+        obsdata_basic.to_csv(
+            os.path.join(working_dir, csv_out_basic), index=False
+        )
+
+    return obsdata, obsdata_basic
