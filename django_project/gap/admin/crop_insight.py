@@ -133,8 +133,8 @@ class CropInsightRequestAdmin(admin.ModelAdmin):
     """Admin for CropInsightRequest."""
 
     list_display = (
-        'requested_at', 'farm_group', 'file_url', 'last_task_status',
-        'background_tasks'
+        'requested_at', 'farm_group', 'method', 'file_url',
+        'last_task_status', 'background_tasks'
     )
     actions = (generate_insight_report_action,)
     readonly_fields = ('file',)
