@@ -94,7 +94,7 @@ def routine_operations_v2(
     csv_output=True
 ):
     """
-    Runs the TAMSAT-ALERT planting date DST (Decision Support Tool).
+    Calculate the TAMSAT-ALERT planting date DST (Decision Support Tool).
 
     This function uses user-defined locations and parameters,
     using soil moisture forecasts available at {tamsat_url}.
