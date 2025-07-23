@@ -39,9 +39,6 @@ def sm_decision(
     working_dir
 ):
     """Calculate decision based on planting data output."""
-    #column_name_pfc_mean = str('pfc_mean')
-    #column_name_pfc_sd = str('pfc_std')
-
     pfc_mean = planting_dst_output[column_name_pfc_mean].values
     pfc_sd = planting_dst_output[column_name_pfc_sd].values
 
@@ -69,7 +66,7 @@ def sm_decision(
     wrsi_thresh = wrsi_thresh_factor * np.nanmax(
         wrsi_all['clim_mean_wrsi'], axis=2
     )
-    
+
     wrsi_risk_out = (scipy.stats.norm(wrsi_mean, wrsi_sd).cdf(wrsi_thresh))
 
     wrsi_decision = np.zeros(np.shape(pfc_risk_out))
@@ -97,9 +94,9 @@ def routine_operations_v2(
     csv_output=True
 ):
     """
-    The routine_operations_v2() function runs the TAMSAT-ALERT
-    planting date DST (Decision Support Tool)
-    for user-defined locations and parameters,
+    Runs the TAMSAT-ALERT planting date DST (Decision Support Tool).
+
+    This function uses user-defined locations and parameters,
     using soil moisture forecasts available at {tamsat_url}.
 
     Parameters
@@ -156,7 +153,7 @@ def routine_operations_v2(
         - pfc_decision
         - wrsi_decision
         - overall_decision
-        
+
     Returns
     -------
     Pandas dataframe that is output to the CSV file (see above)
@@ -194,14 +191,14 @@ def routine_operations_v2(
 
     # Assign URL names
     if local_flag == 1:
-        if os.path.exists(pfc_filepath) == False:
+        if not os.path.exists(pfc_filepath):
             input_file = pfc_filepath + str('.gz')
             output_file = pfc_filepath
             with gzip.open(input_file, 'rb') as f_in:
                 with open(output_file, 'wb') as f_out:
                     shutil.copyfileobj(f_in, f_out)
     if local_flag == 0:
-        if os.path.exists(pfc_filepath) == False:
+        if not os.path.exists(pfc_filepath):
             url = tamsat_url + str(filename_pfc) + str('.gz')
             # Stackoverflow guidance on gunzip in Python3
             # https://stackoverflow.com/questions/3548495/
@@ -220,18 +217,21 @@ def routine_operations_v2(
                     outfile.write(decompressed_file.read())
                 pfc = xr.open_dataset(tmp_filename)
                 pfc.to_netcdf(pfc_filepath)
-            except:
-                print("cannot open pfc file")
+            except Exception as e:
+                logger.error(
+                    f"Error downloading or decompressing PFC data: {e}",
+                    exc_info=True
+                )
                 return None
 
             # Assign the filename variable to either the preliminary or
             # non-preliminary file and exit if neither exist
-            if os.path.isfile(pfc_filepath) == False:
+            if not os.path.isfile(pfc_filepath):
                 print('soil moisture forecast file does not exist')
                 return None
 
         # Make a local copy of the wrsi file if we don't have it
-        if os.path.exists(wrsi_filepath) == False:
+        if not os.path.exists(wrsi_filepath):
             response = urllib.request.urlopen(
                 tamsat_url + str(WRSI_FILENAME)
             )
@@ -240,7 +240,7 @@ def routine_operations_v2(
             with open(wrsi_filepath, 'wb') as outfile:
                 outfile.write(wrsi_file.read())
 
-    planting_dst_output=xr.open_dataset(pfc_filepath)
+    planting_dst_output = xr.open_dataset(pfc_filepath)
 
     # select the Correct cumulation and extract the data for this cumulation
     column_name_pfc_mean = str('pfc_mean')
@@ -265,7 +265,7 @@ def routine_operations_v2(
         working_dir
     )
 
-    #No ECMWF forecasts
+    # No ECMWF forecasts
     planting_dst_output['pfc_risk_out'] = (
         ['longitude', 'latitude'], 1 - pfc_risk_out
     )
@@ -337,7 +337,7 @@ def routine_operations_v2(
     )
     obslist = np.diag(tmp.squeeze())
     obsdata['overall_sm_noecmwf_decision'] = obslist
-    
+
     arrayin_xr = planting_dst_output['pfc_ecmwf_risk_out']
     tmp = arrayin_xr.sel(
         longitude=np.array(obsdata['Longitude']),
@@ -364,7 +364,7 @@ def routine_operations_v2(
     )
     obslist = np.diag(tmp.squeeze())
     obsdata['overall_sm_ecmwf_decision'] = obslist
-    
+
     arrayin_xr = planting_dst_output['spw_20']
     tmp = arrayin_xr.sel(
         longitude=np.array(obsdata['Longitude']),
@@ -373,7 +373,7 @@ def routine_operations_v2(
     )
     obslist = np.diag(tmp.squeeze())
     obsdata['spw_20'] = obslist
-    
+
     arrayin_xr = planting_dst_output['spw_40']
     tmp = arrayin_xr.sel(
         longitude=np.array(obsdata['Longitude']),
@@ -382,7 +382,7 @@ def routine_operations_v2(
     )
     obslist = np.diag(tmp.squeeze())
     obsdata['spw_40'] = obslist
-    
+
     arrayin_xr = planting_dst_output['spw_60']
     tmp = arrayin_xr.sel(
         longitude=np.array(obsdata['Longitude']),
