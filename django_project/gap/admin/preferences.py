@@ -27,6 +27,7 @@ class PreferencesAdmin(admin.ModelAdmin):
             'Crop Plan', {
                 'fields': (
                     'crop_plan_config',
+                    'tamsat_url',
                 )
             }
         ),

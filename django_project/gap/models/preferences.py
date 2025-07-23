@@ -236,6 +236,14 @@ class Preferences(SingletonModel):
         )
     )
 
+    # Tamsat website URL
+    tamsat_url = models.CharField(
+        max_length=512,
+        default='',
+        null=True,
+        blank=True
+    )
+
     def social_auth_enabled(self, provider: str) -> bool:
         """Return True if the given provider should be shown in the UI."""
         return bool(self.social_auth_providers.get(provider, False))
