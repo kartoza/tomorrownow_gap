@@ -309,9 +309,9 @@ def routine_operations_v2(
     # Set up pre-determined thresholds
     column_name_pfc_mean = str('pfc_ecmwf_mean')
     column_name_pfc_sd = str('pfc_ecmwf_std')
-    # pfc_thresh_in = 70
-    # pfc_prob_thresh_in = 0.8
-    # wrsi_thresh_factor_in = 0.75
+    pfc_thresh_in = 70
+    pfc_prob_thresh_in = 0.8
+    wrsi_thresh_factor_in = 0.75
     wrsi_prob_thresh = 0.5
 
     (
@@ -319,15 +319,15 @@ def routine_operations_v2(
         wrsi_decision_70, overall_ecmwf_sm_decision_70
     ) = sm_decision(
         planting_dst_output, column_name_pfc_mean, column_name_pfc_sd,
-        pfc_thresh, pfc_prob_thresh, wrsi_thresh_factor, wrsi_prob_thresh,
-        working_dir
+        pfc_thresh_in, pfc_prob_thresh_in, wrsi_thresh_factor_in,
+        wrsi_prob_thresh, working_dir
     )
 
     column_name_pfc_mean = str('pfc_ecmwf_mean')
     column_name_pfc_sd = str('pfc_ecmwf_std')
-    # pfc_thresh_in = 50
-    # pfc_prob_thresh_in = 0.8
-    # wrsi_thresh_factor_in = 0.75
+    pfc_thresh_in = 50
+    pfc_prob_thresh_in = 0.8
+    wrsi_thresh_factor_in = 0.75
     wrsi_prob_thresh = 0.5
 
     (
@@ -335,15 +335,15 @@ def routine_operations_v2(
         wrsi_decision_50, overall_ecmwf_sm_decision_50
     ) = sm_decision(
         planting_dst_output, column_name_pfc_mean, column_name_pfc_sd,
-        pfc_thresh, pfc_prob_thresh, wrsi_thresh_factor, wrsi_prob_thresh,
-        working_dir
+        pfc_thresh_in, pfc_prob_thresh_in, wrsi_thresh_factor_in,
+        wrsi_prob_thresh, working_dir
     )
 
     column_name_pfc_mean = str('pfc_ecmwf_mean')
     column_name_pfc_sd = str('pfc_ecmwf_std')
-    # pfc_thresh_in = 25
-    # pfc_prob_thresh_in = 0.8
-    # wrsi_thresh_factor_in = 0.75
+    pfc_thresh_in = 25
+    pfc_prob_thresh_in = 0.8
+    wrsi_thresh_factor_in = 0.75
     wrsi_prob_thresh = 0.5
 
     (
@@ -351,8 +351,8 @@ def routine_operations_v2(
         wrsi_decision_25, overall_ecmwf_sm_decision_25
     ) = sm_decision(
         planting_dst_output, column_name_pfc_mean, column_name_pfc_sd,
-        pfc_thresh, pfc_prob_thresh, wrsi_thresh_factor, wrsi_prob_thresh,
-        working_dir
+        pfc_thresh_in, pfc_prob_thresh_in, wrsi_thresh_factor_in,
+        wrsi_prob_thresh, working_dir
     )
 
     # 70PFC
@@ -386,7 +386,7 @@ def routine_operations_v2(
         ['longitude', 'latitude'], wrsi_decision
     )
     planting_dst_output['overall_sm_decision_50'] = (
-        ['longitude', 'latitude'], overall_ecmwf_sm_decision_70
+        ['longitude', 'latitude'], overall_ecmwf_sm_decision_50
     )
 
     # 25PFC
