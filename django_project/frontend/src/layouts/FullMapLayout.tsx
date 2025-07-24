@@ -7,9 +7,30 @@ import { BoundingBox } from '@/features/map/types';
 
 export const FullMapLayout = () => {
   const dispatch = useDispatch();
+  const BBOX_INPUT_SELECTOR = "#operations-Weather_\\\\\\&_Climate_Data-get-measurement > div.no-margin > div > div.opblock-section > div.parameters-container > div > table > tbody > tr:nth-child(15) > td.parameters-col_description > input[type=text]";
+
   useEffect(() => {
-    // set drawing mode when the layout mounts
-    dispatch(setDrawingMode(true));
+    let t = document.querySelector(BBOX_INPUT_SELECTOR) as HTMLInputElement;
+    if (t && t.value) {
+      // parse the bounding box from the input field
+      const parts = t.value.split(',').map(Number);
+      if (parts.length === 4) {
+        const bbox: BoundingBox = {
+          west: parts[0],
+          south: parts[1],
+          east: parts[2],
+          north: parts[3]
+        };
+        dispatch(setBoundingBox(bbox));
+      } else {
+        dispatch(setBoundingBox(null));
+        dispatch(setDrawingMode(true));
+      }
+    } else {
+      // set drawing mode when the layout mounts
+      dispatch(setDrawingMode(true));
+    }
+  
   }, [dispatch]);
 
   const handleBoundingBoxChange = (bbox: BoundingBox) => {
@@ -19,7 +40,7 @@ export const FullMapLayout = () => {
       }, 300);
     }
 
-    let t = document.querySelector("#operations-Weather_\\\\\\&_Climate_Data-get-measurement > div.no-margin > div > div.opblock-section > div.parameters-container > div > table > tbody > tr:nth-child(15) > td.parameters-col_description > input[type=text]") as HTMLInputElement;
+    let t = document.querySelector(BBOX_INPUT_SELECTOR) as HTMLInputElement;
     if (t) {
       t.value = bbox
         ? `${bbox.west.toFixed(2)}, ${bbox.south.toFixed(2)}, ${bbox.east.toFixed(2)}, ${bbox.north.toFixed(2)}`
@@ -29,7 +50,7 @@ export const FullMapLayout = () => {
 
   return (
     <Flex direction="column" minH="100%" w="full">
-      <Box as="main" flexGrow={1} h="full" minHeight={0} display={'flex'}>
+      <Box flexGrow={1} h="full" minHeight={0} display={'flex'}>
         <Box
             flexGrow={1}
             display='flex'

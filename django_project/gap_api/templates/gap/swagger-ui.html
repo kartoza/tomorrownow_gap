@@ -37,6 +37,12 @@
       #show-map-button {
         text-decoration: underline;
       }
+
+      #map-app {
+        height: 500px;
+        width: 100%;
+        display: none;
+      }
     </style>
 {% endblock %}
 {% block extra_scripts %}
@@ -52,44 +58,33 @@
 
     <script type="text/javascript" src="https://cdn.jsdelivr.net/jquery/latest/jquery.min.js"></script>
     <script>
+        let mapRoot = null;
+        let isVisible = false;
+
         function toggleMap(e) {
             e.preventDefault();
+            // toogle map visibility
+            isVisible = !isVisible;
             var mapApp = document.getElementById('map-app');
-            var mapRoot = document.getElementById('map-root');
-            var mapRootDest = document.getElementById('map-root-dest');
-            if (mapApp) {
-              // if (mapApp.style.display === 'none') {
-              //   if (mapRootDest) {
-              //     console.log('Adding mapApp to mapRootDest');
-              //     mapRootDest.appendChild(mapApp);
-              //     if (window.mapControl) {
-              //       setTimeout(() => {
-              //         console.log('Resizing mapControl');
-              //         window.mapControl.resize(); // Resize the map if it exists
-              //       }, 300);
-              //     }
-              //   }
-              // } else {
-              //   if (mapRoot) {
-              //     console.log('Adding mapApp to mapRoot');
-              //     mapRoot.appendChild(mapApp);
-              //     if (window.mapControl) {
-              //       setTimeout(() => {
-              //         console.log('Resizing mapControl');
-              //         window.mapControl.resize(); // Resize the map if it exists
-              //       }, 300);
-              //     }
-              //   }
-              // }
-              
-              // mapApp.style.visibility = mapApp.style.visibility === 'hidden' ? 'visible' : 'hidden';
-              mapApp.style.display = mapApp.style.display === 'none' ? 'block' : 'none';
-              
-              if (mapApp.style.display === 'none') {
-                e.target.innerText = 'Show Map';
-              } else {
-                e.target.innerText = 'Hide Map';
-              }            
+            
+            if (isVisible) {
+              mapApp.style.display = 'block';
+            } else {
+              mapApp.style.display = 'none';
+            }
+
+            if (!mapRoot) {
+              mapRoot = ReactDOM.createRoot(mapApp);
+            }
+
+            mapRoot.render(React.createElement(window.MapApp, { 
+              visible: isVisible
+            }));
+
+            if (isVisible) {
+              e.target.innerText = 'Hide Map';
+            } else {
+              e.target.innerText = 'Draw Bounding Box on Map';
             }
         }
         
@@ -179,7 +174,7 @@
                                 var lonSelector = '#operations-Weather_\\\\\\&_Climate_Data-get-measurement > div.no-margin > div > div.opblock-section > div.parameters-container > div > table > tbody > tr[data-param-name="lon"] > td.parameters-col_description > div:nth-child(1)';
                                 $(lonSelector).after('<div class="markdown"><p><i>Example</i>: 35.8560798</p></div>');
                                 var bboxSelector = '#operations-Weather_\\\\\\&_Climate_Data-get-measurement > div.no-margin > div > div.opblock-section > div.parameters-container > div > table > tbody > tr[data-param-name="bbox"] > td.parameters-col_description > div:nth-child(1)';
-                                $(bboxSelector).after('<div class="markdown"><p><i>Example</i>: 37.09,0.44,39.35,2.41</p><a onclick="toggleMap(event)" id="show-map-button">Show Map</a><div id="map-root-dest"></div></div>');
+                                $(bboxSelector).after('<div class="markdown"><p><i>Example</i>: 37.09,0.44,39.35,2.41</p><a onclick="toggleMap(event)" id="show-map-button">Draw Bounding Box on Map</a><div id="map-app"></div></div>');
                                 var altitudesSelector = '#operations-Weather_\\\\\\&_Climate_Data-get-measurement > div.no-margin > div > div.opblock-section > div.parameters-container > div > table > tbody > tr[data-param-name="altitudes"] > td.parameters-col_description > div:nth-child(1)';
                                 $(altitudesSelector).after('<div class="markdown"><p><i>Example</i>: 0,20000</p></div>');
                             }, 200);
@@ -205,9 +200,6 @@
 {% endblock %}
 
 {% block footer %}
-<div id="map-root">
-  <div id="map-app" style="height: 500px; display: none;"></div>
-</div>
 {% render_bundle 'Map' 'css' %}
 {% render_bundle 'Map' 'js' %}
 

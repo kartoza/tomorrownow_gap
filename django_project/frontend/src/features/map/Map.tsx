@@ -33,7 +33,7 @@ export const MapComponent: React.FC<MapComponentProps> = ({ notifyBoundingBoxCha
     map.current = new maplibregl.Map({
       container: mapContainer.current,
       center: [36.817223, -1.286389], // Nairobi coordinates
-      zoom: 8,
+      zoom: 4,
     });
 
     // Add OpenStreetMap basemap
@@ -96,6 +96,8 @@ export const MapComponent: React.FC<MapComponentProps> = ({ notifyBoundingBoxCha
   useEffect(() => {
     if (bboxControl.current && !boundingBox) {
       bboxControl.current.clearBoundingBox();
+    } else if (bboxControl.current && boundingBox) {
+      bboxControl.current.drawBoundingBox(boundingBox);
     }
   }, [boundingBox]);
 
