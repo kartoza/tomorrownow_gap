@@ -1,5 +1,9 @@
 {% extends "drf-yasg/swagger-ui.html" %}
 
+{% block extra_head %}
+    {% load render_bundle from webpack_loader %}
+{% endblock %}
+
 {% block extra_styles %}
     <style>
       .topbar-wrapper .link:hover {
@@ -29,6 +33,10 @@
       .swagger-ui select[multiple] {
         min-height: 200px;
       }
+
+      #show-map-button {
+        text-decoration: underline;
+      }
     </style>
 {% endblock %}
 {% block extra_scripts %}
@@ -44,6 +52,47 @@
 
     <script type="text/javascript" src="https://cdn.jsdelivr.net/jquery/latest/jquery.min.js"></script>
     <script>
+        function toggleMap(e) {
+            e.preventDefault();
+            var mapApp = document.getElementById('map-app');
+            var mapRoot = document.getElementById('map-root');
+            var mapRootDest = document.getElementById('map-root-dest');
+            if (mapApp) {
+              // if (mapApp.style.display === 'none') {
+              //   if (mapRootDest) {
+              //     console.log('Adding mapApp to mapRootDest');
+              //     mapRootDest.appendChild(mapApp);
+              //     if (window.mapControl) {
+              //       setTimeout(() => {
+              //         console.log('Resizing mapControl');
+              //         window.mapControl.resize(); // Resize the map if it exists
+              //       }, 300);
+              //     }
+              //   }
+              // } else {
+              //   if (mapRoot) {
+              //     console.log('Adding mapApp to mapRoot');
+              //     mapRoot.appendChild(mapApp);
+              //     if (window.mapControl) {
+              //       setTimeout(() => {
+              //         console.log('Resizing mapControl');
+              //         window.mapControl.resize(); // Resize the map if it exists
+              //       }, 300);
+              //     }
+              //   }
+              // }
+              
+              // mapApp.style.visibility = mapApp.style.visibility === 'hidden' ? 'visible' : 'hidden';
+              mapApp.style.display = mapApp.style.display === 'none' ? 'block' : 'none';
+              
+              if (mapApp.style.display === 'none') {
+                e.target.innerText = 'Show Map';
+              } else {
+                e.target.innerText = 'Hide Map';
+              }            
+            }
+        }
+        
         $( document ).ready(function() {
             const mainWeatherBlockID = '#operations-Weather_\\\\\\&_Climate_Data-get-measurement';
             const productTypeList = JSON.parse(document.getElementById('gap-product-type-list').innerHTML);
@@ -130,7 +179,7 @@
                                 var lonSelector = '#operations-Weather_\\\\\\&_Climate_Data-get-measurement > div.no-margin > div > div.opblock-section > div.parameters-container > div > table > tbody > tr[data-param-name="lon"] > td.parameters-col_description > div:nth-child(1)';
                                 $(lonSelector).after('<div class="markdown"><p><i>Example</i>: 35.8560798</p></div>');
                                 var bboxSelector = '#operations-Weather_\\\\\\&_Climate_Data-get-measurement > div.no-margin > div > div.opblock-section > div.parameters-container > div > table > tbody > tr[data-param-name="bbox"] > td.parameters-col_description > div:nth-child(1)';
-                                $(bboxSelector).after('<div class="markdown"><p><i>Example</i>: 37.09,0.44,39.35,2.41</p></div>');
+                                $(bboxSelector).after('<div class="markdown"><p><i>Example</i>: 37.09,0.44,39.35,2.41</p><a onclick="toggleMap(event)" id="show-map-button">Show Map</a><div id="map-root-dest"></div></div>');
                                 var altitudesSelector = '#operations-Weather_\\\\\\&_Climate_Data-get-measurement > div.no-margin > div > div.opblock-section > div.parameters-container > div > table > tbody > tr[data-param-name="altitudes"] > td.parameters-col_description > div:nth-child(1)';
                                 $(altitudesSelector).after('<div class="markdown"><p><i>Example</i>: 0,20000</p></div>');
                             }, 200);
@@ -153,4 +202,13 @@
             }, 500);
         });
     </script>
+{% endblock %}
+
+{% block footer %}
+<div id="map-root">
+  <div id="map-app" style="height: 500px; display: none;"></div>
+</div>
+{% render_bundle 'Map' 'css' %}
+{% render_bundle 'Map' 'js' %}
+
 {% endblock %}

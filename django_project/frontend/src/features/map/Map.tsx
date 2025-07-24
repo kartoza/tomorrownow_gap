@@ -8,9 +8,15 @@ import '@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css';
 import { RootState } from '@/app/store';
 import { setDrawingMode, setBoundingBox } from './mapSlice';
 import { BboxDrawControl } from './BboxDrawControl';
+import { BoundingBox } from './types';
 
 
-export const MapComponent: React.FC = () => {
+interface MapComponentProps {
+  notifyBoundingBoxChange?: (bbox: BoundingBox) => void;
+}
+
+
+export const MapComponent: React.FC<MapComponentProps> = ({ notifyBoundingBoxChange }) => {
   const dispatch = useDispatch();
   const { isDrawingMode, boundingBox } = useSelector(
     (state: RootState) => state.map
@@ -52,6 +58,9 @@ export const MapComponent: React.FC = () => {
     bboxControl.current = new BboxDrawControl({
       onBoundingBoxChange: (bbox) => {
         dispatch(setBoundingBox(bbox));
+        if (notifyBoundingBoxChange) {
+          notifyBoundingBoxChange(bbox);
+        }
       },
       onDrawingModeChange: (drawing) => {
         dispatch(setDrawingMode(drawing));

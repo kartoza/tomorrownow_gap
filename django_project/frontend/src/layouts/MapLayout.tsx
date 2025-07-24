@@ -1,7 +1,6 @@
 import { Outlet } from 'react-router-dom'
 import { Flex, Box } from '@chakra-ui/react'
 import Navigation from '@/components/Navigation'
-import MainFooter from '@/components/MainFooter'
 import usePageTracking from '@/hooks/usePageTracking'
 import { MapComponent } from '@/features/map/Map'
 
