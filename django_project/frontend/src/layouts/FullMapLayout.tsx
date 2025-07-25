@@ -42,9 +42,20 @@ export const FullMapLayout = () => {
 
     let t = document.querySelector(BBOX_INPUT_SELECTOR) as HTMLInputElement;
     if (t) {
-      t.value = bbox
+      const value = bbox
         ? `${bbox.west.toFixed(2)}, ${bbox.south.toFixed(2)}, ${bbox.east.toFixed(2)}, ${bbox.north.toFixed(2)}`
         : '';
+      // Set value via native setter to trigger React events
+      const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
+        window.HTMLInputElement.prototype,
+        "value"
+      )?.set;
+
+      nativeInputValueSetter?.call(t, value);
+
+      // Trigger React's onChange event
+      const ev = new Event("input", { bubbles: true });
+      t.dispatchEvent(ev);
     }
   };
 
