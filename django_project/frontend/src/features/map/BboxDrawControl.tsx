@@ -183,5 +183,32 @@ export class BboxDrawControl implements maplibregl.IControl {
   isDrawing(): boolean {
     return this.isDrawingRectangle;
   }
+
+  drawBoundingBox(bbox: BoundingBox): void {
+    if (!this.draw) return;
+
+    // Clear existing drawings
+    this.draw.deleteAll();
+
+    // Create rectangle coordinates
+    const coords = [
+      [bbox.west, bbox.south], // SW
+      [bbox.east, bbox.south], // SE
+      [bbox.east, bbox.north], // NE
+      [bbox.west, bbox.north], // NW
+      [bbox.west, bbox.south]  // Close
+    ];
+
+    // Add rectangle to the map
+    this.draw.add({
+      type: 'Feature',
+      properties: {},
+      geometry: {
+        type: 'Polygon',
+        coordinates: [coords]
+      }
+    });
+  }
+
 }
 
