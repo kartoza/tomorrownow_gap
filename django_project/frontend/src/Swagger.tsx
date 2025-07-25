@@ -8,7 +8,8 @@ import './styles/index.scss';
 import "./styles/font.css";
 import { Provider } from 'react-redux';
 import { RouterProvider } from 'react-router-dom';
-import {router} from '@/app/map_router';
+import {router, navRouter} from '@/app/swaggerRouter';
+import { useAuthInit } from '@/hooks/useAuthInit';
 
 
 // Create a separate component that handles auth initialization
@@ -42,9 +43,40 @@ const MapApp = ({ visible }: MapAppProps) => {
   )
 };
 
+// Create a separate component that handles auth initialization
+const NavigationAppContent: React.FC = () => {
+  const { hasInitialized } = useAuthInit();
+  return (
+    <>
+      <RouterProvider router={navRouter} />
+    </>
+  );
+};
+
+
+const NavigationApp = () => {
+  return (
+  <React.StrictMode>
+    <ChakraProvider value={system}>
+      <Provider store={store}>
+        <GapContextProvider>
+          <ErrorBoundary>
+            <NavigationAppContent />
+            {/* Render the navigation component */}
+          </ErrorBoundary>
+        </GapContextProvider>
+      </Provider>
+    </ChakraProvider>
+  </React.StrictMode>
+  )
+};
+
 // Make React available globally BEFORE building
 (window as any).React = require('react');
 (window as any).ReactDOM = require('react-dom/client');
+
+// Expose Navigation component globally
+(window as any).Navigation = NavigationApp;
 
 // Expose the MapApp component globally
 (window as any).MapApp = MapApp;

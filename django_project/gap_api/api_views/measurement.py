@@ -785,7 +785,7 @@ class JobStatusAPI(APIView):
         operation_description=(
             "Fetch the status of a job by its ID."
         ),
-        tags=[ApiTag.Measurement],
+        tags=[ApiTag.JobStatus],
         manual_parameters=[
             *api_parameters
         ],
@@ -892,6 +892,7 @@ class MeasurementOptionsView(APIView):
 
     permission_classes = [IsAuthenticated]
 
+    @swagger_auto_schema(auto_schema=None)
     def get(self, request, *args, **kwargs):
         """Fetch available products and attributes."""
         # grab all "products" from DatasetType

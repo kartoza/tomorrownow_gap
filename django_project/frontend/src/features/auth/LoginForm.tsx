@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { useLocation } from "react-router-dom";
+import { useLocation, useSearchParams } from "react-router-dom";
 import {
   Box,
   Button,
@@ -51,7 +51,8 @@ const LoginForm: React.FC<LoginFormProps> = () => {
 
     // Get the page user was trying to access before login
     const locationState = state as LocationState | null;
-    const from = locationState?.from?.pathname || '/';
+    const [searchParams] = useSearchParams();
+    const from = locationState?.from?.pathname || searchParams.get('next') || '/';
 
     const params = new URLSearchParams(search);
     const prevType = useRef<FormType>(formType);

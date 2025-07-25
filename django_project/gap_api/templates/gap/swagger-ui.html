@@ -20,10 +20,18 @@
         display: none !important;
       }
 
-      .swagger-ui .topbar a {
-        display: block;
-        flex: 0;
-        margin-right: 200px;
+      .swagger-ui .topbar {
+        background-color: var(--primary-color);
+        padding: 0;
+      }
+
+      /* Hide scheme-container + auth wrapper */
+      .swagger-ui .scheme-container {
+        display: none;
+      }
+
+      .swagger-ui .wrapper {
+        max-width: 1552px;
       }
 
       .info .main {
@@ -48,13 +56,6 @@
 {% block extra_scripts %}
     <script id="gap-product-type-list" type="application/json">{{ product_type_list | safe }}</script>
     <script id="gap-attribute-dict" type="application/json">{{ attribute_dict | safe }}</script>
-    <script>
-      setTimeout(function () {
-        const link = document.getElementsByClassName('topbar-wrapper')[0].getElementsByClassName('link')[0]
-        link.href = "/"
-        link.target = "_blank"
-      }, 500);
-    </script>
 
     <script type="text/javascript" src="https://cdn.jsdelivr.net/jquery/latest/jquery.min.js"></script>
     <script>
@@ -195,12 +196,23 @@
                 observerWeatherBlock();
               }
             }, 500);
+
+            // replace the topbar
+            function replaceTopbar() {
+              var topbar = document.querySelector('.topbar');
+              if (topbar) {
+                topbar.innerHTML = '';
+                let topbarRoot = ReactDOM.createRoot(topbar);
+                topbarRoot.render(React.createElement(window.Navigation));
+              }
+            }
+            replaceTopbar();
         });
     </script>
 {% endblock %}
 
 {% block footer %}
-{% render_bundle 'Map' 'css' %}
-{% render_bundle 'Map' 'js' %}
+{% render_bundle 'Swagger' 'css' %}
+{% render_bundle 'Swagger' 'js' %}
 
 {% endblock %}
