@@ -47,8 +47,15 @@ def read_excel_farmers():
     Returns:
         pd.DataFrame: DataFrame containing the farmers.
     """
-    input_file = 'input/SPWDATA_Result.xls'
+    # input_file = 'input/SPWDATA_Result.xls'
+    input_file = 'output/SPW_FARM_GROUP_KALRO.xlsx'
     df = pd.read_excel(input_file)
+    # rename columns to match the expected format
+    df.rename(columns={
+        'FarmerID': 'farmer_id',
+        'Latitude': 'gps_latitude',
+        'Longitude': 'gps_longitude',
+    }, inplace=True)
     # filter out rows where 'farmer_id' is NA
     df = df[df['farmer_id'].notna()]
     df['farmer_id'] = df['farmer_id'].astype(str).str.replace(r'\.0$', '', regex=True)
