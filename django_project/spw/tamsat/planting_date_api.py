@@ -263,13 +263,13 @@ def routine_operations_v2(
                     f"Error downloading or decompressing PFC data: {e}",
                     exc_info=True
                 )
-                return None
+                return None, None
 
             # Assign the filename variable to either the preliminary or
             # non-preliminary file and exit if neither exist
             if not os.path.isfile(pfc_filepath):
                 print('soil moisture forecast file does not exist')
-                return None
+                return None, None
 
         # Make a local copy of the wrsi file if we don't have it
         if not os.path.exists(wrsi_filepath):

@@ -109,3 +109,17 @@ def remove_s3_folder_by_batch(bucket_name, prefix, s3_client):
         'total_deleted': total_deleted,
         'total_batches': total_batches
     }
+
+
+def s3_file_exists(s3_client, bucket_name, key):
+    """Check if a file exists in S3."""
+    try:
+        s3_client.head_object(Bucket=bucket_name, Key=key)
+        return True  # File exists
+    except ClientError as e:
+        # If it's a 404 error, the file doesn't exist
+        if e.response['Error']['Code'] == '404':
+            return False
+        else:
+            # Some other error occurred (e.g., permissions issue)
+            raise

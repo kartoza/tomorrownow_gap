@@ -269,7 +269,7 @@ class SPWIngestor(BaseIngestor):
             COPY (
                 SELECT * FROM spw_signal_ordered
             ) TO '{self._get_parquet_path()}'
-            (FORMAT 'parquet', COMPRESSION 'zstd', OVERWRITE_OR_IGNORE true);
+            (FORMAT 'parquet', COMPRESSION 'zstd');
             """
         )
         self._execute_sql(
