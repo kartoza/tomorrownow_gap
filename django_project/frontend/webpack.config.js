@@ -3,6 +3,7 @@ const BundleTracker = require('webpack-bundle-tracker');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const { CleanWebpackPlugin } = require('clean-webpack-plugin'); // require clean-webpack-plugin
 const ReactRefreshWebpackPlugin = require('@pmmmwh/react-refresh-webpack-plugin');
+const TerserPlugin = require('terser-webpack-plugin');
 const webpack = require("webpack");
 const { Sign } = require("crypto");
 
@@ -12,6 +13,21 @@ const isServe = (mode.includes('serve'));
 const filename = isDev ? "[name]" : "[name].[fullhash]";
 const statsFilename = isDev ? './webpack-stats.dev.json' : './webpack-stats.prod.json';
 const minimized = !isDev;
+// Read ENV (default: true)
+let parallelValue = process.env.WEBPACK_PARALLEL;
+
+let parallel;
+// If explicitly "true"/"false", convert to boolean
+if (parallelValue === 'true') {
+  parallel = true; // auto = CPU cores
+} else if (parallelValue === 'false') {
+  parallel = false; // single-threaded
+} else if (!isNaN(Number(parallelValue))) {
+  parallel = Number(parallelValue); // e.g. "2" => 2 workers
+} else {
+  parallel = 2;
+}
+
 
 let conf = {
     entry: {
@@ -48,6 +64,11 @@ let conf = {
     },
     optimization: {
         minimize: minimized,
+        minimizer: [
+            new TerserPlugin({
+                parallel: parallel // limit to n workers
+            })
+        ],
         splitChunks: {
             cacheGroups: {
                 styles: {
