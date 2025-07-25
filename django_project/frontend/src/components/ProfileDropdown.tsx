@@ -24,6 +24,7 @@ interface ProfileDropdownProps {
   onLogout?: () => void;
   onProfileClick?: () => void;
   ml?: number | string; // Optional margin-left prop
+  navigateFn?: (path: string) => void; // Optional navigate function
 }
 
 const ProfileDropdown: React.FC<ProfileDropdownProps> = ({
@@ -32,11 +33,12 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({
   colorScheme = 'green',
   onLogout,
   onProfileClick,
-  ml = 0 // Default margin-left to 0
+  ml = 0, // Default margin-left to 0
+  navigateFn
 }) => {
   const { pages, isAdmin } = useSelector((state: RootState) => state.auth);
   const { open, setOpen, onToggle } = useDisclosure();
-  const navigate = useNavigateWithEvent();
+  const navigate = navigateFn || useNavigateWithEvent();
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const fullName = `${user.first_name} ${user.last_name}`.trim();

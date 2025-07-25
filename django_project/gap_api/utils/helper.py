@@ -16,12 +16,14 @@ class ApiTag:
     Measurement = 'Weather & Climate Data'
     CROP_PLAN = 'Crop Insights Engine'
     Location = 'Upload Location'
+    JobStatus = 'Job Status'
 
     ORDERS = [
         USER,
         Measurement,
         CROP_PLAN,
-        Location
+        Location,
+        JobStatus
     ]
 
 

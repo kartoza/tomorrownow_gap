@@ -1,5 +1,9 @@
 {% extends "drf-yasg/swagger-ui.html" %}
 
+{% block extra_head %}
+    {% load render_bundle from webpack_loader %}
+{% endblock %}
+
 {% block extra_styles %}
     <style>
       .topbar-wrapper .link:hover {
@@ -16,10 +20,18 @@
         display: none !important;
       }
 
-      .swagger-ui .topbar a {
-        display: block;
-        flex: 0;
-        margin-right: 200px;
+      .swagger-ui .topbar {
+        background-color: var(--primary-color);
+        padding: 0;
+      }
+
+      /* Hide scheme-container + auth wrapper */
+      .swagger-ui .scheme-container {
+        display: none;
+      }
+
+      .swagger-ui .wrapper {
+        max-width: 1552px;
       }
 
       .info .main {
@@ -29,21 +41,54 @@
       .swagger-ui select[multiple] {
         min-height: 200px;
       }
+
+      #show-map-button {
+        text-decoration: underline;
+      }
+
+      #map-app {
+        height: 500px;
+        width: 100%;
+        display: none;
+      }
     </style>
 {% endblock %}
 {% block extra_scripts %}
     <script id="gap-product-type-list" type="application/json">{{ product_type_list | safe }}</script>
     <script id="gap-attribute-dict" type="application/json">{{ attribute_dict | safe }}</script>
-    <script>
-      setTimeout(function () {
-        const link = document.getElementsByClassName('topbar-wrapper')[0].getElementsByClassName('link')[0]
-        link.href = "/"
-        link.target = "_blank"
-      }, 500);
-    </script>
 
     <script type="text/javascript" src="https://cdn.jsdelivr.net/jquery/latest/jquery.min.js"></script>
     <script>
+        let mapRoot = null;
+        let isVisible = false;
+
+        function toggleMap(e) {
+            e.preventDefault();
+            // toogle map visibility
+            isVisible = !isVisible;
+            var mapApp = document.getElementById('map-app');
+            
+            if (isVisible) {
+              mapApp.style.display = 'block';
+            } else {
+              mapApp.style.display = 'none';
+            }
+
+            if (!mapRoot) {
+              mapRoot = ReactDOM.createRoot(mapApp);
+            }
+
+            mapRoot.render(React.createElement(window.MapApp, { 
+              visible: isVisible
+            }));
+
+            if (isVisible) {
+              e.target.innerText = 'Hide Map';
+            } else {
+              e.target.innerText = 'Draw Bounding Box on Map';
+            }
+        }
+        
         $( document ).ready(function() {
             const mainWeatherBlockID = '#operations-Weather_\\\\\\&_Climate_Data-get-measurement';
             const productTypeList = JSON.parse(document.getElementById('gap-product-type-list').innerHTML);
@@ -130,7 +175,7 @@
                                 var lonSelector = '#operations-Weather_\\\\\\&_Climate_Data-get-measurement > div.no-margin > div > div.opblock-section > div.parameters-container > div > table > tbody > tr[data-param-name="lon"] > td.parameters-col_description > div:nth-child(1)';
                                 $(lonSelector).after('<div class="markdown"><p><i>Example</i>: 35.8560798</p></div>');
                                 var bboxSelector = '#operations-Weather_\\\\\\&_Climate_Data-get-measurement > div.no-margin > div > div.opblock-section > div.parameters-container > div > table > tbody > tr[data-param-name="bbox"] > td.parameters-col_description > div:nth-child(1)';
-                                $(bboxSelector).after('<div class="markdown"><p><i>Example</i>: 37.09,0.44,39.35,2.41</p></div>');
+                                $(bboxSelector).after('<div class="markdown"><p><i>Example</i>: 37.09,0.44,39.35,2.41</p><a onclick="toggleMap(event)" id="show-map-button">Draw Bounding Box on Map</a><div id="map-app"></div></div>');
                                 var altitudesSelector = '#operations-Weather_\\\\\\&_Climate_Data-get-measurement > div.no-margin > div > div.opblock-section > div.parameters-container > div > table > tbody > tr[data-param-name="altitudes"] > td.parameters-col_description > div:nth-child(1)';
                                 $(altitudesSelector).after('<div class="markdown"><p><i>Example</i>: 0,20000</p></div>');
                             }, 200);
@@ -151,6 +196,23 @@
                 observerWeatherBlock();
               }
             }, 500);
+
+            // replace the topbar
+            function replaceTopbar() {
+              var topbar = document.querySelector('.topbar');
+              if (topbar) {
+                topbar.innerHTML = '';
+                let topbarRoot = ReactDOM.createRoot(topbar);
+                topbarRoot.render(React.createElement(window.Navigation));
+              }
+            }
+            replaceTopbar();
         });
     </script>
+{% endblock %}
+
+{% block footer %}
+{% render_bundle 'Swagger' 'css' %}
+{% render_bundle 'Swagger' 'js' %}
+
 {% endblock %}
