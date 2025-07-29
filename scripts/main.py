@@ -6,10 +6,16 @@ Tomorrow Now GAP.
 """
 
 import datetime
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import pytz
+
 from analytics.spw import fetch_spw_data, read_spw_geoparquet_by_farm_group
 from analytics.farmers import read_excel_stats, read_excel_farmers
-from analytics.dcas import read_dcas_geoparquet, get_dcas_stats
+from analytics.dcas import read_dcas_geoparquet, read_dcas_error_log_file, calculate_gdd
 from analytics.fixtures import SPW_MESSAGE_DICT
+from dataset import DatasetReaderBuilder, DatasetType
 
 
 def compare_spw_stats():
@@ -172,11 +178,154 @@ def extract_farms():
         print(f'Output saved to {output_file}')
 
 
+def plot_spw_data(date):
+    """Plot SPW data."""
+    farmer_df = read_excel_farmers()
+    farmer_df = farmer_df[['farmer_id', 'gps_latitude', 'gps_longitude']]
+    print(f'Length of Farmer List: {len(farmer_df)}')
+
+    spw_df = fetch_spw_data(date, farmer_df)
+
+    # rename farm_unique_id to farmer_id
+    print(f'Length of SPW Data: {len(spw_df)}')
+    # create spw_signal column with value:
+    # 1 if signal has 'Plant NOW' in it,
+    # 0 if signal has 'Do NOT plant' in it,
+    spw_df['spw_signal'] = spw_df['signal'].apply(lambda x: 1 if 'Plant NOW' in x else 0)
+    spw_df['spw_signal'] = spw_df['spw_signal'].astype(int)
+    print(spw_df.columns)
+
+    # export to excel for debugging
+    spw_df.to_excel(f'output/SPW_DATA_PLOT_{date.isoformat()}.xlsx', index=False)
+
+    print(str('spw_signal'),np.nansum(spw_df['spw_signal']))
+    # plot the spw_signal column
+    plt.scatter(spw_df['gps_longitude'], spw_df['gps_latitude'], c=spw_df['spw_signal'].values)
+    plt.title(f"SPW Signal Plot - {date.isoformat()}")
+    plt.show()
+
+
+def plot_spw_with_tamsat(date):
+    """Plot SPW data with TAMSAT.
+    
+    Notes:
+        - Tamsat spw csv file should be in the output folder with name SPW_KALRO_<date>.csv
+        - SPW data should be in the output folder with name SPW_DATA_PLOT_<date>.xlsx
+    """
+    print(f'Plotting SPW data with TAMSAT for date: {date.isoformat()}')
+    spw_file_path = f'output/SPW_DATA_PLOT_{date.isoformat()}.xlsx'
+    tamsat_file_path = f'output/SPW_KALRO_{date.isoformat()}.csv'
+
+    spw_df = pd.read_excel(spw_file_path)
+    # Rename gps_longitude and gps_latitude to Longitude and Latitude
+    spw_df.rename(columns={'gps_longitude': 'Longitude', 'gps_latitude': 'Latitude'}, inplace=True)
+    tamsat_df = pd.read_csv(tamsat_file_path)
+
+    # Print stats
+    print('--- SPW Data Stats ---')
+    print(f'SPW Data Length: {len(spw_df)}')
+    print('spw_signal',np.nansum(spw_df['spw_signal']))
+    print('--- TAMSAT Data Stats ---')
+    print(f'TAMSAT Data Length: {len(tamsat_df)}')
+    tamsat_spw_cols = [
+        'spw_20', 'spw_40', 'spw_60',
+        'sm_25', 'sm_50', 'sm_70'
+    ]
+    for col in tamsat_spw_cols:
+        if col not in tamsat_df.columns:
+            print(f'Column {col} not found in TAMSAT data.')
+            continue
+        print(f'{col}: {np.nansum(tamsat_df[col])}')
+
+    # Create a figure with 3 row, 3 columns of subplots
+    fig, axes = plt.subplots(3, 3, figsize=(15, 12), sharex=True, sharey=True)
+
+    # construct array of df
+    dfs = []
+    for col in tamsat_spw_cols:
+        if col not in tamsat_df.columns:
+            print(f'Column {col} not found in TAMSAT data.')
+            continue
+        # create a new dataframe with spw_signal and the tamsat column
+        temp_df = tamsat_df[['Longitude', 'Latitude', col]].copy()
+        # rename col to 'spw_signal'
+        temp_df.rename(columns={col: 'spw_signal'}, inplace=True)
+        dfs.append(temp_df)
+    # append the spw_df with spw_signal column
+    dfs.append(spw_df)
+
+    # Flatten axes into a 1D list so we can loop easily
+    axes_list = axes.ravel()
+    for i in range(9):  # total 9 subplot slots
+        if i < len(dfs):
+            df = dfs[i]
+            axes_list[i].scatter(
+                df['Longitude'],
+                df['Latitude'],
+                c=df['spw_signal'].values
+            )
+            axes_list[i].set_title(tamsat_spw_cols[i] if i < len(tamsat_spw_cols) else 'KTZ')
+            axes_list[i].set_xlabel("Longitude")
+            axes_list[i].set_ylabel("Latitude")
+        else:
+            # Hide unused subplots
+            axes_list[i].axis('off')
+
+    fig.suptitle(f"SPW Data - {date.isoformat()}", fontsize=16)
+    plt.tight_layout()
+    plt.show()
+
+
+def extract_dcas_error_log():
+    """Extract DCAS error log."""
+    date = datetime.date(2025, 7, 25)
+    input_file = 'input/DCAS_Error_File 20250725.csv'
+    dcas_error_df = read_dcas_error_log_file(input_file)
+
+    print(dcas_error_df.head())
+    farmer_ids = dcas_error_df['FarmerId'].unique().tolist()
+    print(f'Number of unique farmer IDs in DCAS error log: {len(farmer_ids)}')
+    dcas_df = read_dcas_geoparquet(date, farmer_ids)
+    # write the dcas_df to excel
+    dcas_df.to_excel(f'output/DCAS_DATA_{date.isoformat()}.xlsx', index=False)
+
+
+def test_read_daily_forecast():
+    """Test reading daily forecast dataset."""
+    dataset_type = DatasetType.DAILY_FORECAST
+    start_date = datetime.datetime(2025, 4, 20, 0, 0, 0, tzinfo=pytz.UTC)
+    end_date = datetime.datetime(2025, 7, 31, 0, 0, 0, tzinfo=pytz.UTC)
+    lat = 1.26728
+    lon = 35.336
+    attributes = [
+        'max_temperature', 'min_temperature'
+    ]
+    reader = DatasetReaderBuilder.create_reader(
+        dataset_type, lat, lon, start_date, end_date, attributes,
+    )
+    reader.read()
+    df = reader.get_result_df()
+    print(f'Read {len(df)} rows from Daily Forecast dataset.')
+    print(df.head())
+
+
 if __name__ == "__main__":
-    start_date = datetime.date(2025, 4, 5)
-    end_date = datetime.date(2025, 4, 12)
-    current_date = start_date
-    while current_date <= end_date:
-        print(f'Processing date: {current_date}')
-        pull_spw_data(current_date)
-        current_date += datetime.timedelta(days=1)
+    start_date = datetime.date(2025, 4, 30)
+    # end_date = datetime.date(2025, 4, 25)
+    # current_date = start_date
+    # while current_date <= end_date:
+    #     print(f'Processing date: {current_date}')
+    #     pull_spw_data(current_date)
+    #     current_date += datetime.timedelta(days=1)
+
+    # plot_spw_with_tamsat(start_date)
+    # extract_dcas_error_log()
+
+    lat = 1.26728
+    lon = 35.336
+    planting_date = datetime.datetime(2025, 4, 20, 0, 0, 0, tzinfo=pytz.UTC)
+    current_date = datetime.datetime(2025, 7, 25, 0, 0, 0, tzinfo=pytz.UTC)
+    crop = 'Maize_Mid'
+    gdd, df = calculate_gdd(lat, lon, planting_date, current_date, crop)
+    print(f'Calculated GDD: {gdd}')
+    print(df.head())

@@ -15,10 +15,12 @@ class Settings(BaseSettings):
     S3_SECRET_ACCESS_KEY: str
     S3_ENDPOINT_URL: str
     S3_BUCKET_NAME: str
+    S3_REGION_NAME: str
 
     # GAP Products
     SPW_GEOPARQUET_PATH: str
     DCAS_GEOPARQUET_PATH: str
+    DAILY_FORECAST_ZARR_PATH: str
 
     # DUCKDB Configuration
     DUCKDB_NUM_THREADS: int = 2

@@ -3,3 +3,9 @@ pydantic-settings
 openpyxl
 xlrd
 pandas
+matplotlib
+xarray
+zarr
+s3fs
+fsspec
+dask
