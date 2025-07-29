@@ -11,7 +11,6 @@ import xarray as xr
 import pytz
 
 from dataset.base import DatasetReader, DatasetTimeStep
-from helper.zarr import open_zarr_dataset
 
 
 class DailyForecastReader(DatasetReader):
@@ -19,11 +18,10 @@ class DailyForecastReader(DatasetReader):
 
     def read(self):
         """Read the daily forecast dataset."""
-        self.xrDatasets = []
-        ds = open_zarr_dataset(self.file_path)
+        if self.ds is None:
+            raise ValueError("Dataset is not opened. Call open() first.")
 
-        # get latest forecast date
-        self.latest_forecast_date = ds['forecast_date'][-1].values
+        self.xrDatasets = []
 
         # split date range
         ranges = self._split_date_range(
@@ -35,7 +33,7 @@ class DailyForecastReader(DatasetReader):
 
         if ranges['future']:
             val = self.read_variables(
-                ds, ranges['future'][0], ranges['future'][1]
+                self.ds, ranges['future'][0], ranges['future'][1]
             )
             if val:
                 dval = val.drop_vars('forecast_date').rename({
@@ -50,7 +48,7 @@ class DailyForecastReader(DatasetReader):
         # Hourly dataset does not have past historical data
         if ranges['past'] and self.dataset_time_step == DatasetTimeStep.DAILY:
             val = self.read_variables(
-                ds, ranges['past'][0], ranges['past'][1]
+                self.ds, ranges['past'][0], ranges['past'][1]
             )
             if val:
                 val = val.drop_vars(self.source_date_variable).rename({
@@ -84,7 +82,12 @@ class DailyForecastReader(DatasetReader):
 
         return df
 
-    def _get_forecast_day_idx(self, date: np.datetime64) -> int:
+    def _get_forecast_day_idx(self, date: np.datetime64, forecast_dt: np.datetime64 = None) -> int:
+        if forecast_dt:
+            return int(
+                abs((date - forecast_dt) / np.timedelta64(1, 'D'))
+            )    
+
         return int(
             abs((date - self.latest_forecast_date) / np.timedelta64(1, 'D'))
         )
@@ -114,3 +117,33 @@ class DailyForecastReader(DatasetReader):
             lat=self.lat,
             lon=self.lon, method='nearest'
         )
+
+    def read_by_forecast_date(self, forecast_date):
+        """Read the dataset by forecast date."""
+        if self.ds is None:
+            raise ValueError("Dataset is not opened. Call open() first.")
+
+        self.xrDatasets = []
+
+        forecast_dt = np.datetime64(forecast_date, 'ns')
+        start_dt = np.datetime64(self.start_date, 'ns')
+        end_dt = np.datetime64(self.end_date, 'ns')
+        min_idx = self._get_forecast_day_idx(start_dt, forecast_dt)
+        max_idx = self._get_forecast_day_idx(end_dt, forecast_dt)
+        val = self.ds[self.attributes].sel(
+            forecast_date=forecast_dt,
+            **{self.source_date_variable: slice(min_idx, max_idx)}
+        ).sel(
+            lat=self.lat,
+            lon=self.lon, method='nearest'
+        )
+
+        dval = val.drop_vars('forecast_date').rename({
+            'forecast_day_idx': 'date'
+        })
+        initial_date = pd.Timestamp(forecast_dt)
+        forecast_day_timedelta = pd.to_timedelta(dval.date, unit='D')
+        forecast_day = initial_date + forecast_day_timedelta
+        dval = dval.assign_coords(date=('date', forecast_day))
+
+        self.xrDatasets.append(dval)

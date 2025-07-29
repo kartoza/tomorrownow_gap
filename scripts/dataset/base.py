@@ -8,6 +8,8 @@ Tomorrow Now GAP.
 import pandas as pd
 from datetime import datetime, timedelta
 
+from helper.zarr import open_zarr_dataset
+
 
 class DatasetTimeStep:
     """Dataset Time Step."""
@@ -47,6 +49,9 @@ class DatasetReader:
         self.attributes = attributes
         self.file_path = file_path
         self.xrDatasets = []
+        # zarr xarray dataset
+        self.ds = None
+        self.latest_forecast_date = None
 
     def read(self):
         """Read the dataset from the given path."""
@@ -126,3 +131,17 @@ class DatasetReader:
             )
 
         return result_ds, dim_order, reordered_cols
+
+    def open(self):
+        """Open the dataset if it is not already open."""
+        if self.ds is None:
+            self.ds = open_zarr_dataset(self.file_path)
+
+            # get latest forecast date
+            self.latest_forecast_date = self.ds['forecast_date'][-1].values
+
+    def close(self):
+        """Close the dataset if it is open."""
+        if self.ds is not None:
+            self.ds.close()
+            self.ds = None

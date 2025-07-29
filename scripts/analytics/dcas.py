@@ -154,6 +154,23 @@ def find_crop_base_cap_temp(crop):
     print(f'Warning: No base and cap temperature found for crop: {crop}')
     return None, None
 
+def _do_gdd_calculation(df, base, cap, skip_first_row=True):
+    """Perform GDD calculation on the DataFrame."""
+    df['max_temperature'] = df['max_temperature'].clip(upper=cap)
+    df['min_temperature'] = df['min_temperature'].clip(lower=base)
+    df['avg_temperature'] = (df['max_temperature'] + df['min_temperature']) / 2.0
+    df['gdd'] = df['avg_temperature'] - base
+
+    # replace the first row with NaN
+    # because GDD calculation starts from the day after planting
+    if skip_first_row:
+        df.loc[df.index[0], 'gdd'] = None
+
+    # add cumulative GDD
+    df['gdd_sum'] = df['gdd'].cumsum()
+
+    return df
+
 
 def calculate_gdd(lat, lon, planting_date, current_date, crop):
     """Calculate Growing Degree Days (GDD) for a given latitude and longitude.
@@ -178,6 +195,7 @@ def calculate_gdd(lat, lon, planting_date, current_date, crop):
         DatasetType.DAILY_FORECAST, lat, lon,
         start_date, end_date, attributes
     )
+    reader.open()
     reader.read()
     df = reader.get_result_df()
 
@@ -186,17 +204,43 @@ def calculate_gdd(lat, lon, planting_date, current_date, crop):
         print(f'Error: Base or cap temperature not found for crop: {crop}')
         return gdd
     
-    df['max_temperature'] = df['max_temperature'].clip(upper=cap)
-    df['min_temperature'] = df['min_temperature'].clip(lower=base)
-    df['avg_temperature'] = (df['max_temperature'] + df['min_temperature']) / 2.0
-    df['gdd'] = df['avg_temperature'] - base
+    df = _do_gdd_calculation(df, base, cap)
+    # GDD is calculated from the day after planting to the current date - 1
+    gdd = df['gdd'].iloc[:-4].sum()
 
-    # replace the first row with NaN
-    # because GDD calculation starts from the day after planting
-    df.loc[df.index[0], 'gdd'] = None
+    # # Fetch data by forecast date
+    # gdd2, df2 = calculate_gdd_using_forecast_only(reader, current_date, base, cap)
 
-    # add cumulative GDD
-    df['gdd_sum'] = df['gdd'].cumsum()
-    gdd = df['gdd'].sum()
+    # # Replace last 4 rows with forecast data
+    # df_calculated = df.copy()
+    # df_calculated.loc[df_calculated.index[-4:], 'max_temperature'] = df2['max_temperature'].values
+    # df_calculated.loc[df_calculated.index[-4:], 'min_temperature'] = df2['min_temperature'].values
+    # df_calculated = _do_gdd_calculation(df_calculated, base, cap)
+    # gdd_calculated = df_calculated['gdd'].sum()
+
+    reader.close()
+
+    return gdd, df
+
+def calculate_gdd_using_forecast_only(reader, current_date, base, cap):
+    """Calculate Growing Degree Days (GDD) for a given latitude and longitude.
+
+    Args:
+        lat (float): Latitude of the location.
+        lon (float): Longitude of the location.
+        start_date (datetime.date): Start date for GDD calculation.
+        end_date (datetime.date): End date for GDD calculation.
+    Returns:
+        float: Calculated GDD value.
+    """
+    gdd = 0.0
+    start_date = current_date
+    end_date = current_date + timedelta(days=3)
+
+    reader.start_date = start_date
+    reader.end_date = end_date
+    print(f'Fetch data by forecast date from {start_date} to {end_date}')
+    reader.read_by_forecast_date(current_date)
+    df = reader.get_result_df()
 
     return gdd, df

@@ -376,7 +376,7 @@ class DCASDataPipeline:
         )
 
         # Process gdd cumulative
-        # for Total GDD, we use date from planting_date to request_date - 1
+        # for Total GDD, we use date from planting_date+1 to request_date - 1
         gdd_dates = self.data_input.historical_epoch[:-4]
 
         # add config_id

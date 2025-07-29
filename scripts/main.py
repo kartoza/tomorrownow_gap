@@ -13,9 +13,12 @@ import pytz
 
 from analytics.spw import fetch_spw_data, read_spw_geoparquet_by_farm_group
 from analytics.farmers import read_excel_stats, read_excel_farmers
-from analytics.dcas import read_dcas_geoparquet, read_dcas_error_log_file, calculate_gdd
+from analytics.dcas import (
+    read_dcas_geoparquet,
+    read_dcas_error_log_file,
+    calculate_gdd
+)
 from analytics.fixtures import SPW_MESSAGE_DICT
-from dataset import DatasetReaderBuilder, DatasetType
 
 
 def compare_spw_stats():
@@ -278,7 +281,7 @@ def plot_spw_with_tamsat(date):
 
 def extract_dcas_error_log():
     """Extract DCAS error log."""
-    date = datetime.date(2025, 7, 25)
+    date = datetime.date(2025, 7, 26)
     input_file = 'input/DCAS_Error_File 20250725.csv'
     dcas_error_df = read_dcas_error_log_file(input_file)
 
@@ -288,25 +291,6 @@ def extract_dcas_error_log():
     dcas_df = read_dcas_geoparquet(date, farmer_ids)
     # write the dcas_df to excel
     dcas_df.to_excel(f'output/DCAS_DATA_{date.isoformat()}.xlsx', index=False)
-
-
-def test_read_daily_forecast():
-    """Test reading daily forecast dataset."""
-    dataset_type = DatasetType.DAILY_FORECAST
-    start_date = datetime.datetime(2025, 4, 20, 0, 0, 0, tzinfo=pytz.UTC)
-    end_date = datetime.datetime(2025, 7, 31, 0, 0, 0, tzinfo=pytz.UTC)
-    lat = 1.26728
-    lon = 35.336
-    attributes = [
-        'max_temperature', 'min_temperature'
-    ]
-    reader = DatasetReaderBuilder.create_reader(
-        dataset_type, lat, lon, start_date, end_date, attributes,
-    )
-    reader.read()
-    df = reader.get_result_df()
-    print(f'Read {len(df)} rows from Daily Forecast dataset.')
-    print(df.head())
 
 
 if __name__ == "__main__":
@@ -328,4 +312,4 @@ if __name__ == "__main__":
     crop = 'Maize_Mid'
     gdd, df = calculate_gdd(lat, lon, planting_date, current_date, crop)
     print(f'Calculated GDD: {gdd}')
-    print(df.head())
+    print(df.tail())
