@@ -34,7 +34,6 @@ class TamsatSPWGenerator:
     def __init__(self):
         """Initialize the TamsatSPWGenerator."""
         self.date = timezone.now()
-        self.farm_groups = FarmGroup.get_group_for_crop_insights()
         self.working_dir = os.path.join(
             '/tmp',
             f'spw_tamsat_{self.date.isoformat()}'
@@ -47,6 +46,17 @@ class TamsatSPWGenerator:
         self.config = self.preferences.crop_plan_config.get(
             'tamsat_spw_config', {}
         )
+        group_filter_names = self.config.get(
+            'farm_groups', []
+        )
+        self.farm_groups = FarmGroup.objects.all()
+        if group_filter_names:
+            logger.info(
+                f"Filtering SPW farm groups by names: {group_filter_names}"
+            )
+            self.farm_groups = self.farm_groups.filter(
+                name__in=group_filter_names
+            )
         self.geoparquet_path = self.config.get(
             'geoparquet_path', None
         )

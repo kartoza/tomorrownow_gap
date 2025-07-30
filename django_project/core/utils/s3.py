@@ -118,7 +118,7 @@ def s3_file_exists(s3_client, bucket_name, key):
         return True  # File exists
     except ClientError as e:
         # If it's a 404 error, the file doesn't exist
-        if e.response['Error']['Code'] == '404':
+        if e.response['Error']['Code'] in ['404', 'NoSuchKey']:
             return False
         else:
             # Some other error occurred (e.g., permissions issue)
