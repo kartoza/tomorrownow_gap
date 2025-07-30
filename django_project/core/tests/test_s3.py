@@ -110,7 +110,7 @@ class TestS3Utilities(TestCase):
 
         exists = s3_file_exists(self.s3, self.bucket, key)
         self.assertTrue(exists)
-        
+
         self.stubber.assert_no_pending_responses()
 
         # Test for a non-existing file
@@ -122,5 +122,5 @@ class TestS3Utilities(TestCase):
 
         exists = s3_file_exists(self.s3, self.bucket, 'non-existing-key')
         self.assertFalse(exists)
-        
+
         self.stubber.assert_no_pending_responses()

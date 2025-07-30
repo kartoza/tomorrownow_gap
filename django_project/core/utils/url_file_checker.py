@@ -13,21 +13,21 @@ from urllib.parse import urlparse
 def file_exists_at_url(url: str, timeout: int = 10) -> bool:
     """
     Check if a file exists at the given URL.
-    
+
     Args:
         url (str): The URL to check (supports HTTP/HTTPS and file:// schemes)
         timeout (int): Timeout in seconds for HTTP requests (default: 10)
-    
+
     Returns:
         bool: True if the file exists, False otherwise
-    
+
     Raises:
         ValueError: If the URL scheme is not supported
     """
     try:
         parsed_url = urlparse(url)
         scheme = parsed_url.scheme.lower()
-        print(f'scheme: {scheme}, url: {url}')  # Debugging output
+
         if scheme in ['http', 'https']:
             # For remote URLs, use HEAD request to check existence
             response = requests.head(

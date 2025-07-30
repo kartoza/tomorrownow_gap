@@ -13,7 +13,6 @@ import shutil
 from django.utils import timezone
 from django.conf import settings
 
-from core.models.background_task import TaskStatus
 from core.models.object_storage_manager import ObjectStorageManager
 from gap.models import (
     Preferences,

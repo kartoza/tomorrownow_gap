@@ -220,7 +220,7 @@ class TestFileExistsAtUrl(TestCase):
 
         with patch('os.path.exists') as mock_exists:
             mock_exists.return_value = True
-            
+
             # Test uppercase FILE
             result = file_exists_at_url("FILE:///home/user/file.txt")
             self.assertTrue(result)
