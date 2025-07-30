@@ -13,13 +13,20 @@ import shutil
 from django.utils import timezone
 from django.conf import settings
 
+from core.models.background_task import TaskStatus
 from core.models.object_storage_manager import ObjectStorageManager
 from gap.models import (
     Preferences,
     FarmGroup
 )
+from core.utils.url_file_checker import file_exists_at_url
 from core.utils.s3 import s3_file_exists
-from spw.tamsat.planting_date_api import routine_operations_v2
+from spw.models import SPWExecutionLog, SPWMethod
+from spw.tamsat.planting_date_api import (
+    routine_operations_v2,
+    get_pfc_filename,
+    WRSI_FILENAME
+)
 
 logger = logging.getLogger(__name__)
 DEFAULT_MAX_CHUNK_SIZE = 5000
@@ -31,15 +38,16 @@ class TamsatSPWGenerator:
     SPW_TMP_TABLE_NAME = 'spw_tamsat_tmp'
     SPW_TABLE_NAME = 'spw_tamsat'
 
-    def __init__(self):
+    def __init__(self, date=None):
         """Initialize the TamsatSPWGenerator."""
-        self.date = timezone.now()
+        self.date = date or timezone.now()
         self.working_dir = os.path.join(
             '/tmp',
             f'spw_tamsat_{self.date.isoformat()}'
         )
         os.makedirs(self.working_dir, exist_ok=True)
         self.preferences = Preferences.load()
+        self.spw_logs = {}
 
     def _init_config(self):
         """Initialize configuration for the SPW generator."""
@@ -57,6 +65,24 @@ class TamsatSPWGenerator:
             self.farm_groups = self.farm_groups.filter(
                 name__in=group_filter_names
             )
+
+        if not self.farm_groups.exists():
+            raise ValueError(
+                "No farm groups found for the specified configuration."
+            )
+
+        # Init dictionary for farm group and its request object
+        self.spw_logs = {}
+        for farm_group in self.farm_groups:
+            self.spw_logs[farm_group.id] = {
+                'farm_group': farm_group,
+                'log': SPWExecutionLog.init_record(
+                    farm_group,
+                    self.date,
+                    SPWMethod.TAMSAT
+                )
+            }
+
         self.geoparquet_path = self.config.get(
             'geoparquet_path', None
         )
@@ -411,10 +437,56 @@ class TamsatSPWGenerator:
         if os.path.exists(self.working_dir):
             shutil.rmtree(self.working_dir)
 
+    def _update_spw_error_logs(self, error_message, farm_group_id=None):
+        """Update SPW error logs."""
+        if farm_group_id:
+            spw_log = self.spw_logs.get(farm_group_id)
+            if spw_log:
+                spw_log['log'].stop_with_error(error_message)
+                logger.error(
+                    "SPW generation failed for farm group: "
+                    f"{spw_log['farm_group'].name} "
+                    f"with error: {error_message}"
+                )
+        else:
+            logger.error(
+                f"Error occurred while processing SPW for date: {self.date}."
+            )
+            # update all logs
+            for spw_log in self.spw_logs.values():
+                spw_log['log'].stop_with_error(error_message)
+
+    def _check_spw_resources_exists(self):
+        """Check if the SPW resources exist."""
+        pfc_file_exists = file_exists_at_url(
+            self.tamsat_url + get_pfc_filename(self.date) + '.gz'
+        )
+        if not pfc_file_exists:
+            self._update_spw_error_logs(
+                f"TAMSAT PFC file does not exist for date: {self.date}"
+            )
+            raise FileNotFoundError(
+                f"TAMSAT PFC file does not exist for date: {self.date}"
+            )
+
+        wrsi_file_exists = file_exists_at_url(
+            self.tamsat_url + WRSI_FILENAME
+        )
+        if not wrsi_file_exists:
+            self._update_spw_error_logs(
+                f"TAMSAT WRSI file does not exist for date: {self.date}"
+            )
+            raise FileNotFoundError(
+                f"TAMSAT WRSI file does not exist for date: {self.date}"
+            )
+
     def _run(self):
         """Run the SPW generator with Tamsat Alert."""
         # Initialize configuration
         self._init_config()
+
+        # Check if SPW resources exist
+        self._check_spw_resources_exists()
 
         # Get connection to DuckDB
         conn = self._get_connection()
