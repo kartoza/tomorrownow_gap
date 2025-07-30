@@ -109,7 +109,12 @@ def read_dcas_geoparquet(date, farmer_ids):
     if 'planting_date' in df.columns:
         dcas_display_columns.append('planting_date')
     elif 'planting_date_epoch' in df.columns:
-        dcas_display_columns.append('planting_date_epoch')
+        # Convert epoch to date
+        df['planting_date'] = pd.to_datetime(df['planting_date_epoch'], unit='s').dt.date
+        dcas_display_columns.append('planting_date')
+    # convert growth_stage_start_date to date
+    if 'growth_stage_start_date' in df.columns:
+        df['growth_stage_start_date'] = pd.to_datetime(df['growth_stage_start_date'], unit='s').dt.date
     print(df[dcas_display_columns].head())
     if len(df) == 0:
         print('⚠️ No DCAS data found for the specified date and farmers.')

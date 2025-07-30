@@ -5,14 +5,18 @@ Tomorrow Now GAP.
 .. note:: Command to find grid.
 """
 
+import pandas as pd
 from django.core.management.base import BaseCommand, CommandError
 from django.db import models
+from django.contrib.gis.db.models.functions import Centroid
 
 from gap.models import Grid
+from gap.utils.geometry import ST_X, ST_Y
 
 
 class Command(BaseCommand):
     """Command to find a Grid model instance by its unique id."""
+
     help = 'Finds a Grid model instance by its unique id'
 
     def add_arguments(self, parser):
@@ -23,9 +27,41 @@ class Command(BaseCommand):
             help='The unique id of the Grid'
         )
 
+    def extract_all_grids(self):
+        """Extract all grids from the database."""
+        grids = Grid.objects.select_related(
+            'country'
+        ).annotate(
+            centroid=Centroid('geometry')
+        ).annotate(
+            lat=ST_Y('centroid'),
+            lon=ST_X('centroid'),
+            country_name=models.F('country__name')
+        ).values(
+            'id',
+            'unique_id',
+            'lat',
+            'lon',
+            'country_name'
+        ).all()
+        # convert to dataframe
+        df = pd.DataFrame(list(grids))
+        # save to excel file
+        df.to_excel(
+            '/home/web/project/scripts/output/grids.xlsx',
+            index=False
+        )
+        self.stdout.write(
+            self.style.SUCCESS('All grids extracted and saved to grids.xlsx')
+        )
+
     def handle(self, *args, **options):
         """Handle the command."""
         grid_id = options['grid_id']
+        if grid_id == 'all':
+            self.extract_all_grids()
+            return
+
         try:
             grid = Grid.objects.get(unique_id=grid_id)
             self.stdout.write(self.style.SUCCESS(f'Grid found: {grid}'))
