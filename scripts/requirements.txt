@@ -3,3 +3,4 @@ pydantic-settings
 openpyxl
 xlrd
 pandas
+matplotlib

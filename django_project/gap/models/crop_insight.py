@@ -523,13 +523,6 @@ class CropPlanData:
         return output
 
 
-class CropInsightMethod(models.TextChoices):
-    """Crop Insight Method Choices."""
-
-    DEFAULT = 'default', 'Default'
-    TAMSAT = 'tamsat', 'TAMSAT'
-
-
 class CropInsightRequest(models.Model):
     """Crop insight request."""
 
@@ -550,12 +543,6 @@ class CropInsightRequest(models.Model):
         storage=crop_insight_storage,
         upload_to=ingestor_file_path,
         null=True, blank=True
-    )
-    method = models.CharField(
-        max_length=32,
-        choices=CropInsightMethod.choices,
-        default=CropInsightMethod.DEFAULT,
-        help_text='The method used for crop insight generation'
     )
 
     task_names = ['generate_insight_report', 'generate_crop_plan']
