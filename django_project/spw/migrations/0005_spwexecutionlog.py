@@ -8,7 +8,7 @@ import django.utils.timezone
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('gap', '0070_preferences_tamsat_url'),
+        ('gap', '0070_cropinsightrequest_method_preferences_tamsat_url'),
         ('spw', '0004_spwerrorlog'),
     ]
 

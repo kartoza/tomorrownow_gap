@@ -11,6 +11,11 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.AddField(
+            model_name='cropinsightrequest',
+            name='method',
+            field=models.CharField(choices=[('default', 'Default'), ('tamsat', 'TAMSAT')], default='default', help_text='The method used for crop insight generation', max_length=32),
+        ),
+        migrations.AddField(
             model_name='preferences',
             name='tamsat_url',
             field=models.CharField(blank=True, default='', max_length=512, null=True),
