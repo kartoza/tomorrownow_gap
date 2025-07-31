@@ -11,35 +11,34 @@ import duckdb
 import pandas as pd
 import shutil
 from django.utils import timezone
-from django.conf import settings
 
-from core.models.object_storage_manager import ObjectStorageManager
 from gap.models import (
     Preferences,
     FarmGroup
 )
 from core.utils.url_file_checker import file_exists_at_url
-from core.utils.s3 import s3_file_exists
 from spw.models import SPWExecutionLog, SPWMethod
+from spw.tamsat.base import TamsatSPWBase
 from spw.tamsat.planting_date_api import (
     routine_operations_v2,
     get_pfc_filename,
-    WRSI_FILENAME
+    WRSI_FILENAME,
+    RoutineDefaults
 )
 
 logger = logging.getLogger(__name__)
 DEFAULT_MAX_CHUNK_SIZE = 5000
 
 
-class TamsatSPWGenerator:
+class TamsatSPWGenerator(TamsatSPWBase):
     """SPW Generator for TAMSAT data."""
 
     SPW_TMP_TABLE_NAME = 'spw_tamsat_tmp'
-    SPW_TABLE_NAME = 'spw_tamsat'
 
-    def __init__(self, date=None):
+    def __init__(self, date=None, cleanup=True, verbose=False):
         """Initialize the TamsatSPWGenerator."""
-        self.date = date or timezone.now()
+        super().__init__(verbose=verbose)
+        self.date = date or timezone.now().date()
         self.working_dir = os.path.join(
             '/tmp',
             f'spw_tamsat_{self.date.isoformat()}'
@@ -47,12 +46,11 @@ class TamsatSPWGenerator:
         os.makedirs(self.working_dir, exist_ok=True)
         self.preferences = Preferences.load()
         self.spw_logs = {}
+        self.cleanup = cleanup
 
     def _init_config(self):
         """Initialize configuration for the SPW generator."""
-        self.config = self.preferences.crop_plan_config.get(
-            'tamsat_spw_config', {}
-        )
+        super()._init_config()
         group_filter_names = self.config.get(
             'farm_groups', []
         )
@@ -82,65 +80,17 @@ class TamsatSPWGenerator:
                 )
             }
 
-        self.geoparquet_path = self.config.get(
-            'geoparquet_path', None
-        )
-        if not self.geoparquet_path:
-            raise ValueError(
-                'Tamsat geoparquet path not found in preferences.'
-            )
-
-        self.geoparquet_connection_name = (
-            self.config.get(
-                'geoparquet_connection_name', 'default'
-            )
-        )
         self.tamsat_url = self.preferences.tamsat_url
         if not self.tamsat_url:
             raise ValueError('TAMSAT URL not found in preferences.')
 
-        self.s3 = ObjectStorageManager.get_s3_env_vars(
-            self.geoparquet_connection_name
-        )
-        self.duck_db_num_threads = self.config.get(
-            'duck_db_num_threads',
-            1
-        )
-        self.duckdb_memory_limit = self.config.get(
-            'duckdb_memory_limit',
-            '1GB'
-        )
         self.chunk_size = self.config.get(
             'chunk_size',
             DEFAULT_MAX_CHUNK_SIZE
         )
 
-    def _get_duckdb_config(self):
-        endpoint = self.s3['S3_ENDPOINT_URL']
-        # Remove protocol from endpoint
-        endpoint = endpoint.replace('http://', '')
-        endpoint = endpoint.replace('https://', '')
-        if endpoint.endswith('/'):
-            endpoint = endpoint[:-1]
-
-        use_ssl = not settings.DEBUG
-
-        config = {
-            's3_access_key_id': self.s3['S3_ACCESS_KEY_ID'],
-            's3_secret_access_key': self.s3['S3_SECRET_ACCESS_KEY'],
-            's3_region': 'us-east-1',
-            's3_url_style': 'path',
-            's3_endpoint': endpoint,
-            's3_use_ssl': use_ssl,
-            'memory_limit': self.duckdb_memory_limit,
-        }
-        if self.duck_db_num_threads:
-            config['threads'] = self.duck_db_num_threads
-
-        return config
-
     def _get_connection(self):
-        config = self._get_duckdb_config(self.s3)
+        config = self._get_duckdb_config()
         dudckdb_path = os.path.join(
             self.working_dir, 'tamsat_spw.duckdb'
         )
@@ -153,64 +103,10 @@ class TamsatSPWGenerator:
         conn.load_extension("postgres")
 
         # Create a temporary table for SPW data
-        conn.execute(f"""
-            CREATE TABLE IF NOT EXISTS {self.SPW_TMP_TABLE_NAME} (
-                date DATE,
-                farm_id BIGINT,
-                farm_unique_id VARCHAR,
-                country VARCHAR,
-                farm_group_id BIGINT,
-                farm_group VARCHAR,
-                grid_id BIGINT,
-                grid_unique_id VARCHAR,
-                geometry GEOMETRY,
-                latitude DOUBLE,
-                longitude DOUBLE,
-                sm_25 DOUBLE,
-                sm_50 DOUBLE,
-                sm_70 DOUBLE,
-                spw_20 DOUBLE,
-                spw_40 DOUBLE,
-                spw_60 DOUBLE,
-                pfc_user_probability DOUBLE,
-                wrsi_user_probability DOUBLE,
-                pfc_user_decision DOUBLE,
-                wrsi_user_decision DOUBLE,
-                sm_user_decision DOUBLE
-            )
-        """)
+        conn.execute(self.CREATE_TABLE_QUERY.format(self.SPW_TMP_TABLE_NAME))
+        conn.execute(self.CREATE_TABLE_QUERY.format(self.SPW_TABLE_NAME))
 
         return conn
-
-    def _get_current_month_parquet_path(self):
-        """Get the path for the current month's geoparquet file."""
-        return (
-            f"s3://{self.s3['S3_BUCKET_NAME']}/"
-            f"{self.s3['S3_DIR_PREFIX']}/{self.geoparquet_path}/"
-            f"year={self.date.year}/month={self.date.month}.parquet"
-        )
-
-    def _check_parquet_exists(self):
-        """Check if the geoparquet file exists."""
-        s3_client = ObjectStorageManager.get_s3_client(self.s3)
-        path = (
-            f"{self.s3['S3_DIR_PREFIX']}/{self.geoparquet_path}/"
-            f"year={self.date.year}/month={self.date.month}.parquet"
-        )
-
-        return s3_file_exists(s3_client, self.s3['S3_BUCKET_NAME'], path)
-
-    def _pull_existing_monthly_data(self, conn):
-        """Pull existing monthly data from the geoparquet file."""
-        parquet_path = self._get_current_month_parquet_path()
-        conn.execute(
-            f"""
-            CREATE TABLE {self.SPW_TABLE_NAME} AS
-            SELECT * FROM read_parquet(
-                '{parquet_path}'
-            )
-            """
-        )
 
     def _insert_farm_group_data(self, conn, df):
         """Insert df to the SPW temporary table."""
@@ -221,6 +117,13 @@ class TamsatSPWGenerator:
         if 'geometry' not in df.columns:
             df['geometry'] = None
 
+        if 'Latitude' in df.columns or 'Longitude' in df.columns:
+            # rename columns to match SPW temporary table
+            df.rename(columns={
+                'Latitude': 'latitude',
+                'Longitude': 'longitude'
+            }, inplace=True)
+
         # reorder columns to match the SPW temporary table
         df = df[[
             'date', 'farm_id', 'farm_unique_id', 'country',
@@ -229,7 +132,9 @@ class TamsatSPWGenerator:
             'sm_25', 'sm_50', 'sm_70', 'spw_20',
             'spw_40', 'spw_60', 'pfc_user_probability',
             'wrsi_user_probability', 'pfc_user_decision',
-            'wrsi_user_decision', 'sm_user_decision'
+            'wrsi_user_decision', 'sm_user_decision',
+            'pfc_thresh', 'pfc_prob_thresh', 'wrsi_thresh_factor',
+            'wrsi_prob_thresh'
         ]]
 
         conn.execute(
@@ -239,13 +144,14 @@ class TamsatSPWGenerator:
             """
         )
 
+        # log count of inserted rows
+        self.count_rows_in_spw_table(conn, self.SPW_TMP_TABLE_NAME)
+
     def _prepare_geometry(self, conn):
         """Prepare geometry from latitude and longitude columns."""
         conn.execute(f"""
             UPDATE {self.SPW_TMP_TABLE_NAME}
-            SET geometry = ST_SetSRID(
-                ST_MakePoint(longitude, latitude), 4326
-            )
+            SET geometry = ST_Point(longitude, latitude)
             WHERE geometry IS NULL;
         """)
 
@@ -253,10 +159,17 @@ class TamsatSPWGenerator:
         """Move data from temporary table to SPW table."""
         conn.execute(
             f"""
+                DELETE FROM {self.SPW_TABLE_NAME}
+                WHERE date = '{self.date}'
+            """
+        )
+        conn.execute(
+            f"""
                 INSERT INTO {self.SPW_TABLE_NAME}
                 SELECT * FROM {self.SPW_TMP_TABLE_NAME}
             """
         )
+        self.count_rows_in_spw_table(conn, self.SPW_TABLE_NAME)
 
     def _store_as_geoparquet(self, conn):
         """Store the SPW data as a geoparquet file."""
@@ -266,6 +179,9 @@ class TamsatSPWGenerator:
             SELECT ST_Extent(geometry) FROM {self.SPW_TABLE_NAME}
             """
         ).fetchone()[0]
+
+        # Delete existing ordered table if it exists
+        conn.execute("DROP TABLE IF EXISTS spw_ordered;")
 
         # Order by date and farm geometry
         sql = (
@@ -277,8 +193,8 @@ class TamsatSPWGenerator:
             ST_Hilbert(
                 geometry,
                 ST_Extent(ST_MakeEnvelope(
-                {bbox[0]}, {bbox[1]},
-                {bbox[2]}, {bbox[3]}
+                {bbox['min_x']}, {bbox['min_y']},
+                {bbox['max_x']}, {bbox['max_y']}
                 ))
             );
             """
@@ -286,7 +202,7 @@ class TamsatSPWGenerator:
         conn.execute(sql)
 
         # Export to GeoParquet
-        parquet_path = self._get_current_month_parquet_path()
+        parquet_path = self._get_current_month_parquet_path(self.date)
         sql = (
             f"""
             COPY (
@@ -298,73 +214,64 @@ class TamsatSPWGenerator:
         conn.execute(sql)
 
     def _get_slices(self, total_count, max_chunk_size=DEFAULT_MAX_CHUNK_SIZE):
-        """Yield slices of farm groups."""
+        """Create chunk slices of farm groups."""
+        chunk_slices = []
         for start in range(0, total_count, max_chunk_size):
             end = min(start + max_chunk_size, total_count)
-            yield slice(start, end)
+            chunk_slices.append(slice(start, end))
+        return chunk_slices
 
     def _execute_spw_model(
-        self, farm_group: FarmGroup, farms_slice, chunk_idx
+        self, farm_group: FarmGroup, farms_slice, chunk_idx,
+        pfc_thresh, pfc_prob_thresh, wrsi_thresh_factor, wrsi_prob_thresh
     ):
         """Execute Tamsat SPW model for a farm group."""
         # Create df with columns:
         # date, farm_id, farm_unique_id, country, farm_group_id,
         # farm_group, grid_id, grid_unique_id, Latitude, Longitude,
-        df = pd.DataFrame({
-            'date': self.date,
-            'farm_id': None,
-            'farm_unique_id': None,
-            'country': None,
-            'farm_group_id': farm_group.id,
-            'farm_group': farm_group.name,
-            'grid_id': None,
-            'grid_unique_id': None,
-            'latitude': None,
-            'longitude': None,
-        })
+        df = pd.DataFrame(columns=[
+            'date', 'farm_id', 'farm_unique_id', 'country',
+            'farm_group_id', 'farm_group', 'grid_id', 'grid_unique_id',
+            'Latitude', 'Longitude', 'pfc_thresh', 'pfc_prob_thresh',
+            'wrsi_thresh_factor', 'wrsi_prob_thresh'
+        ])
 
         # Add farm data to df
         for farm in farms_slice:
-            df = df.append(
-                {
-                    'farm_id': farm.id,
-                    'farm_unique_id': farm.unique_id,
-                    'country': farm.grid.country.name if farm.grid else None,
-                    'grid_id': farm.grid.id if farm.grid else None,
-                    'grid_unique_id': (
-                        farm.grid.unique_id if farm.grid else None
-                    ),
-                    'latitude': farm.geometry.y,
-                    'longitude': farm.geometry.x,
-                },
-                ignore_index=True
-            )
+            new_row = pd.DataFrame({
+                'date': [self.date],
+                'farm_id': [farm.id],
+                'farm_unique_id': [farm.unique_id],
+                'country': [
+                    farm.grid.country.name if
+                    farm.grid and farm.grid.country else None
+                ],
+                'farm_group_id': [farm_group.id],
+                'farm_group': [farm_group.name],
+                'grid_id': [farm.grid.id if farm.grid else None],
+                'grid_unique_id': [farm.grid.unique_id if farm.grid else None],
+                'Latitude': [farm.geometry.y],
+                'Longitude': [farm.geometry.x],
+                'pfc_thresh': [pfc_thresh],
+                'pfc_prob_thresh': [pfc_prob_thresh],
+                'wrsi_thresh_factor': [wrsi_thresh_factor],
+                'wrsi_prob_thresh': [wrsi_prob_thresh]
+            })
+            df = pd.concat([df, new_row], ignore_index=True)
 
         if df.empty:
             logger.warning(
                 f"No farms found for farm group: {farm_group.name} "
                 f"with chunk index: {chunk_idx}"
             )
-            return
+            return df
 
         # export to csv file
         csv_file_path = os.path.join(
             self.working_dir,
             f'spw_tamsat_{farm_group.id}_{chunk_idx}.csv'
         )
-
-        pfc_thresh = self.config.get(
-            'pfc_thresh', 70
-        )
-        pfc_prob_thresh = self.config.get(
-            'pfc_prob_thresh', 0.8
-        )
-        wrsi_thresh_factor = self.config.get(
-            'wrsi_thresh_factor', 0.75
-        )
-        wrsi_prob_thresh = self.config.get(
-            'wrsi_prob_thresh', 0.5
-        )
+        df.to_csv(csv_file_path, index=False)
 
         logger.info(
             f'Processing farm group: {farm_group.name} '
@@ -391,6 +298,27 @@ class TamsatSPWGenerator:
     def _process_farm_group(self, conn, farm_group: FarmGroup):
         """Process a single farm group."""
         logger.info(f"Processing farm group: {farm_group.name}")
+        spw_log = self.spw_logs[farm_group.id]
+        pfc_thresh = self.config.get(
+            'pfc_thresh', RoutineDefaults.PFC_THRESH
+        )
+        pfc_prob_thresh = self.config.get(
+            'pfc_prob_thresh', RoutineDefaults.PFC_PROB_THRESH
+        )
+        wrsi_thresh_factor = self.config.get(
+            'wrsi_thresh_factor', RoutineDefaults.WRSI_THRESH_FACTOR
+        )
+        wrsi_prob_thresh = self.config.get(
+            'wrsi_prob_thresh', RoutineDefaults.WRSI_PROB_THRESH
+        )
+        spw_log['log'].config = {
+            'pfc_thresh': pfc_thresh,
+            'pfc_prob_thresh': pfc_prob_thresh,
+            'wrsi_thresh_factor': wrsi_thresh_factor,
+            'wrsi_prob_thresh': wrsi_prob_thresh
+        }
+        spw_log['log'].start()
+
         farms = (
             farm_group.farms.select_related('grid', 'grid__country')
             .all().order_by('id')
@@ -401,6 +329,7 @@ class TamsatSPWGenerator:
             logger.warning(
                 f"No farms found for farm group: {farm_group.name}"
             )
+            spw_log['log'].success()
             return
 
         # Remove existing data for the farm group in current date
@@ -408,7 +337,7 @@ class TamsatSPWGenerator:
             f"""
             DELETE FROM {self.SPW_TMP_TABLE_NAME}
             WHERE farm_group_id = {farm_group.id}
-            AND date = '{self.date.date()}';
+            AND date = '{self.date}';
             """
         )
 
@@ -417,23 +346,39 @@ class TamsatSPWGenerator:
         chunk_idx = 0
         for slice_ in all_slices:
             chunk_idx += 1
+            spw_log['log'].notes = (
+                f"Processing chunk {chunk_idx}/{len(all_slices)} "
+                f"for farm group: {farm_group.name}"
+            )
+            spw_log['log'].save()
             logger.info(
                 f"Processing chunk {chunk_idx}/{len(all_slices)} "
                 f"for farm group: {farm_group.name}"
             )
             farms_slice = farms[slice_]
             df = self._execute_spw_model(
-                farm_group, farms_slice, chunk_idx
+                farm_group, farms_slice, chunk_idx,
+                pfc_thresh, pfc_prob_thresh,
+                wrsi_thresh_factor, wrsi_prob_thresh
             )
             if df.empty:
                 continue
 
             self._insert_farm_group_data(conn, df)
 
+        logger.info(
+            f"Finished processing farm group: {farm_group.name} "
+            f"with {total_count} farms."
+        )
+        spw_log['log'].success()
+
     def _cleanup(self):
         """Cleanup temporary files and tables."""
         # Cleanup working directory
         if os.path.exists(self.working_dir):
+            logger.info(
+                f"Cleaning up working directory: {self.working_dir}"
+            )
             shutil.rmtree(self.working_dir)
 
     def _update_spw_error_logs(self, error_message, farm_group_id=None):
@@ -461,9 +406,6 @@ class TamsatSPWGenerator:
             self.tamsat_url + get_pfc_filename(self.date) + '.gz'
         )
         if not pfc_file_exists:
-            self._update_spw_error_logs(
-                f"TAMSAT PFC file does not exist for date: {self.date}"
-            )
             raise FileNotFoundError(
                 f"TAMSAT PFC file does not exist for date: {self.date}"
             )
@@ -472,9 +414,6 @@ class TamsatSPWGenerator:
             self.tamsat_url + WRSI_FILENAME
         )
         if not wrsi_file_exists:
-            self._update_spw_error_logs(
-                f"TAMSAT WRSI file does not exist for date: {self.date}"
-            )
             raise FileNotFoundError(
                 f"TAMSAT WRSI file does not exist for date: {self.date}"
             )
@@ -491,12 +430,12 @@ class TamsatSPWGenerator:
         conn = self._get_connection()
 
         # Check if geoparquet file exists
-        if self._check_parquet_exists():
+        if self._check_parquet_exists(self.date):
             logger.info(
                 "Geoparquet file already exists for the current month. "
                 "Pulling existing data."
             )
-            self._pull_existing_monthly_data(conn)
+            self._pull_existing_monthly_data(conn, self.date)
 
         # Process each farm group
         for farm_group in self.farm_groups:
@@ -504,6 +443,9 @@ class TamsatSPWGenerator:
 
         # Prepare geometry
         self._prepare_geometry(conn)
+
+        # debug count of inserted rows
+        self.count_rows_in_spw_table(conn, self.SPW_TMP_TABLE_NAME)
 
         # Move data to SPW table
         self._move_to_spw_table(conn)
@@ -513,13 +455,15 @@ class TamsatSPWGenerator:
 
         logger.info("SPW generation completed successfully.")
         conn.close()
-        self._cleanup()
+        if self.cleanup:
+            self._cleanup()
 
     def run(self):
         """Run the SPW generator."""
         try:
             self._run()
         except Exception as e:
+            self._update_spw_error_logs(str(e))
             logger.error(
                 f"Error running Tamsat SPW generator: {e}",
                 exc_info=True

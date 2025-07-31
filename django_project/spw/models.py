@@ -295,6 +295,12 @@ class SPWExecutionLog(models.Model):
         self.end_time = timezone.now()
         self.save()
 
+    def success(self):
+        """Stop the SPW execution log with success."""
+        self.status = TaskStatus.COMPLETED
+        self.end_time = timezone.now()
+        self.save()
+
     class Meta:  # noqa
         """Meta class for SPWExecutionLog."""
 
