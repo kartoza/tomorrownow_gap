@@ -23,6 +23,15 @@ logger = logging.getLogger(__name__)
 WRSI_FILENAME = 'wrsi_daily_allafrica_0.25.nc'
 
 
+class RoutineDefaults:
+    """Defaults for routine operations."""
+
+    PFC_THRESH = 70
+    PFC_PROB_THRESH = 0.8
+    WRSI_THRESH_FACTOR = 0.75
+    WRSI_PROB_THRESH = 0.5
+
+
 def get_pfc_filename(datein):
     """Generate filename for PFC data based on date."""
     filename_pfc = (
@@ -31,6 +40,27 @@ def get_pfc_filename(datein):
         str('.nc')
     )
     return filename_pfc
+
+
+def _get_output_variable(
+    planting_dst_output,
+    obsdata,
+    variable_name
+):
+    """Extract output variable from planting data output."""
+    arrayin_xr = planting_dst_output[variable_name]
+    tmp = arrayin_xr.sel(
+        longitude=np.array(obsdata['Longitude']),
+        latitude=np.array(obsdata['Latitude']),
+        method='nearest'
+    )
+    squeezed = tmp.squeeze()
+    if squeezed.ndim == 0:  # 0-dimensional
+        obslist = np.array([squeezed.item()])  # Extract scalar value
+    else:
+        obslist = np.diag(squeezed.values)
+
+    return obslist
 
 
 def sm_decision(
@@ -88,9 +118,12 @@ def sm_decision(
 def routine_operations_v2(
     yearin, monthin, dayin, obsfile,
     tamsat_url, working_dir,
-    output_domain='Region', pfc_thresh=70, pfc_prob_thresh=0.8,
-    wrsi_thresh_factor=0.75, wrsi_prob_thresh=0.5, ecmwf_flag=1,
-    local_flag=0, user_col=None, csv_output=True
+    output_domain='Region',
+    pfc_thresh=RoutineDefaults.PFC_THRESH,
+    pfc_prob_thresh=RoutineDefaults.PFC_PROB_THRESH,
+    wrsi_thresh_factor=RoutineDefaults.WRSI_THRESH_FACTOR,
+    wrsi_prob_thresh=RoutineDefaults.WRSI_PROB_THRESH,
+    ecmwf_flag=1, local_flag=0, user_col=None, csv_output=True
 ):
     """
     Calculate the TAMSAT-ALERT planting date DST (Decision Support Tool).
@@ -434,151 +467,71 @@ def routine_operations_v2(
         ['longitude', 'latitude'], overall_ecmwf_sm_decision
     )
 
-    arrayin_xr = planting_dst_output['overall_sm_decision_25']
-    tmp = arrayin_xr.sel(
-        longitude=np.array(obsdata['Longitude']),
-        latitude=np.array(obsdata['Latitude']),
-        method='nearest'
+    obsdata['sm_25'] = _get_output_variable(
+        planting_dst_output, obsdata, 'overall_sm_decision_25'
     )
-    obslist = np.diag(tmp.squeeze())
-    obsdata['sm_25'] = obslist
 
-    arrayin_xr = planting_dst_output['overall_sm_decision_50']
-    tmp = arrayin_xr.sel(
-        longitude=np.array(obsdata['Longitude']),
-        latitude=np.array(obsdata['Latitude']),
-        method='nearest'
+    obsdata['sm_50'] =  _get_output_variable(
+        planting_dst_output, obsdata, 'overall_sm_decision_50'
     )
-    obslist = np.diag(tmp.squeeze())
-    obsdata['sm_50'] = obslist
 
-    arrayin_xr = planting_dst_output['overall_sm_decision_70']
-    tmp = arrayin_xr.sel(
-        longitude=np.array(obsdata['Longitude']),
-        latitude=np.array(obsdata['Latitude']),
-        method='nearest'
+    obsdata['sm_70'] = _get_output_variable(
+        planting_dst_output, obsdata, 'overall_sm_decision_70'
     )
-    obslist = np.diag(tmp.squeeze())
-    obsdata['sm_70'] = obslist
 
-    arrayin_xr = planting_dst_output['spw_20']
-    tmp = arrayin_xr.sel(
-        longitude=np.array(obsdata['Longitude']),
-        latitude=np.array(obsdata['Latitude']),
-        method='nearest'
+    obsdata['spw_20'] = _get_output_variable(
+        planting_dst_output, obsdata, 'spw_20'
     )
-    obslist = np.diag(tmp.squeeze())
-    obsdata['spw_20'] = obslist
 
-    arrayin_xr = planting_dst_output['spw_40']
-    tmp = arrayin_xr.sel(
-        longitude=np.array(obsdata['Longitude']),
-        latitude=np.array(obsdata['Latitude']),
-        method='nearest'
+    obsdata['spw_40'] = _get_output_variable(
+        planting_dst_output, obsdata, 'spw_40'
     )
-    obslist = np.diag(tmp.squeeze())
-    obsdata['spw_40'] = obslist
 
-    arrayin_xr = planting_dst_output['spw_60']
-    tmp = arrayin_xr.sel(
-        longitude=np.array(obsdata['Longitude']),
-        latitude=np.array(obsdata['Latitude']),
-        method='nearest'
+    obsdata['spw_60'] = _get_output_variable(
+        planting_dst_output, obsdata, 'spw_60'
     )
-    obslist = np.diag(tmp.squeeze())
-    obsdata['spw_60'] = obslist
 
     if ecmwf_flag == 0:
-        arrayin_xr = planting_dst_output['pfc_risk_out']
-        tmp = arrayin_xr.sel(
-            longitude=np.array(obsdata['Longitude']),
-            latitude=np.array(obsdata['Latitude']),
-            method='nearest'
+        obsdata['pfc_user_probability'] = _get_output_variable(
+            planting_dst_output, obsdata, 'pfc_risk_out'
         )
-        obslist = np.diag(tmp.squeeze())
-        obsdata['pfc_user_probability'] = obslist
 
-        arrayin_xr = planting_dst_output['wrsi_risk_out']
-        tmp = arrayin_xr.sel(
-            longitude=np.array(obsdata['Longitude']),
-            latitude=np.array(obsdata['Latitude']),
-            method='nearest'
+        obsdata['wrsi_user_probability'] = _get_output_variable(
+            planting_dst_output, obsdata, 'wrsi_risk_out'
         )
-        obslist = np.diag(tmp.squeeze())
-        obsdata['wrsi_user_probability'] = obslist
 
-        arrayin_xr = planting_dst_output['pfc_decision']
-        tmp = arrayin_xr.sel(
-            longitude=np.array(obsdata['Longitude']),
-            latitude=np.array(obsdata['Latitude']),
-            method='nearest'
+        obsdata['pfc_user_decision'] = _get_output_variable(
+            planting_dst_output, obsdata, 'pfc_decision'
         )
-        obslist = np.diag(tmp.squeeze())
-        obsdata['pfc_user_decision'] = obslist
 
-        arrayin_xr = planting_dst_output['wrsi_decision']
-        tmp = arrayin_xr.sel(
-            longitude=np.array(obsdata['Longitude']),
-            latitude=np.array(obsdata['Latitude']),
-            method='nearest'
+        obsdata['wrsi_user_decision'] = _get_output_variable(
+            planting_dst_output, obsdata, 'wrsi_decision'
         )
-        obslist = np.diag(tmp.squeeze())
-        obsdata['wrsi_user_decision'] = obslist
 
-        arrayin_xr = planting_dst_output['overall_sm_decision']
-        tmp = arrayin_xr.sel(
-            longitude=np.array(obsdata['Longitude']),
-            latitude=np.array(obsdata['Latitude']),
-            method='nearest'
+        obsdata['sm_user_decision'] = _get_output_variable(
+            planting_dst_output, obsdata, 'overall_sm_decision'
         )
-        obslist = np.diag(tmp.squeeze())
-        obsdata['sm_user_decision'] = obslist
 
     if ecmwf_flag == 1:
-        arrayin_xr = planting_dst_output['pfc_ecmwf_risk_out']
-        tmp = arrayin_xr.sel(
-            longitude=np.array(obsdata['Longitude']),
-            latitude=np.array(obsdata['Latitude']),
-            method='nearest'
+        obsdata['pfc_user_probability'] = _get_output_variable(
+            planting_dst_output, obsdata, 'pfc_ecmwf_risk_out'
         )
-        obslist = np.diag(tmp.squeeze())
-        obsdata['pfc_user_probability'] = obslist
 
-        arrayin_xr = planting_dst_output['wrsi_risk_out']
-        tmp = arrayin_xr.sel(
-            longitude=np.array(obsdata['Longitude']),
-            latitude=np.array(obsdata['Latitude']),
-            method='nearest'
+        obsdata['wrsi_user_probability'] = _get_output_variable(
+            planting_dst_output, obsdata, 'wrsi_risk_out'
         )
-        obslist = np.diag(tmp.squeeze())
-        obsdata['wrsi_user_probability'] = obslist
 
-        arrayin_xr = planting_dst_output['pfc_ecmwf_decision']
-        tmp = arrayin_xr.sel(
-            longitude=np.array(obsdata['Longitude']),
-            latitude=np.array(obsdata['Latitude']),
-            method='nearest'
+        obsdata['pfc_user_decision'] = _get_output_variable(
+            planting_dst_output, obsdata, 'pfc_ecmwf_decision'
         )
-        obslist = np.diag(tmp.squeeze())
-        obsdata['pfc_user_decision'] = obslist
 
-        arrayin_xr = planting_dst_output['wrsi_decision']
-        tmp = arrayin_xr.sel(
-            longitude=np.array(obsdata['Longitude']),
-            latitude=np.array(obsdata['Latitude']),
-            method='nearest'
+        obsdata['wrsi_user_decision'] = _get_output_variable(
+            planting_dst_output, obsdata, 'wrsi_decision'
         )
-        obslist = np.diag(tmp.squeeze())
-        obsdata['wrsi_user_decision'] = obslist
 
-        arrayin_xr = planting_dst_output['overall_ecmwf_sm_decision']
-        tmp = arrayin_xr.sel(
-            longitude=np.array(obsdata['Longitude']),
-            latitude=np.array(obsdata['Latitude']),
-            method='nearest'
+        obsdata['sm_user_decision'] = _get_output_variable(
+            planting_dst_output, obsdata, 'overall_ecmwf_sm_decision'
         )
-        obslist = np.diag(tmp.squeeze())
-        obsdata['sm_user_decision'] = obslist
 
     # Select columns correctly using a list
     if user_col is not None:
