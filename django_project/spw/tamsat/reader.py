@@ -51,15 +51,21 @@ class TamsatSPWReader(TamsatSPWBase):
 
         query = f"""
             SELECT * FROM {self.SPW_TABLE_NAME}
-            WHERE date = '{date}'
+            WHERE date = $1
         """
+        param_id = 2
+        params = [date]
         if farmer_ids:
             query += (
-                f" AND farm_unique_id IN ({','.join(map(str, farmer_ids))})"
+                f" AND farm_unique_id IN ${param_id}"
             )
+            param_id += 1
+            params.append(farmer_ids)
         if farm_groups:
-            query += f" AND farm_group IN ({','.join(farm_groups)})"
-        return self.conn.execute(query).df()
+            query += f" AND farm_group IN ${param_id}"
+            param_id += 1
+            params.append(farm_groups)
+        return self.conn.execute(query, parameters=params).df()
 
     def close(self):
         """Close the connection."""

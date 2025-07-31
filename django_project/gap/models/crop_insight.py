@@ -6,6 +6,8 @@ Tomorrow Now GAP.
 """
 import os.path
 import uuid
+import logging
+import re
 from datetime import date, timedelta, tzinfo, datetime
 from concurrent.futures import ThreadPoolExecutor
 
@@ -29,6 +31,7 @@ from gap.models.pest import Pest
 from spw.models import SPWOutput
 
 User = get_user_model()
+logger = logging.getLogger(__name__)
 
 
 def ingestor_file_path(instance, filename):
@@ -361,11 +364,12 @@ class CropPlanData:
 
     def __init__(
             self, farm: Farm, generated_date: date, forecast_days: int = 13,
-            forecast_fields: list = None
+            forecast_fields: list = None, tamsat_spw_df = None
     ):
         """Initialize the report model for the Insight Request Report."""
         self.generated_date = generated_date
         self.farm = farm
+        self.tamsat_spw_df = tamsat_spw_df
 
         # Update data
         self.farm_id = self.farm.unique_id
@@ -428,6 +432,14 @@ class CropPlanData:
     def prise_message_key(pest: Pest, field_num):
         """Return key for prise message field."""
         return f'prise_{pest.short_name}_{field_num}'
+
+    @staticmethod
+    def tamsat_fields():
+        """Return list of TAMSAT SPW fields."""
+        return [
+            'tamsat_spw20', 'tamsat_spw40', 'tamsat_spw60',
+            'tamsat_sm25', 'tamsat_sm50', 'tamsat_sm70',
+        ]
 
     @property
     def data(self) -> dict:
@@ -519,6 +531,26 @@ class CropPlanData:
                 output[
                     CropPlanData.prise_message_key(pest, idx + 1)
                 ] = prise_message
+
+        # ----------------------------------------
+        # Tamsat SPW data
+        if self.tamsat_spw_df is not None:
+            # filter by farm_unique_id
+            df = self.tamsat_spw_df[
+                self.tamsat_spw_df['farm_unique_id'] == self.farm.unique_id
+            ]
+            if not df.empty:
+                for field in CropPlanData.tamsat_fields():
+                    field_source = field.replace('tamsat_', '')
+                    # add underscore, e.g. spw20 to spw_20
+                    field_source = re.sub(
+                        r'([a-zA-Z]+)(\d+)', r'\1_\2', field_source
+                    )
+                    if field_source in df.columns:
+                        output[field] = (
+                            'Plant' if df[field_source].values[0] == 1 else
+                            'Do Not Plant'
+                        )
 
         return output
 
@@ -746,6 +778,27 @@ class CropInsightRequest(models.Model):
         for result in results:
             print(result)
 
+    def _init_tamsat_spw_reader(self):
+        """Initialize TAMSAT SPW reader."""
+        from spw.tamsat.reader import TamsatSPWReader
+        tamsat_spw_reader = TamsatSPWReader()
+        tamsat_spw_reader.setup()
+
+        # read monthly data to copy to the database
+        try:
+            df = tamsat_spw_reader.read_data(
+                self.requested_at.date(),
+                farm_groups=[self.farm_group.name]
+            )
+            logger.info(f'Total farms in TAMSAT SPW: {df.shape[0]}')
+            return df
+        except ValueError as e:
+            # If the data is not available, we skip it
+            logger.warning(
+                f'Error reading TAMSAT data for {self.farm_group.name}: {e}'
+            )
+            return None
+
     def _generate_report(self):
         """Generate reports."""
         from spw.generator.crop_insight import CropInsightFarmGenerator
@@ -760,6 +813,14 @@ class CropInsightRequest(models.Model):
             self.farm_group.headers
         ]
         fields = self.farm_group.fields
+        has_tamsat_spw_column = fields.filter(
+            field__in= CropPlanData.tamsat_fields()
+        ).exists()
+
+        # init tamsat spw reader
+        tamsat_spw_df = None
+        if has_tamsat_spw_column:
+            tamsat_spw_df = self._init_tamsat_spw_reader()
 
         # Get farms
         for farm in farms:
@@ -776,7 +837,8 @@ class CropInsightRequest(models.Model):
                 forecast_fields=[
                     'rainAccumulationSum', 'precipitationProbability',
                     'rainAccumulationType'
-                ]
+                ],
+                tamsat_spw_df=tamsat_spw_df
             ).data
 
             # Create header
