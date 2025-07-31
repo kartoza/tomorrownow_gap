@@ -72,3 +72,17 @@ def clean_duplicate_farm_short_term_forecast():
     FarmShortTermForecast.objects.exclude(
         id__in=latests
     ).delete()
+
+
+@shared_task(name="run_tamsat_spw")
+def run_tamsat_spw():
+    """Run TAMSAT SPW."""
+    from spw.tamsat.generator import TamsatSPWGenerator
+    date = timezone.now().date()
+    logger.info(f'Running TAMSAT SPW - {date}')
+    generator = TamsatSPWGenerator(
+        date=date,
+        verbose=True
+    )
+    generator.run()
+    logger.info('TAMSAT SPW completed')
