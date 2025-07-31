@@ -406,9 +406,6 @@ class TamsatSPWGenerator(TamsatSPWBase):
             self.tamsat_url + get_pfc_filename(self.date) + '.gz'
         )
         if not pfc_file_exists:
-            self._update_spw_error_logs(
-                f"TAMSAT PFC file does not exist for date: {self.date}"
-            )
             raise FileNotFoundError(
                 f"TAMSAT PFC file does not exist for date: {self.date}"
             )
@@ -417,9 +414,6 @@ class TamsatSPWGenerator(TamsatSPWBase):
             self.tamsat_url + WRSI_FILENAME
         )
         if not wrsi_file_exists:
-            self._update_spw_error_logs(
-                f"TAMSAT WRSI file does not exist for date: {self.date}"
-            )
             raise FileNotFoundError(
                 f"TAMSAT WRSI file does not exist for date: {self.date}"
             )
@@ -469,6 +463,7 @@ class TamsatSPWGenerator(TamsatSPWBase):
         try:
             self._run()
         except Exception as e:
+            self._update_spw_error_logs(str(e))
             logger.error(
                 f"Error running Tamsat SPW generator: {e}",
                 exc_info=True
