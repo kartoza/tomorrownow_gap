@@ -116,6 +116,19 @@ class FarmGroup(Definition):
                 )
                 column_num += 1
 
+        # init columns for tamsat spw
+        tamsat_spw_fields = CropPlanData.tamsat_fields()
+        for field in tamsat_spw_fields:
+            FarmGroupCropInsightField.objects.update_or_create(
+                farm_group=self,
+                field=field,
+                defaults={
+                    'column_number': column_num,
+                    'label': None,
+                    'active': False
+                }
+            )
+            column_num += 1
 
     @property
     def headers(self):
