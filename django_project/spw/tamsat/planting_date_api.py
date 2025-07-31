@@ -471,7 +471,7 @@ def routine_operations_v2(
         planting_dst_output, obsdata, 'overall_sm_decision_25'
     )
 
-    obsdata['sm_50'] =  _get_output_variable(
+    obsdata['sm_50'] = _get_output_variable(
         planting_dst_output, obsdata, 'overall_sm_decision_50'
     )
 

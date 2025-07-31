@@ -8,7 +8,7 @@ from django.contrib import admin, messages
 
 from spw.models import (
     RModel, RModelOutput, RModelExecutionLog,
-    SPWOutput, SPWErrorLog
+    SPWOutput, SPWErrorLog, SPWExecutionLog
 )
 from spw.tasks import start_plumber_process
 
@@ -77,3 +77,15 @@ class SPWErrorLogAdmin(admin.ModelAdmin):
     readonly_fields = (
         'farm', 'farm_group', 'generated_date', 'grid_unique_id',
     )
+
+
+@admin.register(SPWExecutionLog)
+class SPWExecutionLogAdmin(admin.ModelAdmin):
+    """Admin page for SPWExecutionLog."""
+
+    list_display = (
+        'requested_at', 'farm_group', 'start_time', 'end_time',
+        'status'
+    )
+    search_fields = ('farm_group__name',)
+    list_filter = ('requested_at', 'status', 'farm_group',)

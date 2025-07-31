@@ -329,6 +329,7 @@ class TamsatSPWGenerator(TamsatSPWBase):
             logger.warning(
                 f"No farms found for farm group: {farm_group.name}"
             )
+            spw_log['log'].success()
             return
 
         # Remove existing data for the farm group in current date

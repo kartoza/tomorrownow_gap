@@ -20,7 +20,7 @@ class TamsatSPWReader(TamsatSPWBase):
         self.conn = None
 
     def setup(self):
-        """Setup the TamsatSPWReader."""
+        """Set up the TamsatSPWReader."""
         self._init_config()
         config = self._get_duckdb_config()
         self.conn = duckdb.connect(config=config)
