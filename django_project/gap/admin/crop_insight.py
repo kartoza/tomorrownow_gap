@@ -14,9 +14,10 @@ from gap.models import (
     FarmProbabilisticWeatherForcast,
     FarmSuitablePlantingWindowSignal, FarmPlantingWindowTable,
     FarmPestManagement, FarmCropVariety, CropInsightRequest,
-    CropStageType, CropGrowthStage
+    CropStageType, CropGrowthStage, Preferences
 )
 from gap.tasks.crop_insight import generate_insight_report
+from gap.tasks.cleanup import cleanup_old_forecast_data
 from spw.tasks import clean_duplicate_farm_short_term_forecast
 
 
@@ -33,6 +34,23 @@ class FarmShortTermForecastDataInline(TabularInlinePaginated):
     model = FarmShortTermForecastData
     per_page = 20
     extra = 0
+
+
+@admin.action(description='Clean old farm short term forecast')
+def clean_old_farm_short_term_forecast_action(
+    modeladmin, request, queryset
+):
+    """Clean old farm short term forecast."""
+    preferences = Preferences.load()
+    cutoff_days = preferences.crop_plan_config.get(
+        'farm_forecast_data_cutoff_days', 14
+    )
+    cleanup_old_forecast_data.delay(cutoff_days)
+    modeladmin.message_user(
+        request,
+        'Process will be started in background!',
+        messages.SUCCESS
+    )
 
 
 @admin.action(description='Clean duplicate farm short term forecast')
@@ -58,7 +76,10 @@ class FarmShortTermForecastAdmin(admin.ModelAdmin):
     filter = ('forecast_date')
     readonly_fields = ('farm',)
     inlines = (FarmShortTermForecastDataInline,)
-    actions = (clean_duplicate_farm_short_term_forecast_action,)
+    actions = (
+        clean_duplicate_farm_short_term_forecast_action,
+        clean_old_farm_short_term_forecast_action,
+    )
 
 
 @admin.register(FarmProbabilisticWeatherForcast)

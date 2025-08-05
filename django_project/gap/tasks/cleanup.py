@@ -10,6 +10,7 @@ from celery.utils.log import get_task_logger
 from core.celery import app
 from django.utils import timezone
 from datetime import timedelta
+from django.db import connection
 
 from core.models.background_task import TaskStatus
 from core.models.object_storage_manager import (
@@ -114,3 +115,25 @@ def cleanup_deleted_zarr():
             f"{failed_deletions}"
         )
     return len(deleted_ids), len(failed_deletions)
+
+
+@app.task(name='cleanup_old_forecast_data')
+def cleanup_old_forecast_data(cutoff_days: int = 14):
+    """Delete old forecast data older than 14 days."""
+    cutoff = timezone.now() - timedelta(days=cutoff_days)
+    logger.info(
+        f"Deleting FarmShortTermForecastData older than {cutoff}"
+    )
+    with connection.cursor() as cursor:
+        cursor.execute("""
+            DELETE FROM gap_farmshorttermforecastdata gf
+            WHERE gf.forecast_id in (
+                SELECT id
+                FROM gap_farmshorttermforecast
+                WHERE forecast_date < %s
+            )
+        """, [cutoff])
+        cursor.execute("""
+            DELETE FROM gap_farmshorttermforecast
+            WHERE forecast_date < %s
+        """, [cutoff])
