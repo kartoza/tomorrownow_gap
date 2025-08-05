@@ -74,7 +74,7 @@ def clean_duplicate_farm_short_term_forecast():
     ).delete()
 
 
-@shared_task(name="run_tamsat_spw")
+@shared_task(name="run_tamsat_spw", queue="high-priority")
 def run_tamsat_spw():
     """Run TAMSAT SPW."""
     from spw.tamsat.generator import TamsatSPWGenerator
