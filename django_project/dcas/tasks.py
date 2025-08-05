@@ -274,7 +274,7 @@ def export_dcas_sftp(request_id):
     export_dcas_output(request_id, DCASDeliveryMethod.SFTP)
 
 
-@shared_task(name="run_dcas", queue="high_priority")
+@shared_task(name="run_dcas", queue="high-priority")
 def run_dcas(request_id=None):
     """Task to run dcas pipeline."""
     current_dt = timezone.now()

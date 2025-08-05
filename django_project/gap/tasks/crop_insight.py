@@ -66,7 +66,7 @@ def generate_insight_report(_id: list):
             )
 
 
-@app.task(name="generate_crop_plan", queue="high_priority")
+@app.task(name="generate_crop_plan", queue="high-priority")
 def generate_crop_plan():
     """Generate crop plan for registered farms."""
     # create report request

@@ -131,7 +131,7 @@ def _do_run_zarr_collector(
         session.collectors.add(collector_session)
         run_ingestor_session.apply_async(
             args=[session.id],
-            queue='high_priority'
+            queue='high-priority'
         )
 
     if collector_session.status == IngestorSessionStatus.FAILED:
@@ -141,7 +141,7 @@ def _do_run_zarr_collector(
         )
 
 
-@app.task(name='salient_collector_session', queue='high_priority')
+@app.task(name='salient_collector_session', queue='high-priority')
 def run_salient_collector_session():
     """Run Collector for Salient Dataset."""
     dataset = Dataset.objects.get(name='Salient Seasonal Forecast')
@@ -151,7 +151,7 @@ def run_salient_collector_session():
     _do_run_zarr_collector(dataset, collector_session, IngestorType.SALIENT)
 
 
-@app.task(name='tio_collector_session', queue='high_priority')
+@app.task(name='tio_collector_session', queue='high-priority')
 def run_tio_collector_session():
     """Run Collector for Tomorrow.io Dataset."""
     dataset = Dataset.objects.get(
@@ -168,7 +168,7 @@ def run_tio_collector_session():
     _do_run_zarr_collector(dataset, collector_session, IngestorType.TOMORROWIO)
 
 
-@app.task(name='tio_hourly_collector_session', queue='high_priority')
+@app.task(name='tio_hourly_collector_session', queue='high-priority')
 def run_tio_hourly_collector_session():
     """Run Collector for Hourly Tomorrow.io Dataset."""
     dataset = Dataset.objects.get(
