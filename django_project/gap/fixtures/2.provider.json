@@ -54,5 +54,13 @@
       "name": "Tamsat",
       "description": null
     }
+  },
+  {
+    "model": "gap.provider",
+    "pk": 8,
+    "fields": {
+      "name": "Google",
+      "description": null
+    }
   }
 ]

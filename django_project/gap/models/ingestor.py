@@ -44,6 +44,7 @@ class IngestorType:
     HOURLY_TOMORROWIO = 'Hourly Tomorrow.io'
     SALIENT_HISTORICAL = 'Salient Historical'
     SPW_GEOPARQUET = 'SPW Geoparquet'
+    GOOGLE_NOWCAST = 'Google Nowcast'
 
 
 class IngestorSessionStatus:
@@ -93,6 +94,7 @@ class BaseSession(models.Model):
             (IngestorType.HOURLY_TOMORROWIO, IngestorType.HOURLY_TOMORROWIO),
             (IngestorType.SALIENT_HISTORICAL, IngestorType.SALIENT_HISTORICAL),
             (IngestorType.SPW_GEOPARQUET, IngestorType.SPW_GEOPARQUET),
+            (IngestorType.GOOGLE_NOWCAST, IngestorType.GOOGLE_NOWCAST),
         ),
         max_length=512
     )
