@@ -1043,5 +1043,126 @@
       "unit": 1,
       "is_active": true
     }
+  },
+  {
+    "model": "gap.attribute",
+    "pk": 96,
+    "fields": {
+      "name": "Precipitation at a threshold of 0.2 mm",
+      "description": "",
+      "variable_name": "precip_200_um",
+      "unit": 4,
+      "is_active": true
+    }
+  },
+  {
+    "model": "gap.attribute",
+    "pk": 97,
+    "fields": {
+      "name": "Precipitation at a threshold of 0.4 mm",
+      "description": "",
+      "variable_name": "precip_400_um",
+      "unit": 4,
+      "is_active": true
+    }
+  },
+  {
+    "model": "gap.attribute",
+    "pk": 98,
+    "fields": {
+      "name": "Precipitation at a threshold of 1 mm",
+      "description": "",
+      "variable_name": "precip_1000_um",
+      "unit": 4,
+      "is_active": true
+    }
+  },
+  {
+    "model": "gap.attribute",
+    "pk": 99,
+    "fields": {
+      "name": "Precipitation at a threshold of 1.6 mm",
+      "description": "",
+      "variable_name": "precip_1600_um",
+      "unit": 4,
+      "is_active": true
+    }
+  },
+  {
+    "model": "gap.attribute",
+    "pk": 100,
+    "fields": {
+      "name": "Precipitation at a threshold of 2.4 mm",
+      "description": "",
+      "variable_name": "precip_2400_um",
+      "unit": 4,
+      "is_active": true
+    }
+  },
+  {
+    "model": "gap.attribute",
+    "pk": 101,
+    "fields": {
+      "name": "Precipitation at a threshold of 4.0 mm",
+      "description": "",
+      "variable_name": "precip_4000_um",
+      "unit": 4,
+      "is_active": true
+    }
+  },
+  {
+    "model": "gap.attribute",
+    "pk": 102,
+    "fields": {
+      "name": "Precipitation at a threshold of 5.0 mm",
+      "description": "",
+      "variable_name": "precip_5000_um",
+      "unit": 4,
+      "is_active": true
+    }
+  },
+  {
+    "model": "gap.attribute",
+    "pk": 103,
+    "fields": {
+      "name": "Precipitation at a threshold of 7.0 mm",
+      "description": "",
+      "variable_name": "precip_7000_um",
+      "unit": 4,
+      "is_active": true
+    }
+  },
+  {
+    "model": "gap.attribute",
+    "pk": 104,
+    "fields": {
+      "name": "Precipitation at a threshold of 10 mm",
+      "description": "",
+      "variable_name": "precip_10000_um",
+      "unit": 4,
+      "is_active": true
+    }
+  },
+  {
+    "model": "gap.attribute",
+    "pk": 105,
+    "fields": {
+      "name": "Precipitation at a threshold of 25 mm",
+      "description": "",
+      "variable_name": "precip_25000_um",
+      "unit": 4,
+      "is_active": true
+    }
+  },
+  {
+    "model": "gap.attribute",
+    "pk": 106,
+    "fields": {
+      "name": "Precipitation at a threshold of 30 mm",
+      "description": "",
+      "variable_name": "precip_30000_um",
+      "unit": 4,
+      "is_active": true
+    }
   }
 ]

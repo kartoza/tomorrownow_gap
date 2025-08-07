@@ -5,6 +5,7 @@ Tomorrow Now GAP.
 .. note:: Utilities for S3.
 """
 
+import os
 import io
 import zipfile
 
@@ -13,6 +14,7 @@ from botocore.exceptions import ClientError
 from django.conf import settings
 from django.core.files.base import ContentFile
 from storages.backends.s3boto3 import S3Boto3Storage
+from contextlib import contextmanager
 
 
 def zip_folder_in_s3(
@@ -123,3 +125,44 @@ def s3_file_exists(s3_client, bucket_name, key):
         else:
             # Some other error occurred (e.g., permissions issue)
             raise
+
+
+@contextmanager
+def s3_compatible_env(
+    access_key, secret_key, endpoint_url, region='us-east-1'
+):
+    """Context manager for S3-compatible storage environment."""
+    # Prepare the endpoint host and protocol
+    endpoint_host = endpoint_url.replace(
+        'https://', ''
+    ).replace('http://', '')
+    if endpoint_host.endswith('/'):
+        endpoint_host = endpoint_host[:-1]
+
+    use_https = endpoint_url.startswith('https')
+
+    # Environment variables to set
+    env_vars = {
+        'AWS_ACCESS_KEY_ID': access_key,
+        'AWS_SECRET_ACCESS_KEY': secret_key,
+        'AWS_S3_ENDPOINT': endpoint_host,
+        'AWS_HTTPS': 'YES' if use_https else 'NO',
+        'AWS_VIRTUAL_HOSTING': 'FALSE',
+        'AWS_REGION': region
+    }
+
+    # Store original values
+    original_env = {}
+    for key, value in env_vars.items():
+        original_env[key] = os.environ.get(key)
+        os.environ[key] = value
+
+    try:
+        yield
+    finally:
+        # Restore original environment
+        for key, original_value in original_env.items():
+            if original_value is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = original_value

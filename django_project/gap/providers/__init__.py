@@ -41,6 +41,11 @@ from gap.providers.tamsat import (
     TamsatZarrReader,
     PROVIDER_NAME as TAMSAT_PROVIDER
 )  # noqa
+from gap.providers.google import (
+    GoogleReaderBuilder,
+    GoogleNowcastZarrReader,
+    PROVIDER_NAME as GOOGLE_PROVIDER
+)  # noqa
 from gap.utils.netcdf import NetCDFProvider
 
 
@@ -91,6 +96,11 @@ def get_reader_builder(
         )
     elif dataset.provider.name == TAMSAT_PROVIDER:
         return TamsatReaderBuilder(
+            dataset, attributes, location_input,
+            start_date, end_date
+        )
+    elif dataset.provider.name == GOOGLE_PROVIDER:
+        return GoogleReaderBuilder(
             dataset, attributes, location_input,
             start_date, end_date
         )
