@@ -323,7 +323,7 @@ class GoogleNowcastIngestor(BaseZarrIngestor):
             name='Google Nowcast | 12-hour Forecast',
             store_type=DatasetStore.ZARR
         )
-    
+
     def _get_encoding(self):
         """Get encoding for dataset variables."""
         encoding = {

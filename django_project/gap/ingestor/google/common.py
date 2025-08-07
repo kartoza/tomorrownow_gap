@@ -7,8 +7,7 @@ Tomorrow Now GAP.
 
 
 def get_forecast_target_time_from_filename(filename):
-    """
-    Extracts the forecast target time from the filename.
+    """Extract the forecast target time from the filename.
 
     Parameters:
     -----------
