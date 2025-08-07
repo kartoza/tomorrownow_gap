@@ -129,3 +129,8 @@ gunicorn==23.0.0
 
 # rioxarray
 rioxarray==0.19.0
+
+# pydrive2 for fetching raster in gdrive
+pydrive2==1.21.3
+
+earthengine-api==1.4.0
