@@ -16,7 +16,7 @@ TASK_WAIT_TIME = 5  # seconds
 
 
 def initialize_earth_engine():
-    """Initializes the Earth Engine API for analysis."""
+    """Initialize the Earth Engine API for analysis."""
     service_account_key = os.environ.get('SERVICE_ACCOUNT_KEY', '')
     service_account = os.environ.get('SERVICE_ACCOUNT', '')
     if os.path.exists(service_account_key):
@@ -40,7 +40,7 @@ def initialize_earth_engine():
 
 
 def start_export_task(task: ee.batch.Task, description, is_async=False):
-    """Starts an export task and logs its status.
+    """Start an export task and logs its status.
 
     Args:
         task (ee.batch.Task): The Earth Engine export task to start.

@@ -8,18 +8,20 @@ Tomorrow Now GAP.
 from datetime import datetime, timezone
 import logging
 import os
+import json
 import time
 import rasterio
 import rioxarray
 import pandas as pd
 import xarray as xr
-from django.conf import settings
 from django.core.files.storage import storages
 from storages.backends.s3boto3 import S3Boto3Storage
 
 from gap.models import (
-    Dataset, DatasetStore, IngestorSessionStatus, CollectorSession
+    Dataset, DatasetStore, IngestorSessionStatus, CollectorSession,
+    DatasetAttribute
 )
+from core.utils.s3 import s3_compatible_env
 from gap.utils.zarr import BaseZarrReader
 from gap.ingestor.base import BaseZarrIngestor
 from gap.ingestor.exceptions import (
@@ -27,43 +29,17 @@ from gap.ingestor.exceptions import (
     FileNotFoundException
 )
 from gap.utils.dask import execute_dask_compute
+from gap.ingestor.google.common import (
+    get_forecast_target_time_from_filename
+)
 
 logger = logging.getLogger(__name__)
 
 
-def get_forecast_target_time_from_filename(filename):
-    """
-    Extracts the forecast target time from the filename.
-
-    Parameters:
-    -----------
-    filename : str
-        The filename containing the forecast target time.
-
-    Returns:
-    --------
-    int
-        The forecast target time as a Unix timestamp.
-    """
-    # Example filename: 'nowcast_1754434800_0.tif'
-    parts = filename.replace('.tif', '').split('_')
-    if len(parts) < 3:
-        raise ValueError(
-            f"Filename '{filename}' does not contain a valid "
-            "forecast target time."
-        )
-
-    try:
-        return int(parts[1]) + int(parts[2])
-    except ValueError:
-        raise ValueError(
-            f"Invalid forecast target time in filename '{filename}'."
-        )
-
-
 def cog_to_xarray_advanced(
     filepath, chunks=None, reproject_to_wgs84=True,
-    separate_bands=True, band_names=None, verbose=False
+    separate_bands=True, band_names=None, verbose=False,
+    add_variable_metadata=True
 ):
     """
     Convert COG to xarray with band metadata and chunking support.
@@ -89,6 +65,8 @@ def cog_to_xarray_advanced(
         or generic names (band_1, band_2, etc.)
     verbose : bool, default=False
         If True, print additional debug information
+    add_variable_metadata : bool, default=True
+        If True, adds band metadata as attributes to each variable
 
     Returns:
     --------
@@ -99,6 +77,10 @@ def cog_to_xarray_advanced(
         os.path.basename(filepath)
     )
     time_coords = pd.to_datetime(forecast_target_time, unit='s')
+    if verbose:
+        logger.info(
+            f"Processing file: {filepath} with target time {time_coords}"
+        )
     # First, get metadata using rasterio
     with rasterio.open(filepath) as src:
         # Get band descriptions
@@ -255,7 +237,10 @@ def cog_to_xarray_advanced(
                     str(band_data.rio.crs) if band_data.rio.crs else None
                 )
 
-            band_data.attrs.update(band_attrs)
+            if add_variable_metadata:
+                band_data.attrs.update(band_attrs)
+            else:
+                band_data = band_data.drop_attrs()
 
             # Add to data variables
             data_vars[band_descriptions[i]] = band_data
@@ -284,9 +269,6 @@ def cog_to_xarray_advanced(
 
     # Add chunking info to attributes if using dask
     if chunks is not None:
-        result_ds.attrs['chunked'] = True
-        result_ds.attrs['chunk_config'] = str(processed_chunks)
-
         # Print info about the dataset
         if verbose:
             if separate_bands:
@@ -312,6 +294,25 @@ def cog_to_xarray_advanced(
 class GoogleNowcastIngestor(BaseZarrIngestor):
     """Ingestor for Google Nowcast Dataset."""
 
+    default_chunks = {
+        'time': 50,
+        'lat': 150,
+        'lon': 110
+    }
+
+    def __init__(self, session, working_dir):
+        """Initialize GoogleNowcastIngestor."""
+        super().__init__(session, working_dir)
+        self.dataset = self._init_dataset()
+        # init variables
+        self.variables = list(
+            DatasetAttribute.objects.filter(
+                dataset=self.dataset
+            ).values_list(
+                'source', flat=True
+            )
+        )
+
     def _init_dataset(self) -> Dataset:
         """Fetch dataset for this ingestor.
 
@@ -319,19 +320,26 @@ class GoogleNowcastIngestor(BaseZarrIngestor):
         :rtype: Dataset
         """
         return Dataset.objects.get(
-            name='Google Nowcast',
+            name='Google Nowcast | 12-hour Forecast',
             store_type=DatasetStore.ZARR
         )
-
-    def _get_rasterio_env(self):
-        """Get rasterio env dict."""
-        return {
-            'AWS_ACCESS_KEY_ID': self.s3.get('S3_ACCESS_KEY_ID'),
-            'AWS_SECRET_ACCESS_KEY': self.s3.get('S3_SECRET_ACCESS_KEY'),
-            'AWS_S3_ENDPOINT': self.s3.get('S3_ENDPOINT_URL'),
-            'AWS_HTTPS': 'YES' if not settings.DEBUG else 'NO',
-            'AWS_VIRTUAL_HOSTING': 'FALSE'
+    
+    def _get_encoding(self):
+        """Get encoding for dataset variables."""
+        encoding = {
+            'time': {
+                'chunks': self.default_chunks['time']
+            }
         }
+        for var in self.variables:
+            encoding[var] = {
+                'chunks': (
+                    self.default_chunks['time'],
+                    self.default_chunks['lat'],
+                    self.default_chunks['lon']
+                )
+            }
+        return encoding
 
     def _run(self):
         """Process the Google Nowcast dataset."""
@@ -351,21 +359,28 @@ class GoogleNowcastIngestor(BaseZarrIngestor):
 
         for data_source in data_sources:
             remote_path = data_source.metadata['remote_url']
-            if not remote_path.startswith('s3://'):
-                remote_path = f"s3://{remote_path}"
+            remote_path = (
+                f"s3://{self.s3.get('S3_BUCKET_NAME')}/{remote_path}"
+            )
 
             logger.info(f"Processing file: {remote_path}")
             start_time = time.time()
             progress = self._add_progress(os.path.basename(remote_path))
             try:
-                with rasterio.Env(**self._get_rasterio_env()):
+                with s3_compatible_env(
+                    access_key=self.s3.get('S3_ACCESS_KEY_ID'),
+                    secret_key=self.s3.get('S3_SECRET_ACCESS_KEY'),
+                    endpoint_url=self.s3.get('S3_ENDPOINT_URL'),
+                    region=self.s3.get('S3_REGION_NAME')
+                ):
                     ds = cog_to_xarray_advanced(
                         remote_path,
                         chunks='auto',
                         reproject_to_wgs84=True,
                         separate_bands=True,
                         band_names=None,
-                        verbose=True
+                        verbose=self.get_config('verbose', False),
+                        add_variable_metadata=self.created
                     )
 
                     # save the dataset to Zarr
@@ -378,7 +393,7 @@ class GoogleNowcastIngestor(BaseZarrIngestor):
                             zarr_url,
                             mode='w',
                             consolidated=True,
-                            encoding={},
+                            encoding=self._get_encoding(),
                             storage_options=self.s3_options,
                             compute=False
                         )
@@ -430,3 +445,13 @@ class GoogleNowcastIngestor(BaseZarrIngestor):
             remote_path = dataset_file.metadata['remote_url']
             s3_storage.delete(remote_path)
             dataset_file.delete()
+
+    def run(self):
+        """Run Google NowCast Ingestor."""
+        # Run the ingestion
+        try:
+            self._run()
+            self.session.notes = json.dumps(self.metadata, default=str)
+        except Exception as e:
+            logger.error('Ingestor Google NowCast failed!', exc_info=True)
+            raise e

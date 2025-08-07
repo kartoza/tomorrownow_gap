@@ -146,6 +146,7 @@ class CollectorSession(BaseSession):
             TioShortTermHourlyCollector
         )
         from gap.ingestor.cbam_bias_adjust import CBAMBiasAdjustCollector
+        from gap.ingestor.google.collector import GoogleNowcastCollector
 
         ingestor = None
         if self.ingestor_type == IngestorType.CBAM:
@@ -161,6 +162,8 @@ class CollectorSession(BaseSession):
             ingestor = CBAMBiasAdjustCollector(self, working_dir)
         elif self.ingestor_type == IngestorType.HOURLY_TOMORROWIO:
             ingestor = TioShortTermHourlyCollector(self, working_dir)
+        elif self.ingestor_type == IngestorType.GOOGLE_NOWCAST:
+            ingestor = GoogleNowcastCollector(self, working_dir)
 
         if ingestor:
             ingestor.run()
@@ -244,6 +247,7 @@ class IngestorSession(BaseSession):
         )
         from gap.ingestor.dcas_message import DCASMessageIngestor
         from gap.ingestor.spw import SPWIngestor
+        from gap.ingestor.google.ingestor import GoogleNowcastIngestor
 
         ingestor = None
         if self.ingestor_type == IngestorType.TAHMO:
@@ -280,6 +284,8 @@ class IngestorSession(BaseSession):
             ingestor = TioHourlyShortTermIngestor
         elif self.ingestor_type == IngestorType.SPW_GEOPARQUET:
             ingestor = SPWIngestor
+        elif self.ingestor_type == IngestorType.GOOGLE_NOWCAST:
+            ingestor = GoogleNowcastIngestor
 
         if ingestor:
             ingestor_obj = ingestor(self, working_dir)
