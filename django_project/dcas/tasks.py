@@ -21,7 +21,8 @@ from core.models.background_task import TaskStatus
 from core.utils.emails import get_admin_emails
 from gap.models import FarmRegistryGroup, FarmRegistry, Preferences
 from dcas.models import (
-    DCASErrorLog, DCASRequest, DCASOutput, DCASDeliveryMethod
+    DCASErrorLog, DCASRequest, DCASOutput, DCASDeliveryMethod,
+    DCASErrorLogOutputFile
 )
 from dcas.pipeline import DCASDataPipeline
 from dcas.outputs import DCASPipelineOutput
@@ -401,6 +402,50 @@ def run_dcas(request_id=None):
         pipeline.cleanup()
 
 
+@shared_task(name='generate_dcas_error_log_output_file')
+def generate_dcas_error_log_output_file(error_log_file_id):
+    """Generate DCAS error log output file."""
+    error_log_file = DCASErrorLogOutputFile.objects.get(
+        id=error_log_file_id
+    )
+    if error_log_file.status not in [TaskStatus.PENDING, TaskStatus.STOPPED]:
+        logger.warning(
+            f'Error log output file {error_log_file_id} '
+            'is not in PENDING/STOPPED status.'
+        )
+        return
+
+    error_log_file.started_at = timezone.now()
+    error_log_file.status = TaskStatus.RUNNING
+    error_log_file.save()
+    is_success = False
+
+    try:
+        # Create duckdb table for error logs
+
+        # query and insert error logs with missing message
+
+        # query and insert error logs with repetitive message
+
+        # export to csv
+        is_success = True
+    except Exception as ex:
+        logger.error(
+            "Error generating error log output file "
+            f"{error_log_file_id}: {ex}",
+            exc_info=True
+        )
+        is_success = False
+        error_log_file.errors = str(ex)
+        raise ex
+    finally:
+        error_log_file.finished_at = timezone.now()
+        error_log_file.status = (
+            TaskStatus.COMPLETED if is_success else TaskStatus.STOPPED
+        )
+        error_log_file.save()
+
+
 @shared_task(name='log_dcas_error')
 def log_dcas_error(request_id, chunk_size=1000):
     """
@@ -577,6 +622,16 @@ def cleanup_dcas_old_output_files():
         for file in old_files:
             if file.file_exists:
                 remove_dcas_output_file(file.path, file.delivery_by)
+
+        # Delete error log output files older than 14 days
+        old_error_files = DCASErrorLogOutputFile.objects.filter(
+            submitted_at__lt=cutoff_date
+        )
+        for error_file in old_error_files:
+            if error_file.file_exists:
+                remove_dcas_output_file(error_file.path, 'OBJECT_STORAGE')
+        # Delete the old output records
+        old_error_files.delete()
 
     except Exception as e:
         logger.error(f"Error cleaning up old DCAS output files: {str(e)}")
