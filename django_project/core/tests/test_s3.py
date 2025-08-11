@@ -16,7 +16,8 @@ from core.utils.s3 import (
     zip_folder_in_s3,
     remove_s3_folder,
     create_s3_bucket,
-    remove_s3_folder_by_batch
+    remove_s3_folder_by_batch,
+    s3_file_exists
 )
 
 
@@ -98,4 +99,28 @@ class TestS3Utilities(TestCase):
 
         self.assertEqual(result['total_deleted'], 3)
         self.assertEqual(result['total_batches'], 1)
+        self.stubber.assert_no_pending_responses()
+
+    def test_s3_file_exists(self):
+        """Test if S3 file exists."""
+        key = 'zarr-dataset/.zarray'
+        self.stubber.add_response(
+            'head_object', {}, {'Bucket': self.bucket, 'Key': key}
+        )
+
+        exists = s3_file_exists(self.s3, self.bucket, key)
+        self.assertTrue(exists)
+
+        self.stubber.assert_no_pending_responses()
+
+        # Test for a non-existing file
+        self.stubber.add_client_error(
+            'head_object',
+            'NoSuchKey',
+            {'Bucket': self.bucket, 'Key': 'non-existing-key'}
+        )
+
+        exists = s3_file_exists(self.s3, self.bucket, 'non-existing-key')
+        self.assertFalse(exists)
+
         self.stubber.assert_no_pending_responses()

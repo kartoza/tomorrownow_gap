@@ -15,4 +15,4 @@ class SpwConfig(AppConfig):
 
     def ready(self):
         """App ready handler."""
-        from spw.tasks import cleanup_r_execution_logs  # noqa
+        from spw.tasks import cleanup_r_execution_logs, run_tamsat_spw  # noqa

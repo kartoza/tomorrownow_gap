@@ -10,7 +10,7 @@ from django.test import TestCase
 from gap.factories import (
     FarmGroupFactory, FarmFactory, UserF
 )
-from gap.models import FarmGroup
+from gap.models import FarmGroup, Preferences
 
 
 class FarmGroupCRUDTest(TestCase):
@@ -90,3 +90,19 @@ class FarmGroupFunctionalityCRUDTest(TestCase):
         self.assertEqual(self.group_2.farms.count(), 1)
         self.assertEqual(self.group_1.users.count(), 3)
         self.assertEqual(self.group_2.users.count(), 1)
+
+    def test_get_group_for_crop_insights(self):
+        """Test get group for crop insights."""
+        self.assertEqual(
+            FarmGroup.get_group_for_crop_insights().count(),
+            2
+        )
+        preferences = Preferences.load()
+        preferences.crop_plan_config = {
+            'farm_groups': [self.group_1.name]
+        }
+        preferences.save()
+        self.assertEqual(
+            FarmGroup.get_group_for_crop_insights().count(),
+            1
+        )

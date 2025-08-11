@@ -137,6 +137,11 @@ app.conf.beat_schedule = {
         # Run every first day and 15th of each month at 12:00 UTC
         'schedule': crontab(minute='0', hour='12', day_of_month='1,15'),
     },
+    'run-tamsat-spw': {
+        'task': 'run_tamsat_spw',
+        # Run every day at 00:15 UTC
+        'schedule': crontab(minute='15', hour='0'),
+    },
 }
 
 

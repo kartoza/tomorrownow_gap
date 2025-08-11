@@ -6,7 +6,7 @@ Tomorrow Now GAP.
 """
 
 import datetime
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 from django.test import TestCase
 
 from gap.models import (
@@ -17,9 +17,16 @@ from gap.models import (
 )
 from gap.tasks.cleanup import (
     cleanup_incomplete_signups,
-    cleanup_deleted_zarr
+    cleanup_deleted_zarr,
+    cleanup_old_forecast_data
 )
-from gap.factories import DataSourceFileFactory
+from gap.factories import (
+    DataSourceFileFactory,
+    FarmShortTermForecastFactory,
+    FarmShortTermForecastDataFactory
+)
+from gap.models import FarmShortTermForecast, FarmShortTermForecastData
+from gap.admin.crop_insight import clean_old_farm_short_term_forecast_action
 
 
 class IncompleteSignupsCleanupTest(TestCase):
@@ -233,3 +240,100 @@ class DeletedZarrCleanupTest(TestCase):
         self.assertFalse(
             DataSourceFile.objects.filter(id=ds_file.id).exists()
         )
+
+
+class OldForecastDataCleanupTest(TestCase):
+    """Test case for cleanup of old forecast data."""
+
+    def setUp(self):
+        """Set up test data for old forecast cleanup."""
+        # Create mock forecasts and forecast data
+        self.cutoff_date = datetime.datetime(
+            2023, 9, 15, tzinfo=datetime.timezone.utc
+        )
+        self.old_forecast = FarmShortTermForecastFactory.create(
+            forecast_date=datetime.datetime(
+                2023, 9, 1, tzinfo=datetime.timezone.utc
+            )
+        )
+        self.new_forecast = FarmShortTermForecastFactory.create(
+            forecast_date=datetime.datetime(
+                2023, 9, 20, tzinfo=datetime.timezone.utc
+            )
+        )
+        self.old_data = FarmShortTermForecastDataFactory.create(
+            forecast=self.old_forecast
+        )
+        self.new_data = FarmShortTermForecastDataFactory.create(
+            forecast=self.new_forecast
+        )
+
+    @patch("gap.tasks.cleanup.timezone.now")
+    def test_cleanup_old_forecast_data(self, mock_now):
+        """Test that old forecast data is deleted and new data remains."""
+        mock_now.return_value = datetime.datetime(
+            2023, 9, 29, tzinfo=datetime.timezone.utc
+        )
+        # cutoff_days=14, so cutoff is 2023-9-15
+        cleanup_old_forecast_data()
+        # Old forecast and its data should be deleted
+        self.assertFalse(
+            FarmShortTermForecast.objects.filter(
+                id=self.old_forecast.id
+            ).exists()
+        )
+        self.assertFalse(
+            FarmShortTermForecastData.objects.filter(
+                id=self.old_data.id
+            ).exists()
+        )
+        # New forecast and its data should remain
+        self.assertTrue(
+            FarmShortTermForecast.objects.filter(
+                id=self.new_forecast.id
+            ).exists()
+        )
+        self.assertTrue(
+            FarmShortTermForecastData.objects.filter(
+                id=self.new_data.id
+            ).exists()
+        )
+
+    @patch("gap.tasks.cleanup.timezone.now")
+    def test_cleanup_old_forecast_data_with_custom_cutoff(self, mock_now):
+        """Test cleanup with a custom cutoff_days argument."""
+        mock_now.return_value = datetime.datetime(
+            2023, 9, 29, tzinfo=datetime.timezone.utc
+        )
+        # Use a longer cutoff, so both forecasts remain
+        cleanup_old_forecast_data(cutoff_days=30)
+        self.assertTrue(
+            FarmShortTermForecast.objects.filter(
+                id=self.old_forecast.id
+            ).exists()
+        )
+        self.assertTrue(
+            FarmShortTermForecastData.objects.filter(
+                id=self.old_data.id
+            ).exists()
+        )
+        self.assertTrue(
+            FarmShortTermForecast.objects.filter(
+                id=self.new_forecast.id
+            ).exists()
+        )
+        self.assertTrue(
+            FarmShortTermForecastData.objects.filter(
+                id=self.new_data.id
+            ).exists()
+        )
+
+    def test_admin_action_cleanup_old_forecast_data(self):
+        """Test the admin action for cleaning old forecast data."""
+        with patch(
+            "gap.tasks.cleanup.cleanup_old_forecast_data.delay"
+        ) as mock_task:
+            clean_old_farm_short_term_forecast_action(
+                MagicMock(), None, None
+            )
+            mock_task.assert_called_once_with(14)

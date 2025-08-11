@@ -199,7 +199,7 @@ class TestSalientCollector(SalientIngestorBaseTest):
 
     @patch('gap.models.ingestor.CollectorSession.dataset_files')
     @patch('gap.models.ingestor.CollectorSession.run')
-    @patch('gap.tasks.ingestor.run_ingestor_session.delay')
+    @patch('gap.tasks.ingestor.run_ingestor_session.apply_async')
     def test_run_salient_collector_session(
         self, mock_ingestor, mock_collector, mock_count
     ):
@@ -223,7 +223,10 @@ class TestSalientCollector(SalientIngestorBaseTest):
         self.assertTrue(session)
         self.assertEqual(session.collectors.count(), 1)
         mock_collector.assert_called_once()
-        mock_ingestor.assert_called_once_with(session.id)
+        mock_ingestor.assert_called_once_with(
+            args=[session.id],
+            queue='high-priority'
+        )
 
     @patch("gap.tasks.collector.notify_collector_failure.delay")
     @patch('gap.models.ingestor.CollectorSession.objects.create')

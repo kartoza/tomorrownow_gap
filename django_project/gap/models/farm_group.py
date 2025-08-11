@@ -5,13 +5,16 @@ Tomorrow Now GAP.
 .. note:: Farm models
 """
 
+import logging
 from django.contrib.auth import get_user_model
 from django.contrib.gis.db import models
 
 from core.group_email_receiver import crop_plan_receiver
 from core.models.common import Definition
+from gap.models.preferences import Preferences
 from gap.models.farm import Farm
 
+logger = logging.getLogger(__name__)
 User = get_user_model()
 
 
@@ -113,6 +116,19 @@ class FarmGroup(Definition):
                 )
                 column_num += 1
 
+        # init columns for tamsat spw
+        tamsat_spw_fields = CropPlanData.tamsat_fields()
+        for field in tamsat_spw_fields:
+            FarmGroupCropInsightField.objects.update_or_create(
+                farm_group=self,
+                field=field,
+                defaults={
+                    'column_number': column_num,
+                    'label': None,
+                    'active': False
+                }
+            )
+            column_num += 1
 
     @property
     def headers(self):
@@ -125,6 +141,20 @@ class FarmGroup(Definition):
     def fields(self):
         """Return headers."""
         return self.farmgroupcropinsightfield_set.filter(active=True)
+
+    @classmethod
+    def get_group_for_crop_insights(cls):
+        """Return farm groups that are used for crop insights."""
+        farm_groups = FarmGroup.objects.all()
+        group_filter_names = Preferences.load().crop_plan_config.get(
+            'farm_groups', None
+        )
+        if group_filter_names:
+            logger.info(
+                f"Filtering SPW farm groups by names: {group_filter_names}"
+            )
+            farm_groups = farm_groups.filter(name__in=group_filter_names)
+        return farm_groups
 
 
 class FarmGroupCropInsightField(models.Model):

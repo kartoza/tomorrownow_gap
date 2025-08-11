@@ -6,7 +6,6 @@ Tomorrow Now GAP.
 """
 
 import datetime
-from duckdb import df
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -320,6 +319,7 @@ def extract_dcas_error_log():
     print('Growth Stage Counts:')
     for stage, count in growth_stage_counts.items():
         print(f'{stage}: {count}')
+
 
 def extract_dcas_gdd():
     """Extract DCAS GDD data."""

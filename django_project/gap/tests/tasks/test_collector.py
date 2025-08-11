@@ -219,7 +219,7 @@ class CollectorTaskTest(TestCase):
 
     @mock.patch("gap.tasks.collector.CollectorSession.dataset_files")
     @mock.patch("gap.tasks.collector.CollectorSession.run")
-    @mock.patch("gap.tasks.collector.run_ingestor_session.delay")
+    @mock.patch("gap.tasks.collector.run_ingestor_session.apply_async")
     @mock.patch("gap.tasks.collector.get_ingestor_config_from_preferences")
     @mock.patch("gap.tasks.collector.Dataset.objects.get")
     @mock.patch("gap.tasks.collector.logger")
