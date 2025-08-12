@@ -73,7 +73,6 @@ class GoogleNowCastReaderValue(DatasetReaderValue):
         for attr in self.attributes:
             renamed_dict[attr.source] = attr.attribute.variable_name
         self._val = self._val.rename(renamed_dict)
-        print(self._val)
 
     def _xr_dataset_process_datetime(self, df):
         """Process datetime for df from xarray dataset."""
@@ -111,7 +110,6 @@ class GoogleNowcastZarrReader(BaseZarrReader):
 
     def read_forecast_data(self, start_date, end_date):
         """Read forecast data from dataset."""
-        print('Reading forecast data from Google Nowcast Zarr')
         self.setup_reader()
         self.xrDatasets = []
         zarr_file = DataSourceFile.objects.filter(
