@@ -258,7 +258,6 @@ def cog_to_xarray_advanced(
         result_ds.attrs['number_of_bands'] = count
     else:
         # Keep bands as dimension (original behavior)
-        ds = ds.rename(dim_names)
         ds = ds.assign_coords(band=band_descriptions)
 
         # Add band metadata as attributes
@@ -271,6 +270,8 @@ def cog_to_xarray_advanced(
 
     # Add chunking info to attributes if using dask
     if chunks is not None:
+        result_ds.attrs['chunked'] = True
+        result_ds.attrs['chunk_config'] = str(processed_chunks)
         # Print info about the dataset
         if verbose:
             if separate_bands:
