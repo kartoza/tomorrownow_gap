@@ -12,8 +12,13 @@ import matplotlib.pyplot as plt
 
 from analytics.spw import fetch_spw_data, read_spw_geoparquet_by_farm_group
 from analytics.farmers import read_excel_stats, read_excel_farmers
-from analytics.dcas import read_dcas_geoparquet, get_dcas_stats
+from analytics.dcas import (
+    read_dcas_geoparquet
+)
 from analytics.fixtures import SPW_MESSAGE_DICT
+from dataset.tamsat_ltn import (
+    main as tamsat_main
+)
 
 
 def compare_spw_stats():
@@ -283,4 +288,6 @@ if __name__ == "__main__":
     #     pull_spw_data(current_date)
     #     current_date += datetime.timedelta(days=1)
 
-    plot_spw_with_tamsat(start_date)
+    # plot_spw_with_tamsat(start_date)
+
+    tamsat_main()

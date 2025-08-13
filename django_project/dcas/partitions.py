@@ -70,7 +70,10 @@ def process_partition_total_gdd(
 
     norm_temperature_df = pd.DataFrame(norm_temperature)
 
-    # calculate gdd foreach day from planting_date
+    # calculate gdd foreach day from planting_date + 1 day
+    # e.g. if planting_date is 2025-04-20, then
+    # gdd_2025-04-20 = NaN
+    # gdd_2025-04-21 = (max_temperature + min_temperature) / 2 - gdd_base
     gdd_cols = []
     gdd_dfs = {}
     for epoch in epoch_list:

@@ -14,6 +14,7 @@ from django.db import connection
 from dask.dataframe.core import DataFrame as dask_df
 import dask_geopandas as dg
 from dask_geopandas.io.parquet import to_parquet
+import geopandas as gpd
 from typing import Union
 import duckdb
 from django.conf import settings
@@ -185,9 +186,14 @@ class DCASPipelineOutput:
             raise ValueError(f'Invalid output type {type} to be saved!')
 
     def _save_farm_crop_data(self, df: dask_df):
+        meta_geom = gpd.GeoSeries([], crs="EPSG:4326")  # or your CRS
+        geom_series = df["geometry"].map_partitions(
+            gpd.GeoSeries.from_wkb,
+            meta=meta_geom
+        )
         df_geo = dg.from_dask_dataframe(
             df,
-            geometry=dg.from_wkb(df['geometry'])
+            geometry=geom_series
         )
 
         print('Saving to parquet')
