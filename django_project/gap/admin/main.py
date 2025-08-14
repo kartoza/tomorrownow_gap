@@ -17,7 +17,7 @@ from gap.models import (
     IngestorSessionProgress, Dataset, DatasetAttribute, DataSourceFile,
     DatasetType, Unit, Village, CollectorSession, DatasetStore,
     DataSourceFileCache, County, SubCounty, Ward, Language,
-    DataSourceFileRententionConfig
+    DataSourceFileRententionConfig, CollectorSessionProgress
 )
 from gap.tasks.collector import run_collector_session
 from gap.tasks.ingestor import (
@@ -156,6 +156,14 @@ def trigger_collector_session(modeladmin, request, queryset):
         run_collector_session.delay(query.id)
 
 
+class CollectorSessionProgressInline(TabularInlinePaginated):
+    """CollectorSessionProgress inline."""
+
+    model = CollectorSessionProgress
+    per_page = 20
+    extra = 0
+
+
 @admin.register(CollectorSession)
 class CollectorSessionAdmin(admin.ModelAdmin):
     """CollectorSession admin."""
@@ -165,6 +173,7 @@ class CollectorSessionAdmin(admin.ModelAdmin):
         'total_output'
     )
     list_filter = ('ingestor_type', 'status')
+    inlines = (CollectorSessionProgressInline,)
     actions = (trigger_collector_session,)
 
     def total_output(self, obj: CollectorSession):
