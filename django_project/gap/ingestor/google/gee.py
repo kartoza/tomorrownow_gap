@@ -30,8 +30,8 @@ def get_countries():
 
 def get_latest_nowcast_timestamp(date):
     """Get the latest Nowcast image for a given date."""
-    start_datetime = datetime.combine(date, time.min())
-    end_datetime = datetime.combine(date, time.max())
+    start_datetime = datetime.combine(date, time.min)
+    end_datetime = datetime.combine(date, time.max)
 
     nowcast_img = ee.ImageCollection(NOWCAST_ASSET_ID) \
         .filterDate(start_datetime, end_datetime) \
@@ -40,7 +40,7 @@ def get_latest_nowcast_timestamp(date):
         .filter(ee.Filter.eq('forecast_seconds', 0)) \
         .first()
 
-    timestamp = nowcast_img.get('timestamp')
+    timestamp = nowcast_img.get('timestamp').getInfo()
 
     return timestamp
 
@@ -49,7 +49,7 @@ def extract_nowcast_at_timestamp(timestamp, export_dir, verbose=False):
     """Extract Nowcast image at a specific timestamp."""
     countries_geom = get_countries()
 
-    nowcast_img = ee.Image(NOWCAST_ASSET_ID) \
+    nowcast_img = ee.ImageCollection(NOWCAST_ASSET_ID) \
         .filter(ee.Filter.eq('timestamp', timestamp)) \
         .filterBounds(countries_geom) \
         .sort('forecast_target_time', False)
@@ -63,6 +63,7 @@ def extract_nowcast_at_timestamp(timestamp, export_dir, verbose=False):
             f"Extracting at timestamp {timestamp} with total nowcast images "
             f"found: {total_count}"
         )
+        logger.info(f"Exporting to folder: {export_dir}")
 
     for i in range(total_count):
         img = ee.Image(img_list.get(i))

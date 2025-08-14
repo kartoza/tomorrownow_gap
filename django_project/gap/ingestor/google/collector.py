@@ -39,7 +39,7 @@ from gap.ingestor.google.gee import (
 )
 
 logger = logging.getLogger(__name__)
-GEE_DEFAULT_FOLDER_NAME = 'EarthEngineExports'
+GEE_DEFAULT_FOLDER_NAME = 'GAPNowcastEEExports'
 DEFAULT_UPLOAD_DIR = 'google_nowcast_collector'
 GEE_DEFAULT_WAIT_SLEEP = 5  # seconds
 
@@ -55,6 +55,10 @@ class GoogleNowcastCollector(BaseIngestor):
         self.verbose = self.get_config('verbose', False)
         self.sleep_time = self.get_config(
             'sleep_time', GEE_DEFAULT_WAIT_SLEEP
+        )
+        self.folder_name = self.get_config(
+            'gdrive_folder_name',
+            GEE_DEFAULT_FOLDER_NAME
         )
 
     def _init_dataset(self) -> Dataset:
@@ -74,16 +78,12 @@ class GoogleNowcastCollector(BaseIngestor):
         self.session.dataset_files.all().delete()
         self.session.dataset_files.clear()
 
-        folder_name = self.get_config(
-            'gdrive_folder_name',
-            GEE_DEFAULT_FOLDER_NAME
-        )
-        files = gdrive_file_list(folder_name)
+        files = gdrive_file_list(self.folder_name)
         if not files:
-            logger.error(f"No files found in folder: {folder_name}")
+            logger.error(f"No files found in folder: {self.folder_name}")
             return []
 
-        logger.info(f"Found {len(files)} files in folder: {folder_name}")
+        logger.info(f"Found {len(files)} files in folder: {self.folder_name}")
         results = {}
         for file in files:
             filename = file['title']
@@ -193,7 +193,7 @@ class GoogleNowcastCollector(BaseIngestor):
 
     def _run(self):
         """Run the collector to fetch and process data."""
-        logger.info("Starting Google Nowcast data collection.")
+        logger.info(f"Starting Google Nowcast data collection {self.date}.")
 
         # Step 1: Run GEE Script to fetch latest timestamp
         initialize_earth_engine()
@@ -212,11 +212,16 @@ class GoogleNowcastCollector(BaseIngestor):
 
         # Step 2: Run GEE Script to fetch data for the latest timestamp
         tasks = extract_nowcast_at_timestamp(
-            latest_timestamp, GEE_DEFAULT_FOLDER_NAME,
+            latest_timestamp, self.folder_name,
             verbose=self.verbose
         )
 
         # Step 3: Wait until all export tasks are complete
+        if self.verbose:
+            logger.info(
+                f"Submitting {len(tasks)} export tasks and "
+                "waiting to complete."
+            )
         started_tasks = []
         for task in tasks:
             task = self._start_task(task)
