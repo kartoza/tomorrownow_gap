@@ -8,17 +8,24 @@ Tomorrow Now GAP.
 import logging
 from datetime import datetime
 import os
+import time
+import json
 from django.utils import timezone
 from django.core.files.storage import storages
 from storages.backends.s3boto3 import S3Boto3Storage
 
+from core.utils.gee import (
+    initialize_earth_engine
+)
 from core.utils.gdrive import (
-    gdrive_file_list
+    gdrive_file_list,
+    get_gdrive_file
 )
 from gap.models import (
     Dataset,
     DatasetStore,
-    DataSourceFile
+    DataSourceFile,
+    IngestorSessionStatus
 )
 from gap.ingestor.base import (
     BaseIngestor
@@ -26,10 +33,15 @@ from gap.ingestor.base import (
 from gap.ingestor.google.common import (
     get_forecast_target_time_from_filename
 )
+from gap.ingestor.google.gee import (
+    get_latest_nowcast_timestamp,
+    extract_nowcast_at_timestamp
+)
 
 logger = logging.getLogger(__name__)
 GEE_DEFAULT_FOLDER_NAME = 'EarthEngineExports'
 DEFAULT_UPLOAD_DIR = 'google_nowcast_collector'
+GEE_DEFAULT_WAIT_SLEEP = 5  # seconds
 
 
 class GoogleNowcastCollector(BaseIngestor):
@@ -39,6 +51,11 @@ class GoogleNowcastCollector(BaseIngestor):
         """Initialize GoogleNowcastCollector."""
         super().__init__(session, working_dir)
         self.dataset = self._init_dataset()
+        self.date = self.get_config('date', timezone.now().date())
+        self.verbose = self.get_config('verbose', False)
+        self.sleep_time = self.get_config(
+            'sleep_time', GEE_DEFAULT_WAIT_SLEEP
+        )
 
     def _init_dataset(self) -> Dataset:
         """Fetch dataset for this ingestor.
@@ -156,13 +173,95 @@ class GoogleNowcastCollector(BaseIngestor):
             except Exception as e:
                 logger.error(f"Error deleting file {file.name}: {e}")
 
+    def _start_task(self, task):
+        """Start an export task if there is no exported file."""
+        file_name = task['file_name']
+        gdrive_file = get_gdrive_file(file_name)
+        if gdrive_file:
+            logger.info(f"File {file_name} already exists in Google Drive.")
+            return None
+
+        if self.verbose:
+            logger.info(f"Starting export task for {file_name}")
+        task['task'].start()
+        task['start_time'] = time.time()
+        task['progress'] = self._add_progress(file_name)
+        task['progress'].status = IngestorSessionStatus.RUNNING
+        task['progress'].save()
+
+        return task
+
     def _run(self):
         """Run the collector to fetch and process data."""
         logger.info("Starting Google Nowcast data collection.")
 
         # Step 1: Run GEE Script to fetch latest timestamp
+        initialize_earth_engine()
+        latest_timestamp = get_latest_nowcast_timestamp(
+            self.date
+        )
+        if self.verbose:
+            # convert timestamp to human-readable format
+            latest_timestamp_str = datetime.fromtimestamp(
+                latest_timestamp, tz=timezone.utc
+            ).strftime('%Y-%m-%d %H:%M:%S')
+            logger.info(
+                f"Latest Nowcast timestamp for {self.date}: "
+                f"{latest_timestamp_str}"
+            )
+
         # Step 2: Run GEE Script to fetch data for the latest timestamp
+        tasks = extract_nowcast_at_timestamp(
+            latest_timestamp, GEE_DEFAULT_FOLDER_NAME,
+            verbose=self.verbose
+        )
+
         # Step 3: Wait until all export tasks are complete
+        started_tasks = []
+        for task in tasks:
+            task = self._start_task(task)
+            if not task:
+                continue
+
+            started_tasks.append(task)
+
+        for task in started_tasks:
+            while task['task'].active():
+                status = task['task'].status()
+                time.sleep(self.sleep_time)
+
+            status = task['task'].status()
+            if self.verbose:
+                logger.info(
+                    f"Task {task['file_name']} completed with status: "
+                    f"{status['state']}"
+                )
+
+            # Update progress
+            task['elapsed_time'] = time.time() - task['start_time']
+            if status['state'] == 'COMPLETED':
+                task['progress'].status = IngestorSessionStatus.SUCCESS
+                task['progress'].notes = (
+                    f'Task completed in {task["elapsed_time"]:.2f} seconds'
+                )
+            else:
+                task['progress'].status = IngestorSessionStatus.FAILED
+                task['progress'].notes = json.dumps(status, default=str)
+            task['progress'].save()
+
+        # count failed tasks
+        failed_tasks = [
+            task for task in started_tasks
+            if task['progress'].status == IngestorSessionStatus.FAILED
+        ]
+        if failed_tasks:
+            raise Exception(
+                f"Some tasks failed: {len(failed_tasks)} out of "
+                f"{len(started_tasks)} tasks."
+            )
+        else:
+            logger.info("All tasks completed successfully.")
+
         # Step 4: Fetch the exported data from Gdrive
         exported_files = self._fetch_exported_files()
         # Step 5: cleanup the files from Gdrive
