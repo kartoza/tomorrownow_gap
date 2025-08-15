@@ -9,7 +9,14 @@ import pandas as pd
 from django.core.management.base import BaseCommand, CommandError
 from django.db import models
 from django.contrib.gis.db.models.functions import Centroid
+import fiona
+import fiona.model
+import json
+from django.contrib.gis.geos import GEOSGeometry
 
+from gap.utils.dms import (
+    decimal_to_dms, dms_string_to_point
+)
 from gap.models import Grid
 from gap.utils.geometry import ST_X, ST_Y
 
@@ -24,7 +31,10 @@ class Command(BaseCommand):
         parser.add_argument(
             'grid_id',
             type=str,
-            help='The unique id of the Grid'
+            help=(
+                'The unique id of the Grid. Use "all" to extract all grids '
+                'or "farmers" to read GeoJSON file of farmers.'
+            )
         )
 
     def extract_all_grids(self):
@@ -55,11 +65,92 @@ class Command(BaseCommand):
             self.style.SUCCESS('All grids extracted and saved to grids.xlsx')
         )
 
+    def read_geojson_farmers(self):
+        """Read GeoJSON file of farmers."""
+        file_path = '/home/web/project/scripts/input/map_isda_kenya.geojson'
+        total_farmers = 0
+        total_farmers_with_grid = 0
+        rows = []
+        with fiona.open(file_path, 'r') as src:
+            for feature in src:
+                total_farmers += 1
+                geom_str = json.dumps(
+                    feature['geometry'], cls=fiona.model.ObjectEncoder
+                )
+                geom = GEOSGeometry(geom_str)
+                # find centroid of the geometry
+                geom = geom.centroid
+                # print id from properties
+                farmer_id = feature['properties'].get('id', 'Unknown ID')
+                self.stdout.write(
+                    self.style.SUCCESS(f'Farmer ID: {farmer_id}')
+                )
+
+                # convert point to DMS
+                lat_dms, lon_dms = decimal_to_dms(
+                    geom.y, geom.x
+                )
+                dms_str = f"{lat_dms} {lon_dms}"
+                self.stdout.write(
+                    self.style.SUCCESS(f'Farmer DMS: {dms_str}')
+                )
+                self.stdout.write(
+                    self.style.SUCCESS(f'Farmer geometry: {geom}')
+                )
+
+                # Find grid for the farmer
+                grid = Grid.get_grids_by_point(geom).first()
+                if grid:
+                    total_farmers_with_grid += 1
+                    self.stdout.write(
+                        self.style.SUCCESS(f'Farmer Grid: {grid.unique_id}')
+                    )
+                else:
+                    self.stdout.write(
+                        self.style.ERROR('No grid found for this farmer.')
+                    )
+
+                # Append row for DataFrame
+                rows.append({
+                    'Farm ID': farmer_id,
+                    'dms': dms_str,
+                })
+
+                # convert point to DMS string
+                # dms_point = dms_string_to_point(dms_str)
+                # self.stdout.write(
+                #     self.style.SUCCESS(f'Farmer DMS Point: {dms_point}')
+                # )
+            self.stdout.write(
+                self.style.SUCCESS(f'Total Farmers: {total_farmers}')
+            )
+            self.stdout.write(
+                self.style.SUCCESS(
+                    f'Total Farmers with Grid: {total_farmers_with_grid}'
+                ) if total_farmers_with_grid == total_farmers
+                else self.style.WARNING(
+                    f'Total Farmers with Grid: {total_farmers_with_grid} '
+                    f'out of {total_farmers}'
+                )
+            )
+        # save dataframe to excel
+        df = pd.DataFrame(rows)
+        df.to_excel(
+            '/home/web/project/scripts/output/isda_farmers.xlsx',
+            index=False
+        )
+
     def handle(self, *args, **options):
         """Handle the command."""
         grid_id = options['grid_id']
         if grid_id == 'all':
             self.extract_all_grids()
+            return
+        elif grid_id == 'farmers':
+            self.stdout.write(
+                self.style.SUCCESS('Reading GeoJSON file of farmers...')
+            )
+            self.read_geojson_farmers()
             return
 
         try:

@@ -47,3 +47,26 @@ def dms_string_to_point(coord_str: str) -> Point:
     latitude = parse_dms(latitude_str)
     longitude = parse_dms(longitude_str)
     return Point(longitude, latitude)
+
+
+def decimal_to_dms(lat, lon):
+    """Convert decimal coordinates to DMS format."""
+    def convert(value, is_lat):
+        """Convert a decimal value to DMS format."""
+        # Get hemisphere
+        if is_lat:
+            hemisphere = 'N' if value >= 0 else 'S'
+        else:
+            hemisphere = 'E' if value >= 0 else 'W'
+
+        value = abs(value)
+        degrees = int(value)
+        minutes_float = (value - degrees) * 60
+        minutes = int(minutes_float)
+        seconds = round((minutes_float - minutes) * 60, 2)
+
+        return f"{degrees}°{minutes}'{seconds}\"{hemisphere}"
+
+    lat_dms = convert(lat, is_lat=True)
+    lon_dms = convert(lon, is_lat=False)
+    return lat_dms, lon_dms
