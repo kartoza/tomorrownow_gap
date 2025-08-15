@@ -49,6 +49,7 @@ class DatasetStore:
     ZIP_FILE = 'ZIP_FILE'
     PARQUET = 'PARQUET'
     DUCKDB = 'DUCKDB'
+    COG = 'COG'
 
     @classmethod
     def to_ext(cls, store_type: str) -> str:
@@ -64,6 +65,8 @@ class DatasetStore:
             return ''
         elif store_type == DatasetStore.DUCKDB:
             return '.duckdb'
+        elif store_type == DatasetStore.COG:
+            return '.tif'
         else:
             raise NotImplementedError(
                 f'{store_type} does not have store implementation!'
@@ -180,6 +183,7 @@ class DataSourceFile(models.Model):
             (DatasetStore.ZIP_FILE, DatasetStore.ZIP_FILE),
             (DatasetStore.PARQUET, DatasetStore.PARQUET),
             (DatasetStore.DUCKDB, DatasetStore.DUCKDB),
+            (DatasetStore.COG, DatasetStore.COG),
         ),
         max_length=512
     )

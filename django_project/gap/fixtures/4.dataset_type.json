@@ -128,5 +128,15 @@
       "type": "historical",
       "variable_name": "cbam_historical_hourly_analysis"
     }
+  },
+  {
+    "model": "gap.datasettype",
+    "pk": 14,
+    "fields": {
+      "name": "Google Nowcast | 12-hour Forecast",
+      "description": "",
+      "type": "forecast",
+      "variable_name": "google_nowcast"
+    }
   }
 ]

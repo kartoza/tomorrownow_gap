@@ -126,3 +126,11 @@ pydantic-settings==2.10.1
 fastapi==0.115.14
 uvicorn==0.35.0
 gunicorn==23.0.0
+
+# rioxarray
+rioxarray==0.19.0
+
+# pydrive2 for fetching raster in gdrive
+pydrive2==1.21.3
+
+earthengine-api==1.6.3
