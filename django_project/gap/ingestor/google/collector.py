@@ -39,7 +39,7 @@ from gap.ingestor.google.gee import (
 )
 
 logger = logging.getLogger(__name__)
-GEE_DEFAULT_FOLDER_NAME = 'GAPNowcastEEExports'
+GEE_DEFAULT_FOLDER_NAME = 'GAPNowcastEEExportstest'
 DEFAULT_UPLOAD_DIR = 'google_nowcast_collector'
 GEE_DEFAULT_WAIT_SLEEP = 5  # seconds
 
@@ -60,6 +60,7 @@ class GoogleNowcastCollector(BaseIngestor):
             'gdrive_folder_name',
             GEE_DEFAULT_FOLDER_NAME
         )
+        self.bucket_name = 'gap-prd-bkt-gcs-01'
 
     def _init_dataset(self) -> Dataset:
         """Fetch dataset for this ingestor.
@@ -176,10 +177,10 @@ class GoogleNowcastCollector(BaseIngestor):
     def _start_task(self, task):
         """Start an export task if there is no exported file."""
         file_name = task['file_name']
-        gdrive_file = get_gdrive_file(file_name)
-        if gdrive_file:
-            logger.info(f"File {file_name} already exists in Google Drive.")
-            return None
+        # gdrive_file = get_gdrive_file(file_name)
+        # if gdrive_file:
+        #     logger.info(f"File {file_name} already exists in Google Drive.")
+        #     return None
 
         if self.verbose:
             logger.info(f"Starting export task for {file_name}")
@@ -212,7 +213,7 @@ class GoogleNowcastCollector(BaseIngestor):
 
         # Step 2: Run GEE Script to fetch data for the latest timestamp
         tasks = extract_nowcast_at_timestamp(
-            latest_timestamp, self.folder_name,
+            latest_timestamp, self.bucket_name,
             verbose=self.verbose
         )
 
@@ -267,10 +268,10 @@ class GoogleNowcastCollector(BaseIngestor):
         else:
             logger.info("All tasks completed successfully.")
 
-        # Step 4: Fetch the exported data from Gdrive
-        exported_files = self._fetch_exported_files()
-        # Step 5: cleanup the files from Gdrive
-        self._clean_gdrive_files(exported_files)
+        # # Step 4: Fetch the exported data from Gdrive
+        # exported_files = self._fetch_exported_files()
+        # # Step 5: cleanup the files from Gdrive
+        # self._clean_gdrive_files(exported_files)
 
     def run(self):
         """Run the collector."""

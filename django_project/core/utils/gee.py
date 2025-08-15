@@ -17,8 +17,8 @@ TASK_WAIT_TIME = 5  # seconds
 
 def initialize_earth_engine():
     """Initialize the Earth Engine API for analysis."""
-    service_account_key = os.environ.get('SERVICE_ACCOUNT_KEY', '')
-    service_account = os.environ.get('SERVICE_ACCOUNT', '')
+    service_account_key = os.environ.get('GCS_SERVICE_ACCOUNT_KEY', '')
+    service_account = os.environ.get('GCS_SERVICE_ACCOUNT', '')
     if os.path.exists(service_account_key):
         credentials = ee.ServiceAccountCredentials(
             service_account,

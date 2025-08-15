@@ -22,7 +22,7 @@ def _initialize_gdrive_instance():
     # Authenticate to the Google Drive of the Service Account
     gauth = GoogleAuth()
     scope = ['https://www.googleapis.com/auth/drive']
-    service_account_key = os.environ.get('SERVICE_ACCOUNT_KEY', '')
+    service_account_key = os.environ.get('GCS_SERVICE_ACCOUNT_KEY', '')
     if os.path.exists(service_account_key):
         gauth.credentials = (
             ServiceAccountCredentials.from_json_keyfile_name(

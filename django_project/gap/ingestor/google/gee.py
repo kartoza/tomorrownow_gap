@@ -45,7 +45,7 @@ def get_latest_nowcast_timestamp(date):
     return timestamp
 
 
-def extract_nowcast_at_timestamp(timestamp, export_dir, verbose=False):
+def extract_nowcast_at_timestamp(timestamp, bucket_name, verbose=False):
     """Extract Nowcast image at a specific timestamp."""
     countries_geom = get_countries()
 
@@ -63,16 +63,16 @@ def extract_nowcast_at_timestamp(timestamp, export_dir, verbose=False):
             f"Extracting at timestamp {timestamp} with total nowcast images "
             f"found: {total_count}"
         )
-        logger.info(f"Exporting to folder: {export_dir}")
+        logger.info(f"Exporting to bucket: {bucket_name}")
 
     for i in range(total_count):
         img = ee.Image(img_list.get(i))
         img_id = img.get('system:index').getInfo()
         img = img.clip(countries_geom)
-        task = ee.batch.Export.image.toDrive(
+        task = ee.batch.Export.image.toCloudStorage(
             image=img,
             description=f'nowcast_{img_id}',
-            folder=export_dir,
+            bucket=bucket_name,
             fileNamePrefix=f'nowcast_{img_id}',
             scale=SCALE_VALUE,
             crs='EPSG:4326',
