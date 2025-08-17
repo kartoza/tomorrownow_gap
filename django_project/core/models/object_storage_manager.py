@@ -361,9 +361,17 @@ class ObjectStorageManager(models.Model):
         )
 
         key_data = base64.b64decode(key_data).decode('utf-8')
-        return storage.Client.from_service_account_info(
+        client = storage.Client.from_service_account_info(
             json.loads(key_data)
         )
+
+        bucket_name = manager._fetch_variable(
+            manager.bucket_name,
+            'GCS bucket name',
+            allow_empty=False
+        )
+
+        return client.bucket(bucket_name)
 
 
 class DeletionLog(models.Model):

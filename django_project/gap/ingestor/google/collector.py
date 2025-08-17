@@ -14,12 +14,9 @@ from django.utils import timezone
 from django.core.files.storage import storages
 from storages.backends.s3boto3 import S3Boto3Storage
 
+from core.models.object_storage_manager import ObjectStorageManager
 from core.utils.gee import (
     initialize_earth_engine
-)
-from core.utils.gdrive import (
-    gdrive_file_list,
-    get_gdrive_file
 )
 from gap.models import (
     Dataset,
@@ -39,7 +36,6 @@ from gap.ingestor.google.gee import (
 )
 
 logger = logging.getLogger(__name__)
-GEE_DEFAULT_FOLDER_NAME = 'GAPNowcastEEExportstest'
 DEFAULT_UPLOAD_DIR = 'google_nowcast_collector'
 GEE_DEFAULT_WAIT_SLEEP = 5  # seconds
 
@@ -56,11 +52,10 @@ class GoogleNowcastCollector(BaseIngestor):
         self.sleep_time = self.get_config(
             'sleep_time', GEE_DEFAULT_WAIT_SLEEP
         )
-        self.folder_name = self.get_config(
-            'gdrive_folder_name',
-            GEE_DEFAULT_FOLDER_NAME
+        self.gcs_connection_name = self.get_config(
+            'gcs_connection_name', 'nowcast'
         )
-        self.bucket_name = 'gap-prd-bkt-gcs-01'
+        self.gcs_client_bucket = None
 
     def _init_dataset(self) -> Dataset:
         """Fetch dataset for this ingestor.
@@ -73,21 +68,19 @@ class GoogleNowcastCollector(BaseIngestor):
             store_type=DatasetStore.ZARR
         )
 
-    def _fetch_exported_files(self):
+    def _fetch_exported_files(self, timestamp):
         """Fetch exported files from Google Drive."""
         # reset existing dataset_files
         self.session.dataset_files.all().delete()
         self.session.dataset_files.clear()
 
-        files = gdrive_file_list(self.folder_name)
-        if not files:
-            logger.error(f"No files found in folder: {self.folder_name}")
-            return []
+        files = self.gcs_client_bucket.list_blobs(
+            prefix=f'nowcast_{timestamp}'
+        )
 
-        logger.info(f"Found {len(files)} files in folder: {self.folder_name}")
         results = {}
         for file in files:
-            filename = file['title']
+            filename = file.name
             try:
                 # Extract forecast target time epoch seconds from filename
                 forecast_target_time = get_forecast_target_time_from_filename(
@@ -98,13 +91,16 @@ class GoogleNowcastCollector(BaseIngestor):
                 continue
 
             results[forecast_target_time] = file
+        logger.info(
+            f"Found {len(results)} cog files."
+        )
 
         # Sort results by forecast target time ascending
         forecast_target_times = sorted(results.keys())
         data_sources = []
         for forecast_target_time in forecast_target_times:
             file = results[forecast_target_time]
-            filename = file['title']
+            filename = file.name
 
             # Construct remote URL for the file
             remote_url = os.path.join(
@@ -115,7 +111,8 @@ class GoogleNowcastCollector(BaseIngestor):
 
             # Download the file to the working directory
             file_path = os.path.join(self.working_dir, filename)
-            file.GetContentFile(file_path)
+            file.download_to_filename(file_path)
+
             # get file size
             file_size = os.path.getsize(file_path)
 
@@ -157,8 +154,8 @@ class GoogleNowcastCollector(BaseIngestor):
 
         return list(results.values())
 
-    def _clean_gdrive_files(self, files):
-        """Clean up files from Google Drive.
+    def _clean_exported_files(self, files):
+        """Clean up exported files from Object Storage.
 
         :param files: List of files to clean up
         """
@@ -170,17 +167,18 @@ class GoogleNowcastCollector(BaseIngestor):
 
         for file in files:
             try:
-                file.Delete()
+                file.delete()
             except Exception as e:
                 logger.error(f"Error deleting file {file.name}: {e}")
 
     def _start_task(self, task):
         """Start an export task if there is no exported file."""
         file_name = task['file_name']
-        # gdrive_file = get_gdrive_file(file_name)
-        # if gdrive_file:
-        #     logger.info(f"File {file_name} already exists in Google Drive.")
-        #     return None
+        # Check file exist
+        file = self.gcs_client_bucket.blob(file_name)
+        if file.exists():
+            logger.info(f"File {file_name} already exists in GCS bucket.")
+            return None
 
         if self.verbose:
             logger.info(f"Starting export task for {file_name}")
@@ -195,6 +193,11 @@ class GoogleNowcastCollector(BaseIngestor):
     def _run(self):
         """Run the collector to fetch and process data."""
         logger.info(f"Starting Google Nowcast data collection {self.date}.")
+
+        # Init GCS Client Bucket
+        self.gcs_client_bucket = ObjectStorageManager.get_gcs_client(
+            self.gcs_connection_name
+        )
 
         # Step 1: Run GEE Script to fetch latest timestamp
         initialize_earth_engine()
@@ -213,7 +216,7 @@ class GoogleNowcastCollector(BaseIngestor):
 
         # Step 2: Run GEE Script to fetch data for the latest timestamp
         tasks = extract_nowcast_at_timestamp(
-            latest_timestamp, self.bucket_name,
+            latest_timestamp, self.gcs_client_bucket.name,
             verbose=self.verbose
         )
 
@@ -268,10 +271,10 @@ class GoogleNowcastCollector(BaseIngestor):
         else:
             logger.info("All tasks completed successfully.")
 
-        # # Step 4: Fetch the exported data from Gdrive
-        # exported_files = self._fetch_exported_files()
-        # # Step 5: cleanup the files from Gdrive
-        # self._clean_gdrive_files(exported_files)
+        # # Step 4: Fetch the exported data from GCS
+        exported_files = self._fetch_exported_files(latest_timestamp)
+        # # Step 5: cleanup the files from GCS
+        self._clean_exported_files(exported_files)
 
     def run(self):
         """Run the collector."""
