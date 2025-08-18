@@ -6,7 +6,6 @@ Tomorrow Now GAP.
 """
 
 import os
-import time
 import base64
 import ee
 import logging
