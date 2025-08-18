@@ -6,6 +6,7 @@ Tomorrow Now GAP.
 """
 import os
 import boto3
+import mock
 from botocore.stub import Stubber
 from django.conf import settings
 from django.core.files.base import ContentFile
@@ -17,7 +18,8 @@ from core.utils.s3 import (
     remove_s3_folder,
     create_s3_bucket,
     remove_s3_folder_by_batch,
-    s3_file_exists
+    s3_file_exists,
+    s3_compatible_env
 )
 
 
@@ -31,10 +33,13 @@ class TestS3Utilities(TestCase):
         self.s3 = boto3.client('s3', region_name='us-east-1')
         self.stubber = Stubber(self.s3)
         self.stubber.activate()
+        self.env_patcher = mock.patch('os.environ', {})
+        self.mock_environ = self.env_patcher.start()
 
     def tearDown(self):
         """Tear down the test case."""
         self.stubber.deactivate()
+        self.env_patcher.stop()
 
     def test_bucket_already_created(self):
         """Test S3 bucket already created."""
@@ -124,3 +129,49 @@ class TestS3Utilities(TestCase):
         self.assertFalse(exists)
 
         self.stubber.assert_no_pending_responses()
+
+    def test_basic_functionality_https(self):
+        """Test basic functionality with HTTPS endpoint."""
+        with s3_compatible_env(
+            'test_access', 'test_secret', 'https://s3.example.com'
+        ):
+            self.assertEqual(
+                self.mock_environ['AWS_ACCESS_KEY_ID'], 'test_access'
+            )
+            self.assertEqual(
+                self.mock_environ['AWS_SECRET_ACCESS_KEY'], 'test_secret'
+            )
+            self.assertEqual(
+                self.mock_environ['AWS_S3_ENDPOINT'], 's3.example.com'
+            )
+            self.assertEqual(
+                self.mock_environ['AWS_HTTPS'], 'YES'
+            )
+            self.assertEqual(
+                self.mock_environ['AWS_VIRTUAL_HOSTING'], 'FALSE'
+            )
+            self.assertEqual(
+                self.mock_environ['AWS_REGION'], 'us-east-1'
+            )
+        self.assertIsNone(self.mock_environ.get('AWS_S3_ENDPOINT'))
+
+    def test_http_endpoint(self):
+        """Test functionality with HTTP endpoint."""
+        with s3_compatible_env(
+            'test_access', 'test_secret', 'http://s3.example.com'
+        ):
+            self.assertEqual(
+                self.mock_environ['AWS_S3_ENDPOINT'], 's3.example.com'
+            )
+            self.assertEqual(
+                self.mock_environ['AWS_HTTPS'], 'NO'
+            )
+
+    def test_endpoint_with_trailing_slash(self):
+        """Test endpoint URL processing with trailing slash."""
+        with s3_compatible_env(
+            'test_access', 'test_secret', 'https://s3.example.com/'
+        ):
+            self.assertEqual(
+                self.mock_environ['AWS_S3_ENDPOINT'], 's3.example.com'
+            )

@@ -173,7 +173,11 @@ class TestGoogleIngestorFunction(UTestCase):
         )
         custom_names = ['red', 'green', 'blue', 'nir']
 
-        ds = cog_to_xarray_advanced(filepath, band_names=custom_names)
+        ds = cog_to_xarray_advanced(
+            filepath,
+            band_names=custom_names,
+            verbose=True
+        )
 
         # Check custom names are used
         for name in custom_names:

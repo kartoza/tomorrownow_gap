@@ -37,37 +37,3 @@ def initialize_earth_engine():
         logger.error(
             "Earth Engine initialization failed: %s", e, exc_info=True
         )
-
-
-def start_export_task(task: ee.batch.Task, description, is_async=False):
-    """Start an export task and logs its status.
-
-    Args:
-        task (ee.batch.Task): The Earth Engine export task to start.
-        description (str): A description of the export task.
-        is_async (bool, optional): Whether to return
-            the task status asynchronously. Defaults to False.
-
-    Returns:
-        dict: The status of the export task.
-    """
-    task.start()
-    logger.info(f"Export task '{description}' started.")
-
-    status = task.status()
-    if is_async:
-        return status
-
-    while task.active():
-        status = task.status()
-        logger.info(f"Task status: {status['state']}")
-        time.sleep(TASK_WAIT_TIME)
-
-    final_status = task.status()
-    logger.info(f"Final task status: {final_status['state']}")
-    if final_status['state'] == 'COMPLETED':
-        logger.info('Export completed successfully.')
-    else:
-        logger.info('Export failed. Details:')
-        logger.info(final_status)
-    return final_status
