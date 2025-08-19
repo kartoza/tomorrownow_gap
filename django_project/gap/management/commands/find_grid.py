@@ -15,7 +15,7 @@ import json
 from django.contrib.gis.geos import GEOSGeometry
 
 from gap.utils.dms import (
-    decimal_to_dms, dms_string_to_point
+    decimal_to_dms
 )
 from gap.models import Grid
 from gap.utils.geometry import ST_X, ST_Y
