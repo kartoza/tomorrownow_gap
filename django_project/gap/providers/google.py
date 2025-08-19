@@ -2,17 +2,16 @@
 """
 Tomorrow Now GAP.
 
-.. note:: Tamsat LTN Data Reader
+.. note:: Google NowCast Data Reader
 """
 
 import json
 import logging
 from datetime import datetime
 from typing import List
+from functools import cached_property
 
-import pytz
 import numpy as np
-import pandas as pd
 import regionmask
 import xarray as xr
 from shapely.geometry import shape
@@ -32,24 +31,22 @@ from gap.utils.reader import (
     BaseDatasetReader
 )
 from gap.utils.zarr import BaseZarrReader
-from core.utils.date import closest_leap_year
 
 logger = logging.getLogger(__name__)
-PROVIDER_NAME = 'Tamsat'
+PROVIDER_NAME = 'Google'
 
 
-class TamsatReaderValue(DatasetReaderValue):
-    """Class that convert Tamsat Zarr Dataset to TimelineValues."""
+class GoogleNowCastReaderValue(DatasetReaderValue):
+    """Class that convert Google NowCast Dataset to outputs."""
 
-    date_variable = 'date'
+    date_variable = 'datetime'
 
     def __init__(
         self, val: xrDataset | List[DatasetTimelineValue],
         location_input: DatasetReaderInput,
-        attributes: List[DatasetAttribute],
-        closest_leap_year
+        attributes: List[DatasetAttribute]
     ) -> None:
-        """Initialize TamsatReaderValue class.
+        """Initialize GoogleNowCastReaderValue class.
 
         :param val: value that has been read
         :type val: xrDataset | List[DatasetTimelineValue]
@@ -58,30 +55,24 @@ class TamsatReaderValue(DatasetReaderValue):
         :param attributes: list of dataset attributes
         :type attributes: List[DatasetAttribute]
         """
-        self.closest_leap_year = closest_leap_year
         super().__init__(val, location_input, attributes)
 
+    @cached_property
+    def has_time_column(self) -> bool:
+        """Get if the output has time column."""
+        return False
+
     def _post_init(self):
-        """Override post init method to process the data."""
-        super()._post_init()
-        base_date = pd.Timestamp(f'{self.closest_leap_year}-01-01')
-        date_series = base_date + pd.to_timedelta(
-            self._val['dayofyear'].to_series() - 1,
-            unit='D'
-        )
-        # Format as 'MM-DD'
-        date_series = date_series.dt.strftime('%m-%d')
-        # swap coordinate dayofyear with date
-        self._val['dayofyear'] = date_series
-        self._val = self._val.rename({'dayofyear': 'date'})
-        attrs = {}
+        if not self._is_xr_dataset:
+            return
+        if self.is_empty():
+            return
+        renamed_dict = {
+            'time': self.date_variable
+        }
         for attr in self.attributes:
-            attrs[attr.attribute.variable_name] = list(
-                self._val[attr.attribute.variable_name].attrs.keys()
-            )
-        for key, attr_names in attrs.items():
-            for attr_name in attr_names:
-                del self._val[key].attrs[attr_name]
+            renamed_dict[attr.source] = attr.attribute.variable_name
+        self._val = self._val.rename(renamed_dict)
 
     def _xr_dataset_process_datetime(self, df):
         """Process datetime for df from xarray dataset."""
@@ -89,33 +80,36 @@ class TamsatReaderValue(DatasetReaderValue):
         return df
 
 
-class TamsatZarrReader(BaseZarrReader):
-    """Tamsat Zarr Reader."""
+class GoogleNowcastZarrReader(BaseZarrReader):
+    """Google Nowcast Zarr Reader."""
 
-    date_variable = 'dayofyear'
-    datetime_precision = 'D'
+    date_variable = 'time'
 
     def __init__(
             self, dataset: Dataset, attributes: List[DatasetAttribute],
             location_input: DatasetReaderInput, start_date: datetime,
             end_date: datetime, use_cache: bool = True
     ) -> None:
-        """Initialize TamsatZarrReader class."""
+        """Initialize GoogleNowcastZarrReader class."""
         super().__init__(
             dataset, attributes, location_input, start_date, end_date,
             use_cache=use_cache
         )
-        self.today = datetime.now(tz=pytz.UTC)
-        self.closest_leap_year = closest_leap_year(self.today.year)
 
-    def read_historical_data(self, start_date: datetime, end_date: datetime):
-        """Read historical data from dataset.
+    def get_data_values(self) -> DatasetReaderValue:
+        """Fetch data values from list of xArray Dataset object.
 
-        :param start_date: start date for reading historical data
-        :type start_date: datetime
-        :param end_date:  end date for reading historical data
-        :type end_date: datetime
+        :return: Data Value.
+        :rtype: DatasetReaderValue
         """
+        return GoogleNowCastReaderValue(
+            self.xrDatasets[0],
+            self.location_input,
+            self.attributes
+        )
+
+    def read_forecast_data(self, start_date, end_date):
+        """Read forecast data from dataset."""
         self.setup_reader()
         self.xrDatasets = []
         zarr_file = DataSourceFile.objects.filter(
@@ -130,44 +124,18 @@ class TamsatZarrReader(BaseZarrReader):
         if val is not None:
             self.xrDatasets.append(val)
 
-    def get_data_values(self) -> DatasetReaderValue:
-        """Fetch data values from list of xArray Dataset object.
-
-        :return: Data Value.
-        :rtype: DatasetReaderValue
-        """
-        return TamsatReaderValue(
-            self.xrDatasets[0],
-            self.location_input,
-            self.attributes,
-            self.closest_leap_year
-        )
-
-    def _get_day_of_year(self, dt: np.datetime64) -> int:
-        """Get day of year for a given date.
-
-        :param date: date to get day of year with D precision
-        :type date: np.datetime64
-        :return: day of year
-        :rtype: int
-        """
-        return (
-            (dt - dt.astype('datetime64[Y]')).astype(int) + 1
-        )
-
     def _read_variables_by_point(
             self, dataset: xrDataset, variables: List[str],
             start_dt: np.datetime64,
             end_dt: np.datetime64) -> xrDataset:
         point = self.location_input.point
-        min_idx = self._get_day_of_year(start_dt)
-        max_idx = self._get_day_of_year(end_dt)
 
         return dataset[variables].sel(
-            **{self.date_variable: slice(min_idx, max_idx)}
+            **{self.date_variable: slice(start_dt, end_dt)}
         ).sel(
             lat=point.y,
-            lon=point.x, method='nearest')
+            lon=point.x, method='nearest'
+        )
 
     def _read_variables_by_bbox(
             self, dataset: xrDataset, variables: List[str],
@@ -178,13 +146,11 @@ class TamsatZarrReader(BaseZarrReader):
         lat_max = points[1].y
         lon_min = points[0].x
         lon_max = points[1].x
-        min_idx = self._get_day_of_year(start_dt)
-        max_idx = self._get_day_of_year(end_dt)
         # output results is in two dimensional array
         return dataset[variables].sel(
             lat=slice(lat_min, lat_max),
             lon=slice(lon_min, lon_max),
-            **{self.date_variable: slice(min_idx, max_idx)}
+            **{self.date_variable: slice(start_dt, end_dt)}
         )
 
     def _read_variables_by_polygon(
@@ -197,11 +163,8 @@ class TamsatZarrReader(BaseZarrReader):
 
         # Create a mask using regionmask from the shapely polygon
         mask = regionmask.Regions([shapely_multipolygon]).mask(dataset)
-        # Mask the dataset
-        min_idx = self._get_day_of_year(start_dt)
-        max_idx = self._get_day_of_year(end_dt)
         return dataset[variables].sel(
-            **{self.date_variable: slice(min_idx, max_idx)}
+            **{self.date_variable: slice(start_dt, end_dt)}
         ).where(
             mask == 0,
             drop=True
@@ -227,23 +190,21 @@ class TamsatZarrReader(BaseZarrReader):
             }, dims=['lat', 'lon']
         )
 
-        min_idx = self._get_day_of_year(start_dt)
-        max_idx = self._get_day_of_year(end_dt)
         # Apply the mask to the dataset
         return dataset[variables].sel(
-            **{self.date_variable: slice(min_idx, max_idx)}
+            **{self.date_variable: slice(start_dt, end_dt)}
         ).where(
             mask_da,
             drop=True
         )
 
 
-class TamsatReaderBuilder(BaseReaderBuilder):
-    """Class to build Tamsat reader."""
+class GoogleReaderBuilder(BaseReaderBuilder):
+    """Class to build Google reader."""
 
     def build(self) -> BaseDatasetReader:
         """Build a new Dataset Reader."""
-        return TamsatZarrReader(
+        return GoogleNowcastZarrReader(
             self.dataset, self.attributes, self.location_input,
             self.start_date, self.end_date, use_cache=self.use_cache
         )
