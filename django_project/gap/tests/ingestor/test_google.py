@@ -8,8 +8,12 @@ Tomorrow Now GAP.
 import os
 import uuid
 import numpy as np
+import pandas as pd
+import dask.array as da
+from xarray.core.dataset import Dataset as xrDataset
 import rasterio
 from unittest import mock
+from django.core.files.storage import storages
 from parameterized import parameterized
 from rasterio.transform import from_bounds
 from google.cloud.storage import Bucket, Blob
@@ -24,21 +28,81 @@ from gap.models import (
     CollectorSession,
     IngestorType,
     CollectorSessionProgress,
-    IngestorSessionStatus
+    IngestorSessionStatus,
+    IngestorSession,
+    Dataset,
+    DatasetStore,
+    DataSourceFile
 )
 from gap.ingestor.google.collector import GoogleNowcastCollector
-# from gap.ingestor.google.ingestor import GoogleNowcastIngestor
+from gap.ingestor.google.ingestor import GoogleNowcastIngestor
 from gap.ingestor.google.common import (
     get_forecast_target_time_from_filename
 )
 from gap.ingestor.google.cog import (
     cog_to_xarray_advanced
 )
+from gap.tasks.collector import run_google_nowcast_collector_session
+from gap.factories import DataSourceFileFactory
+
+
+LAT_METADATA = {
+    'min': -4.65013565,
+    'max': 5.46326983,
+    'inc': 0.03586314,
+    'original_min': -4.65013565
+}
+LON_METADATA = {
+    'min': 33.91823667,
+    'max': 41.84325607,
+    'inc': 0.036353,
+    'original_min': 33.91823667
+}
 
 
 def mock_do_nothing(*args, **kwargs):
     """Mock function that does nothing."""
     pass
+
+
+def mock_open_dataset(*args, **kwargs):
+    """Mock open cog as xarray dataset."""
+    new_lat = np.arange(
+        LAT_METADATA['min'], LAT_METADATA['max'] + LAT_METADATA['inc'],
+        LAT_METADATA['inc']
+    )
+    new_lon = np.arange(
+        LON_METADATA['min'], LON_METADATA['max'] + LON_METADATA['inc'],
+        LON_METADATA['inc']
+    )
+
+    # Create the Dataset
+    forecast_target_time = 1755568268
+    time_coords = pd.to_datetime(forecast_target_time, unit='s')
+    times = np.array([time_coords])
+    empty_shape = (
+        1, len(new_lat), len(new_lon)
+    )
+    attribs = [
+        'precip_200_um', 'precip_400_um', 'precip_1000_um', 'precip_1600_um',
+        'precip_2400_um', 'precip_4000_um', 'precip_5000_um',
+        'precip_7000_um', 'precip_10000_um', 'precip_25000_um',
+        'precip_30000_um', 'precip_type'
+    ]
+    data_vars = {}
+    for attr in attribs:
+        data_vars[attr] = (
+            ['time', 'lat', 'lon'],
+            da.empty(empty_shape)
+        )
+    return xrDataset(
+        data_vars=data_vars,
+        coords={
+            'time': ('time', times),
+            'lat': ('lat', new_lat),
+            'lon': ('lon', new_lon)
+        }
+    )
 
 
 class TestGoogleIngestorFunction(UTestCase):
@@ -696,4 +760,140 @@ class TestGoogleNowcastCollector(TestCase):
 class TestGoogleNowcastIngestor(TestCase):
     """Test Google Nowcast Ingestor."""
 
-    pass
+    fixtures = [
+        '1.object_storage_manager.json',
+        '2.provider.json',
+        '3.station_type.json',
+        '4.dataset_type.json',
+        '5.dataset.json',
+        '6.unit.json',
+        '7.attribute.json',
+        '8.dataset_attribute.json'
+    ]
+
+    def setUp(self):
+        """Set the ingestor test class."""
+        self.dataset = Dataset.objects.get(
+            name='Google Nowcast | 12-hour Forecast'
+        )
+        self.cog_convert_patcher = mock.patch(
+            'gap.ingestor.google.ingestor.cog_to_xarray_advanced',
+            side_effect=mock_open_dataset
+        )
+        self.mock_cog_convert = self.cog_convert_patcher.start()
+        self.dask_compute_patcher = mock.patch(
+            'gap.ingestor.google.ingestor.execute_dask_compute',
+            side_effect=mock_do_nothing
+        )
+        self.mock_dask_compute = self.dask_compute_patcher.start()
+        self.working_dir = f'/tmp/{uuid.uuid4().hex}'
+        os.makedirs(self.working_dir, exist_ok=True)
+        # create tif file nowcast_1755568268_0.tif in the working dir
+        file_path = os.path.join(self.working_dir, 'nowcast_1755568268_0.tif')
+        with open(file_path, 'wb') as f:
+            f.write(b'test')
+        # upload tif file to s3 storage
+        s3_storage = storages["gap_products"]
+        # Construct remote URL for the file
+        prefix = os.environ.get('GAP_S3_PRODUCTS_DIR_PREFIX', '')
+        self.remote_url = os.path.join(
+            prefix,
+            'google_nowcast_collector',
+            'nowcast_1755568268_0.tif'
+        )
+        with open(file_path, 'rb') as f:
+            s3_storage.save(self.remote_url, f)
+
+        # Create collector and datasourcefile
+        self.collector = CollectorSession.objects.create(
+            ingestor_type=IngestorType.GOOGLE_NOWCAST
+        )
+        self.datasourcefile = DataSourceFileFactory.create(
+            dataset=self.dataset,
+            name='nowcast_1755568268_0.tif',
+            format=DatasetStore.COG,
+            metadata={
+                'forecast_target_time': 1755568268,
+                'remote_url': self.remote_url
+            }
+        )
+        self.collector.dataset_files.set([self.datasourcefile])
+        self.session = IngestorSession.objects.create(
+            ingestor_type=IngestorType.GOOGLE_NOWCAST,
+            trigger_task=False,
+            additional_config={
+                'verbose': True
+            }
+        )
+        self.session.collectors.set([self.collector])
+        # add latest data source file zarr
+        self.old_datasourcefile = DataSourceFileFactory.create(
+            dataset=self.dataset,
+            name='test_123.zarr',
+            format=DatasetStore.ZARR,
+            is_latest=True
+        )
+
+    def tearDown(self):
+        """Tear down the ingestor test class."""
+        self.cog_convert_patcher.stop()
+        self.dask_compute_patcher.stop()
+        shutil.rmtree(self.working_dir, ignore_errors=True)
+
+    @mock.patch('gap.models.ingestor.CollectorSession.dataset_files')
+    @mock.patch('gap.models.ingestor.CollectorSession.run')
+    @mock.patch('gap.tasks.ingestor.run_ingestor_session.apply_async')
+    def test_run_nowcast_collector_session(
+        self, mock_ingestor, mock_collector, mock_count
+    ):
+        """Test run nowcast collector session."""
+        mock_count.count.return_value = 0
+        run_google_nowcast_collector_session()
+        # assert
+        mock_collector.assert_called_once()
+        mock_ingestor.assert_not_called()
+
+        mock_collector.reset_mock()
+        mock_ingestor.reset_mock()
+        # test with collector result
+        mock_count.count.return_value = 1
+        run_google_nowcast_collector_session()
+
+        # assert
+        session = IngestorSession.objects.filter(
+            ingestor_type=IngestorType.GOOGLE_NOWCAST,
+        ).order_by('id').last()
+        self.assertTrue(session)
+        self.assertEqual(session.collectors.count(), 1)
+        mock_collector.assert_called_once()
+        mock_ingestor.assert_called_once_with(
+            args=[session.id],
+            queue='high-priority'
+        )
+        config = session.additional_config
+        self.assertFalse(config.get('use_latest_datasource'))
+        self.assertNotIn(
+            'datasourcefile_id', config
+        )
+        self.assertNotIn(
+            'datasourcefile_exists', config
+        )
+
+    def test_run_ingestor(self):
+        """Test run ingestor."""
+        ingestor = GoogleNowcastIngestor(self.session, self.working_dir)
+        self.assertEqual(self.collector.dataset_files.count(), 1)
+        ingestor._run()
+        self.mock_cog_convert.assert_called_once()
+        self.mock_dask_compute.assert_called_once()
+        self.assertEqual(self.collector.dataset_files.count(), 0)
+        self.old_datasourcefile.refresh_from_db()
+        self.assertFalse(self.old_datasourcefile.is_latest)
+        self.assertIsNotNone(self.old_datasourcefile.deleted_at)
+        # find DataSourceFile zarr
+        latest_datasourcefile = DataSourceFile.objects.filter(
+            dataset=self.dataset,
+            format=DatasetStore.ZARR,
+            is_latest=True
+        ).first()
+        self.assertIsNotNone(latest_datasourcefile)

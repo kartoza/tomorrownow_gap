@@ -142,6 +142,11 @@ app.conf.beat_schedule = {
         # Run every day at 00:15 UTC
         'schedule': crontab(minute='15', hour='0'),
     },
+    'google-nowcast-collector-session': {
+        'task': 'google_nowcast_collector_session',
+        # Run every day every 6 hours at 15 minutes past the hour
+        'schedule': crontab(minute='15', hour='*/6'),
+    },
 }
 
 
