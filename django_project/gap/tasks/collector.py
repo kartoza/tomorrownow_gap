@@ -97,6 +97,9 @@ def _do_run_zarr_collector(
             # if it's first week of the month
             if timezone.now().day <= 7:
                 force_new_zarr = True
+        elif ingestor_type == IngestorType.GOOGLE_NOWCAST:
+            # Nowcast will always write to new zarr file
+            force_new_zarr = True
 
         if force_new_zarr:
             config['use_latest_datasource'] = False
@@ -187,6 +190,22 @@ def run_tio_hourly_collector_session():
         dataset,
         collector_session,
         IngestorType.HOURLY_TOMORROWIO
+    )
+
+
+@app.task(name='google_nowcast_collector_session', queue='high-priority')
+def run_google_nowcast_collector_session():
+    """Run Collector for Google Nowcast Dataset."""
+    dataset = Dataset.objects.get(name='Google Nowcast | 12-hour Forecast')
+    config = get_ingestor_config_from_preferences(dataset.provider)
+    collector_session = CollectorSession.objects.create(
+        ingestor_type=IngestorType.GOOGLE_NOWCAST,
+        additional_config=config
+    )
+    _do_run_zarr_collector(
+        dataset,
+        collector_session,
+        IngestorType.GOOGLE_NOWCAST
     )
 
 

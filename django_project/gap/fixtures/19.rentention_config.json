@@ -14,5 +14,13 @@
         "dataset": 3,
         "days_to_keep": 1
     }
+},
+{
+    "model": "gap.datasourcefilerententionconfig",
+    "pk": 3,
+    "fields": {
+        "dataset": 16,
+        "days_to_keep": 0
+    }
 }
 ]

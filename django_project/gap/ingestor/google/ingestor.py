@@ -12,10 +12,11 @@ import json
 import time
 from django.core.files.storage import storages
 from storages.backends.s3boto3 import S3Boto3Storage
+from django.utils import timezone as dtimezone
 
 from gap.models import (
     Dataset, DatasetStore, IngestorSessionStatus, CollectorSession,
-    DatasetAttribute
+    DatasetAttribute, DataSourceFile
 )
 from core.utils.s3 import s3_compatible_env
 from gap.utils.zarr import BaseZarrReader
@@ -180,6 +181,9 @@ class GoogleNowcastIngestor(BaseZarrIngestor):
         if remove_temp_file:
             self._remove_source_files(collector)
 
+        # set data source retention
+        self.set_data_source_retention()
+
     def _remove_source_files(self, collector: CollectorSession):
         s3_storage: S3Boto3Storage = storages["gap_products"]
         for dataset_file in collector.dataset_files.all():
@@ -196,3 +200,25 @@ class GoogleNowcastIngestor(BaseZarrIngestor):
         except Exception as e:
             logger.error('Ingestor Google NowCast failed!', exc_info=True)
             raise e
+
+    def set_data_source_retention(self):
+        """Delete the latest data source file and set the new one."""
+        # find the latest data source file
+        latest_data_source = DataSourceFile.objects.filter(
+            dataset=self.dataset,
+            is_latest=True,
+            format=DatasetStore.ZARR
+        ).last()
+        if (
+            latest_data_source and
+            latest_data_source.id != self.datasource_file.id
+        ):
+            # set the latest data source file to not latest
+            latest_data_source.is_latest = False
+            # set deleted_at to now
+            latest_data_source.deleted_at = dtimezone.now()
+            latest_data_source.save()
+
+        # Update the data source file to latest
+        self.datasource_file.is_latest = True
+        self.datasource_file.save()
