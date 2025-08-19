@@ -24,7 +24,8 @@ from gap.models import (
     CollectorSession,
     IngestorType,
     CollectorSessionProgress,
-    IngestorSessionStatus
+    IngestorSessionStatus,
+    IngestorSession
 )
 from gap.ingestor.google.collector import GoogleNowcastCollector
 # from gap.ingestor.google.ingestor import GoogleNowcastIngestor
@@ -34,6 +35,7 @@ from gap.ingestor.google.common import (
 from gap.ingestor.google.cog import (
     cog_to_xarray_advanced
 )
+from gap.tasks.collector import run_google_nowcast_collector_session
 
 
 def mock_do_nothing(*args, **kwargs):
@@ -696,4 +698,52 @@ class TestGoogleNowcastCollector(TestCase):
 class TestGoogleNowcastIngestor(TestCase):
     """Test Google Nowcast Ingestor."""
 
-    pass
+    fixtures = [
+        '1.object_storage_manager.json',
+        '2.provider.json',
+        '3.station_type.json',
+        '4.dataset_type.json',
+        '5.dataset.json',
+        '6.unit.json',
+        '7.attribute.json',
+        '8.dataset_attribute.json'
+    ]
+
+    @mock.patch('gap.models.ingestor.CollectorSession.dataset_files')
+    @mock.patch('gap.models.ingestor.CollectorSession.run')
+    @mock.patch('gap.tasks.ingestor.run_ingestor_session.apply_async')
+    def test_run_nowcast_collector_session(
+        self, mock_ingestor, mock_collector, mock_count
+    ):
+        """Test run nowcast collector session."""
+        mock_count.count.return_value = 0
+        run_google_nowcast_collector_session()
+        # assert
+        mock_collector.assert_called_once()
+        mock_ingestor.assert_not_called()
+
+        mock_collector.reset_mock()
+        mock_ingestor.reset_mock()
+        # test with collector result
+        mock_count.count.return_value = 1
+        run_google_nowcast_collector_session()
+
+        # assert
+        session = IngestorSession.objects.filter(
+            ingestor_type=IngestorType.GOOGLE_NOWCAST,
+        ).order_by('id').last()
+        self.assertTrue(session)
+        self.assertEqual(session.collectors.count(), 1)
+        mock_collector.assert_called_once()
+        mock_ingestor.assert_called_once_with(
+            args=[session.id],
+            queue='high-priority'
+        )
+        config = session.additional_config
+        self.assertFalse(config.get('use_latest_datasource'))
+        self.assertNotIn(
+            'datasourcefile_id', config
+        )
+        self.assertNotIn(
+            'datasourcefile_exists', config
+        )
