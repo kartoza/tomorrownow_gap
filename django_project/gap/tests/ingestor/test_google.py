@@ -6,21 +6,39 @@ Tomorrow Now GAP.
 """
 
 import os
+import uuid
 import numpy as np
 import rasterio
+from unittest import mock
 from parameterized import parameterized
 from rasterio.transform import from_bounds
+from google.cloud.storage import Bucket, Blob
 import xarray as xr
 import tempfile
 from unittest import TestCase as UTestCase
 import shutil
+from django.test import TestCase
+import ee
 
+from gap.models import (
+    CollectorSession,
+    IngestorType,
+    CollectorSessionProgress,
+    IngestorSessionStatus
+)
+from gap.ingestor.google.collector import GoogleNowcastCollector
+# from gap.ingestor.google.ingestor import GoogleNowcastIngestor
 from gap.ingestor.google.common import (
     get_forecast_target_time_from_filename
 )
 from gap.ingestor.google.cog import (
     cog_to_xarray_advanced
 )
+
+
+def mock_do_nothing(*args, **kwargs):
+    """Mock function that does nothing."""
+    pass
 
 
 class TestGoogleIngestorFunction(UTestCase):
@@ -553,3 +571,129 @@ class TestGoogleIngestorFunction(UTestCase):
             y_values[i] <= y_values[i + 1] for
             i in range(len(y_values) - 1)
         ), "Y coordinates should be ascending"
+
+
+class TestGoogleNowcastCollector(TestCase):
+    """Test Google Nowcast Collector."""
+
+    fixtures = [
+        '1.object_storage_manager.json',
+        '2.provider.json',
+        '3.station_type.json',
+        '4.dataset_type.json',
+        '5.dataset.json',
+        '6.unit.json',
+        '7.attribute.json',
+        '8.dataset_attribute.json'
+    ]
+
+    def setUp(self):
+        """Init test case."""
+        self.init_gee_patcher = mock.patch(
+            'gap.ingestor.google.collector.initialize_earth_engine',
+            side_effect=mock_do_nothing
+        )
+        self.mock_init_gee = self.init_gee_patcher.start()
+        mock_bucket = mock.MagicMock(spec=Bucket)
+        mock_bucket.name = 'nowcast'
+        mock_file = mock.MagicMock(spec=Blob)
+        mock_file.name = 'nowcast_1755568268_0.tif'
+        mock_file.exists.return_value = False
+        mock_bucket.blob.return_value = mock_file
+        mock_bucket.list_blobs.return_value = [mock_file]
+        self.gcs_client_patcher = mock.patch(
+            'core.models.object_storage_manager.'
+            'ObjectStorageManager.get_gcs_client',
+            return_value=mock_bucket
+        )
+        self.mock_gcs_client = self.gcs_client_patcher.start()
+        self.get_latest_timestamp_patcher = mock.patch(
+            'gap.ingestor.google.collector.get_latest_nowcast_timestamp',
+            return_value=1755568268
+        )
+        self.mock_get_latest_timestamp = (
+            self.get_latest_timestamp_patcher.start()
+        )
+
+        mock_task1 = mock.MagicMock(spec=ee.batch.Task)
+        mock_task1.active.return_value = False
+        mock_task1.status.return_value = {
+            'state': 'COMPLETED'
+        }
+        task1 = {
+            'task': mock_task1,
+            'timestamp': 1755568268,
+            'img_id': '1755568268_0',
+            'file_name': 'nowcast_1755568268_0.tif',
+            'start_time': None,
+            'elapsed_time': None,
+            'progress': None,
+            'status': None
+        }
+        self.extract_nowcast_at_timestamp_patcher = mock.patch(
+            'gap.ingestor.google.collector.extract_nowcast_at_timestamp',
+            return_value=[task1]
+        )
+        self.mock_extract_nowcast_at_timestamp = (
+            self.extract_nowcast_at_timestamp_patcher.start()
+        )
+        self.working_dir = f'/tmp/{uuid.uuid4().hex}'
+        os.makedirs(self.working_dir, exist_ok=True)
+        # create tif file nowcast_1755568268_0.tif in the working dir
+        with open(
+            os.path.join(self.working_dir, 'nowcast_1755568268_0.tif'),
+            'wb'
+        ) as f:
+            f.write(b'test')
+
+    def tearDown(self):
+        """Tear down the test case."""
+        self.init_gee_patcher.stop()
+        self.gcs_client_patcher.stop()
+        self.get_latest_timestamp_patcher.stop()
+        self.extract_nowcast_at_timestamp_patcher.stop()
+        shutil.rmtree(self.working_dir, ignore_errors=True)
+
+    def test_collector_run(self):
+        """Test run collector successfully."""
+        session = CollectorSession.objects.create(
+            ingestor_type=IngestorType.GOOGLE_NOWCAST,
+            additional_config={
+                'remove_temp_file': True,
+                'verbose': True,
+            }
+        )
+        collector = GoogleNowcastCollector(
+            session, working_dir=self.working_dir
+        )
+        collector.run()
+        session.refresh_from_db()
+        print(session.status)
+        print(session.notes)
+        progress_list = CollectorSessionProgress.objects.filter(
+            collector=session
+        )
+        print(f'progress count {progress_list.count()}')
+        self.mock_init_gee.assert_called_once()
+        self.mock_gcs_client.assert_called_once()
+        self.mock_get_latest_timestamp.assert_called_once()
+        self.mock_extract_nowcast_at_timestamp.assert_called_once()
+        self.assertEqual(
+            progress_list.count(),
+            1
+        )
+        progress = progress_list.first()
+        self.assertEqual(
+            progress.status,
+            IngestorSessionStatus.SUCCESS
+        )
+        self.assertEqual(
+            session.dataset_files.count(),
+            1
+        )
+
+
+class TestGoogleNowcastIngestor(TestCase):
+    """Test Google Nowcast Ingestor."""
+
+    pass
