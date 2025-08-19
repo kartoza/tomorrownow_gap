@@ -1934,5 +1934,137 @@
       "source_unit": 1,
       "ensembles": false
     }
+  },
+  {
+    "model": "gap.datasetattribute",
+    "pk": 177,
+    "fields": {
+      "dataset": 16,
+      "attribute": 96,
+      "source": "precip_200_um",
+      "source_unit": 4,
+      "ensembles": false
+    }
+  },
+  {
+    "model": "gap.datasetattribute",
+    "pk": 178,
+    "fields": {
+      "dataset": 16,
+      "attribute": 97,
+      "source": "precip_400_um",
+      "source_unit": 4,
+      "ensembles": false
+    }
+  },
+  {
+    "model": "gap.datasetattribute",
+    "pk": 179,
+    "fields": {
+      "dataset": 16,
+      "attribute": 98,
+      "source": "precip_1000_um",
+      "source_unit": 4,
+      "ensembles": false
+    }
+  },
+  {
+    "model": "gap.datasetattribute",
+    "pk": 180,
+    "fields": {
+      "dataset": 16,
+      "attribute": 99,
+      "source": "precip_1600_um",
+      "source_unit": 4,
+      "ensembles": false
+    }
+  },
+  {
+    "model": "gap.datasetattribute",
+    "pk": 181,
+    "fields": {
+      "dataset": 16,
+      "attribute": 100,
+      "source": "precip_2400_um",
+      "source_unit": 4,
+      "ensembles": false
+    }
+  },
+  {
+    "model": "gap.datasetattribute",
+    "pk": 182,
+    "fields": {
+      "dataset": 16,
+      "attribute": 101,
+      "source": "precip_4000_um",
+      "source_unit": 4,
+      "ensembles": false
+    }
+  },
+  {
+    "model": "gap.datasetattribute",
+    "pk": 183,
+    "fields": {
+      "dataset": 16,
+      "attribute": 102,
+      "source": "precip_5000_um",
+      "source_unit": 4,
+      "ensembles": false
+    }
+  },
+  {
+    "model": "gap.datasetattribute",
+    "pk": 184,
+    "fields": {
+      "dataset": 16,
+      "attribute": 103,
+      "source": "precip_7000_um",
+      "source_unit": 4,
+      "ensembles": false
+    }
+  },
+  {
+    "model": "gap.datasetattribute",
+    "pk": 185,
+    "fields": {
+      "dataset": 16,
+      "attribute": 104,
+      "source": "precip_10000_um",
+      "source_unit": 4,
+      "ensembles": false
+    }
+  },
+  {
+    "model": "gap.datasetattribute",
+    "pk": 186,
+    "fields": {
+      "dataset": 16,
+      "attribute": 105,
+      "source": "precip_25000_um",
+      "source_unit": 4,
+      "ensembles": false
+    }
+  },
+  {
+    "model": "gap.datasetattribute",
+    "pk": 187,
+    "fields": {
+      "dataset": 16,
+      "attribute": 106,
+      "source": "precip_30000_um",
+      "source_unit": 4,
+      "ensembles": false
+    }
+  },
+  {
+    "model": "gap.datasetattribute",
+    "pk": 188,
+    "fields": {
+      "dataset": 16,
+      "attribute": 92,
+      "source": "precip_type",
+      "source_unit": 22,
+      "ensembles": false
+    }
   }
 ]

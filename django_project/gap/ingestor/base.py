@@ -21,6 +21,7 @@ from django.db import transaction
 from core.models import BackgroundTask, ObjectStorageManager
 from gap.models import (
     CollectorSession,
+    CollectorSessionProgress,
     IngestorSession,
     IngestorSessionStatus,
     IngestorSessionProgress,
@@ -162,6 +163,14 @@ class BaseIngestor:
 
     def _add_progress(self, progress_name, notes=None):
         """Add progress to the session."""
+        if isinstance(self.session, CollectorSession):
+            return CollectorSessionProgress.objects.create(
+                collector=self.session,
+                title=progress_name,
+                row_count=0,
+                notes=notes
+            )
+
         return IngestorSessionProgress.objects.create(
             session=self.session,
             filename=progress_name,

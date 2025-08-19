@@ -25,3 +25,6 @@ memory-profiler
 
 # fakeredis
 fakeredis==2.26.1
+
+# parameterized for unit test
+parameterized==0.9.0

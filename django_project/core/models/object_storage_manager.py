@@ -8,7 +8,10 @@ Tomorrow Now GAP.
 
 import os
 import boto3
+import base64
 import logging
+import json
+from google.cloud import storage
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 from django.http import StreamingHttpResponse
@@ -26,6 +29,7 @@ class ProtocolType(models.TextChoices):
     """Protocol type choices."""
 
     S3 = 'S3', _('S3')
+    GCS = 'GCS', _('GCS')
 
 
 class ObjectStorageManager(models.Model):
@@ -326,6 +330,48 @@ class ObjectStorageManager(models.Model):
             f'attachment; filename="{remote_file_path.split("/")[-1]}"'
         )
         return response
+
+    @classmethod
+    def get_gcs_client(cls, connection_name: str = None):
+        """Get GCS client for Object Storage Manager."""
+        if connection_name is None:
+            connection_name = DEFAULT_CONNECTION_NAME
+        try:
+            manager = cls.objects.get(connection_name=connection_name)
+        except cls.DoesNotExist:
+            raise ValueError(
+                'ObjectStorageManager with connection name '
+                f'"{connection_name}" does not exist.'
+            )
+        if manager.protocol != ProtocolType.GCS:
+            raise ValueError(
+                'Protocol for ObjectStorageManager '
+                f'"{connection_name}" is not GCS.'
+            )
+
+        if not manager.use_env_vars:
+            raise ValueError(
+                'GCS ObjectStorageManager must use environment variables.'
+            )
+
+        key_data = manager._fetch_variable(
+            manager.secret_access_key_var,
+            'GCS service account key',
+            allow_empty=False
+        )
+
+        key_data = base64.b64decode(key_data).decode('utf-8')
+        client = storage.Client.from_service_account_info(
+            json.loads(key_data)
+        )
+
+        bucket_name = manager._fetch_variable(
+            manager.bucket_name,
+            'GCS bucket name',
+            allow_empty=False
+        )
+
+        return client.bucket(bucket_name)
 
 
 class DeletionLog(models.Model):
