@@ -18,8 +18,8 @@ from core.settings.utils import DJANGO_ROOT
 logger = logging.getLogger(__name__)
 
 
-# Sort by extracting the number at the beginning
 def extract_number(filename):
+    """Sort by extracting the number at the beginning."""
     match = re.match(r'^(\d+)\.', filename)
     return int(match.group(1)) if match else 0
 
