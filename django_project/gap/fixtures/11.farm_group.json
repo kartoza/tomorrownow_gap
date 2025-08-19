@@ -54,5 +54,13 @@
       "name": "Laikipia Trial Site",
       "description": ""
     }
+  },
+  {
+    "model": "gap.farmgroup",
+    "pk": 8,
+    "fields": {
+      "name": "iSDA",
+      "description": ""
+    }
   }
 ]
