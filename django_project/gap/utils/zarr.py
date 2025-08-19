@@ -150,12 +150,14 @@ class BaseZarrReader(BaseNetCDFReader):
         :return: xArray Dataset object
         :rtype: xrDataset
         """
-        if self.use_cache:
+        metadata = source_file.metadata or {}
+        use_cache = metadata.get('use_cache', self.use_cache)
+        if use_cache:
             self._check_zarr_cache_expiry(source_file)
 
         s3 = self.s3
         s3_options = self.s3_options
-        override_conn_name = source_file.metadata.get(
+        override_conn_name = metadata.get(
             'connection_name', None
         )
         if (
@@ -179,7 +181,7 @@ class BaseZarrReader(BaseNetCDFReader):
         zarr_url = self.get_zarr_base_url(s3)
         zarr_url += f'{source_file.name}'
 
-        if self.use_cache:
+        if use_cache:
             # create s3 filecache
             s3_fs = s3fs.S3FileSystem(
                 **s3_options,
@@ -200,10 +202,7 @@ class BaseZarrReader(BaseNetCDFReader):
         else:
             s3_mapper = fsspec.get_mapper(zarr_url, **s3_options)
 
-        drop_variables = []
-        if source_file.metadata:
-            drop_variables = source_file.metadata.get(
-                'drop_variables', [])
+        drop_variables = metadata.get('drop_variables', [])
         # open zarr, use consolidated to read the metadata
         ds = xr.open_zarr(
             s3_mapper, consolidated=True, drop_variables=drop_variables)
