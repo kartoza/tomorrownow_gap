@@ -6,7 +6,7 @@ Tomorrow Now GAP.
 """
 
 import logging
-from datetime import datetime, time
+from datetime import datetime, time, timedelta
 import ee
 
 
@@ -30,7 +30,8 @@ def get_countries():
 
 def get_latest_nowcast_timestamp(date):
     """Get the latest Nowcast image for a given date."""
-    start_datetime = datetime.combine(date, time.min)
+    # start from one hour behind to include prev day images
+    start_datetime = datetime.combine(date, time.min) - timedelta(hours=1)
     end_datetime = datetime.combine(date, time.max)
 
     nowcast_img = ee.ImageCollection(NOWCAST_ASSET_ID) \
