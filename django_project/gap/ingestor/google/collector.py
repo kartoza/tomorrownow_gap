@@ -28,20 +28,25 @@ from gap.ingestor.base import (
     BaseIngestor
 )
 from gap.ingestor.google.common import (
-    get_forecast_target_time_from_filename
+    get_forecast_target_time_from_filename,
+    get_forecast_time_from_filename
 )
 from gap.ingestor.google.gee import (
     get_latest_nowcast_timestamp,
-    extract_nowcast_at_timestamp
+    extract_nowcast_at_timestamp,
+    get_latest_graphcast_timestamp,
+    extract_graphcast_at_timestamp
 )
 
 logger = logging.getLogger(__name__)
-DEFAULT_UPLOAD_DIR = 'google_nowcast_collector'
 GEE_DEFAULT_WAIT_SLEEP = 5  # seconds
 
 
 class GoogleNowcastCollector(BaseIngestor):
     """Collector for Google Nowcast data."""
+
+    PREFIX_EXPORTED_FILENAME = 'nowcast_{}'
+    DEFAULT_UPLOAD_DIR = 'google_nowcast_collector'
 
     def __init__(self, session, working_dir='/tmp'):
         """Initialize GoogleNowcastCollector."""
@@ -68,14 +73,17 @@ class GoogleNowcastCollector(BaseIngestor):
             store_type=DatasetStore.ZARR
         )
 
+    def _parse_filename(self, filename):
+        return get_forecast_target_time_from_filename(filename)
+
     def _fetch_exported_files(self, timestamp):
-        """Fetch exported files from Google Drive."""
+        """Fetch exported files from Google Storage."""
         # reset existing dataset_files
         self.session.dataset_files.all().delete()
         self.session.dataset_files.clear()
 
         files = self.gcs_client_bucket.list_blobs(
-            prefix=f'nowcast_{timestamp}'
+            prefix=self.PREFIX_EXPORTED_FILENAME.format(timestamp)
         )
 
         results = {}
@@ -83,9 +91,7 @@ class GoogleNowcastCollector(BaseIngestor):
             filename = file.name
             try:
                 # Extract forecast target time epoch seconds from filename
-                forecast_target_time = get_forecast_target_time_from_filename(
-                    filename
-                )
+                forecast_target_time = self._parse_filename(filename)
             except ValueError as e:
                 logger.error(f"Invalid filename {filename}: {e}")
                 continue
@@ -105,7 +111,7 @@ class GoogleNowcastCollector(BaseIngestor):
             # Construct remote URL for the file
             remote_url = os.path.join(
                 self.s3.get('S3_DIR_PREFIX'),
-                DEFAULT_UPLOAD_DIR,
+                self.DEFAULT_UPLOAD_DIR,
                 filename
             )
 
@@ -190,9 +196,24 @@ class GoogleNowcastCollector(BaseIngestor):
 
         return task
 
+    def _get_latest_forecast_timestamp(self):
+        """Get the latest forecast timestamp for the given date."""
+        return get_latest_nowcast_timestamp(
+            self.date
+        )
+
+    def _build_export_tasks(self, latest_timestamp):
+        """Build export tasks for the given timestamp."""
+        return extract_nowcast_at_timestamp(
+            latest_timestamp, self.gcs_client_bucket.name,
+            verbose=self.verbose
+        )
+
     def _run(self):
         """Run the collector to fetch and process data."""
-        logger.info(f"Starting Google Nowcast data collection {self.date}.")
+        logger.info(
+            f"Starting {self.dataset.name} data collection {self.date}."
+        )
 
         # Init GCS Client Bucket
         self.gcs_client_bucket = ObjectStorageManager.get_gcs_client(
@@ -201,24 +222,19 @@ class GoogleNowcastCollector(BaseIngestor):
 
         # Step 1: Run GEE Script to fetch latest timestamp
         initialize_earth_engine()
-        latest_timestamp = get_latest_nowcast_timestamp(
-            self.date
-        )
+        latest_timestamp = self._get_latest_forecast_timestamp()
         if self.verbose:
             # convert timestamp to human-readable format
             latest_timestamp_str = datetime.fromtimestamp(
                 latest_timestamp, tz=timezone.utc
             ).strftime('%Y-%m-%d %H:%M:%S')
             logger.info(
-                f"Latest Nowcast timestamp for {self.date}: "
+                f"Latest timestamp for {self.date}: "
                 f"{latest_timestamp_str}"
             )
 
         # Step 2: Run GEE Script to fetch data for the latest timestamp
-        tasks = extract_nowcast_at_timestamp(
-            latest_timestamp, self.gcs_client_bucket.name,
-            verbose=self.verbose
-        )
+        tasks = self._build_export_tasks(latest_timestamp)
 
         # Step 3: Wait until all export tasks are complete
         if self.verbose:
@@ -282,7 +298,42 @@ class GoogleNowcastCollector(BaseIngestor):
             self._run()
         except Exception as e:
             logger.error(
-                f"Error running Google Nowcast Collector: {e}",
+                f"Error running {self.dataset.name} Collector: {e}",
                 exc_info=True
             )
             raise e
+
+
+class GoogleGraphcastCollector(GoogleNowcastCollector):
+    """Collector for Google Graphcast data."""
+
+    PREFIX_EXPORTED_FILENAME = 'graphcast_{}'
+    DEFAULT_UPLOAD_DIR = 'google_graphcast_collector'
+
+    def _init_dataset(self) -> Dataset:
+        """Fetch dataset for this ingestor.
+
+        :return: Dataset for this ingestor
+        :rtype: Dataset
+        """
+        return Dataset.objects.get(
+            name='Google Graphcast | 10-day Forecast',
+            store_type=DatasetStore.ZARR
+        )
+
+    def _parse_filename(self, filename):
+        return get_forecast_time_from_filename(filename)
+
+    def _get_latest_forecast_timestamp(self):
+        """Get the latest forecast timestamp for the given date."""
+        timestamp_iso_format = get_latest_graphcast_timestamp(
+            self.date
+        )
+        return int(datetime.fromisoformat(timestamp_iso_format).timestamp())
+
+    def _build_export_tasks(self, latest_timestamp):
+        """Build export tasks for the given timestamp."""
+        return extract_graphcast_at_timestamp(
+            latest_timestamp, self.gcs_client_bucket.name,
+            verbose=self.verbose
+        )

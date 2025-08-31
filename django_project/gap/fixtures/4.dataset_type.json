@@ -138,5 +138,15 @@
       "type": "forecast",
       "variable_name": "google_nowcast"
     }
+  },
+  {
+    "model": "gap.datasettype",
+    "pk": 15,
+    "fields": {
+      "name": "Google Graphcast | 10-day Forecast",
+      "description": "",
+      "type": "forecast",
+      "variable_name": "google_graphcast"
+    }
   }
 ]
