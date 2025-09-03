@@ -528,6 +528,28 @@ class TioZarrReader(BaseZarrReader):
         )
         self.latest_forecast_date = None
 
+    def _find_data_source_by_location_input(self):
+        """Find DataSourceFile by location input."""
+        data_source = None
+        if self.location_input.type == LocationInputType.BBOX:
+            pass
+        elif self.location_input.type == LocationInputType.POLYGON:
+            pass
+        elif self.location_input.type == LocationInputType.LIST_OF_POINT:
+            pass
+        else:  # point
+            pass
+
+        if data_source is None:
+            # if not found by any country, then use the latest available Zarr file
+            data_source = DataSourceFile.objects.filter(
+                dataset=self.dataset,
+                format=DatasetStore.ZARR,
+                is_latest=True
+            ).order_by('id').last()
+
+        return data_source
+
     def read_forecast_data(self, start_date: datetime, end_date: datetime):
         """Read forecast data from dataset.
 
@@ -538,11 +560,7 @@ class TioZarrReader(BaseZarrReader):
         """
         self.setup_reader()
         self.xrDatasets = []
-        zarr_file = DataSourceFile.objects.filter(
-            dataset=self.dataset,
-            format=DatasetStore.ZARR,
-            is_latest=True
-        ).order_by('id').last()
+        zarr_file = self._find_data_source_by_location_input()
         if zarr_file is None:
             return
         ds = self.open_dataset(zarr_file)
