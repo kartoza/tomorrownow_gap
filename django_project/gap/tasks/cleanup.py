@@ -118,8 +118,8 @@ def cleanup_deleted_zarr():
 
 
 @app.task(name='cleanup_old_forecast_data')
-def cleanup_old_forecast_data(cutoff_days: int = 14):
-    """Delete old forecast data older than 14 days."""
+def cleanup_old_forecast_data(cutoff_days: int = 2):
+    """Delete old forecast data older than 2 days."""
     cutoff = timezone.now() - timedelta(days=cutoff_days)
     logger.info(
         f"Deleting FarmShortTermForecastData older than {cutoff}"
