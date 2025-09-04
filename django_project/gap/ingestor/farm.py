@@ -121,7 +121,7 @@ class FarmIngestor(BaseIngestor):
                 farm, _ = Farm.objects.update_or_create(
                     unique_id=farm_id,
                     defaults={
-                        'geometry':geometry,
+                        'geometry': geometry,
                         'crop': crop,
                         'category': category,
                         'rsvp_status': rsvp_status,
