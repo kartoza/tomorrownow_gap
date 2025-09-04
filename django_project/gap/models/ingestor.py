@@ -45,6 +45,7 @@ class IngestorType:
     SALIENT_HISTORICAL = 'Salient Historical'
     SPW_GEOPARQUET = 'SPW Geoparquet'
     GOOGLE_NOWCAST = 'Google Nowcast'
+    GOOGLE_GRAPHCAST = 'Google Graphcast'
 
 
 class IngestorSessionStatus:
@@ -95,6 +96,7 @@ class BaseSession(models.Model):
             (IngestorType.SALIENT_HISTORICAL, IngestorType.SALIENT_HISTORICAL),
             (IngestorType.SPW_GEOPARQUET, IngestorType.SPW_GEOPARQUET),
             (IngestorType.GOOGLE_NOWCAST, IngestorType.GOOGLE_NOWCAST),
+            (IngestorType.GOOGLE_GRAPHCAST, IngestorType.GOOGLE_GRAPHCAST),
         ),
         max_length=512
     )
@@ -146,7 +148,10 @@ class CollectorSession(BaseSession):
             TioShortTermHourlyCollector
         )
         from gap.ingestor.cbam_bias_adjust import CBAMBiasAdjustCollector
-        from gap.ingestor.google.collector import GoogleNowcastCollector
+        from gap.ingestor.google.collector import (
+            GoogleNowcastCollector,
+            GoogleGraphcastCollector
+        )
 
         ingestor = None
         if self.ingestor_type == IngestorType.CBAM:
@@ -164,6 +169,8 @@ class CollectorSession(BaseSession):
             ingestor = TioShortTermHourlyCollector(self, working_dir)
         elif self.ingestor_type == IngestorType.GOOGLE_NOWCAST:
             ingestor = GoogleNowcastCollector(self, working_dir)
+        elif self.ingestor_type == IngestorType.GOOGLE_GRAPHCAST:
+            ingestor = GoogleGraphcastCollector(self, working_dir)
 
         if ingestor:
             ingestor.run()
@@ -247,7 +254,10 @@ class IngestorSession(BaseSession):
         )
         from gap.ingestor.dcas_message import DCASMessageIngestor
         from gap.ingestor.spw import SPWIngestor
-        from gap.ingestor.google.ingestor import GoogleNowcastIngestor
+        from gap.ingestor.google.ingestor import (
+            GoogleNowcastIngestor,
+            GoogleGraphcastIngestor
+        )
 
         ingestor = None
         if self.ingestor_type == IngestorType.TAHMO:
@@ -286,6 +296,8 @@ class IngestorSession(BaseSession):
             ingestor = SPWIngestor
         elif self.ingestor_type == IngestorType.GOOGLE_NOWCAST:
             ingestor = GoogleNowcastIngestor
+        elif self.ingestor_type == IngestorType.GOOGLE_GRAPHCAST:
+            ingestor = GoogleGraphcastIngestor
 
         if ingestor:
             ingestor_obj = ingestor(self, working_dir)
