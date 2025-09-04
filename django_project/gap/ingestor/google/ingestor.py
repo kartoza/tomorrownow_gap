@@ -83,6 +83,11 @@ class GoogleNowcastIngestor(BaseZarrIngestor):
             }
         return encoding
 
+    def _apply_transformation(self, ds):
+        """Apply transformations to the dataset."""
+        # no transformation for google nowcast dataset
+        return ds
+
     def _run(self):
         """Process the Google Nowcast dataset."""
         collector = self.session.collectors.first()
@@ -104,6 +109,7 @@ class GoogleNowcastIngestor(BaseZarrIngestor):
             remote_path = (
                 f"s3://{self.s3.get('S3_BUCKET_NAME')}/{remote_path}"
             )
+            forecast_target_time = data_source.metadata['forecast_target_time']
 
             logger.info(f"Processing file: {remote_path}")
             start_time = time.time()
@@ -122,8 +128,11 @@ class GoogleNowcastIngestor(BaseZarrIngestor):
                         separate_bands=True,
                         band_names=None,
                         verbose=self.get_config('verbose', False),
-                        add_variable_metadata=self.created
+                        add_variable_metadata=self.created,
+                        forecast_target_time=forecast_target_time
                     )
+
+                    ds = self._apply_transformation(ds)
 
                     # save the dataset to Zarr
                     zarr_url = (
@@ -198,7 +207,10 @@ class GoogleNowcastIngestor(BaseZarrIngestor):
             self._run()
             self.session.notes = json.dumps(self.metadata, default=str)
         except Exception as e:
-            logger.error('Ingestor Google NowCast failed!', exc_info=True)
+            logger.error(
+                f'Ingestor {self.dataset.name} failed!',
+                exc_info=True
+            )
             raise e
 
     def set_data_source_retention(self):
@@ -222,3 +234,24 @@ class GoogleNowcastIngestor(BaseZarrIngestor):
         # Update the data source file to latest
         self.datasource_file.is_latest = True
         self.datasource_file.save()
+
+
+class GoogleGraphcastIngestor(GoogleNowcastIngestor):
+    """Ingestor for Google Graphcast Dataset."""
+
+    def _init_dataset(self) -> Dataset:
+        """Fetch dataset for this ingestor.
+
+        :return: Dataset for this ingestor
+        :rtype: Dataset
+        """
+        return Dataset.objects.get(
+            name='Google Graphcast | 10-day Forecast',
+            store_type=DatasetStore.ZARR
+        )
+
+    def _apply_transformation(self, ds):
+        """Apply transformations to the dataset."""
+        # Convert temperature from Kelvin to Celsius
+        ds['2m_temperature'] = ds['2m_temperature'] - 273.15
+        return ds

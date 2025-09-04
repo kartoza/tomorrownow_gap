@@ -147,6 +147,11 @@ app.conf.beat_schedule = {
         # Run every day every 6 hours at 15 minutes past the hour
         'schedule': crontab(minute='15', hour='*/6'),
     },
+    'google-graphcast-collector-session': {
+        'task': 'google_graphcast_collector_session',
+        # Run every day every 6 hours at 50 minutes past the hour
+        'schedule': crontab(minute='50', hour='*/6'),
+    },
     'cleanup-old-forecast-data': {
         'task': 'cleanup_old_forecast_data',
         # Run every day every 22:00 UTC
