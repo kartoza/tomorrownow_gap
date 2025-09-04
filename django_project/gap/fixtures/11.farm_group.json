@@ -62,5 +62,21 @@
       "name": "iSDA",
       "description": ""
     }
+  },
+  {
+    "model": "gap.farmgroup",
+    "pk": 9,
+    "fields": {
+      "name": "KALRO 2025 A",
+      "description": "Farm group for season from September 2025"
+    }
+  },
+  {
+    "model": "gap.farmgroup",
+    "pk": 10,
+    "fields": {
+      "name": "KALRO 2025 B",
+      "description": "Farm group for season from September 2025"
+    }
   }
 ]
