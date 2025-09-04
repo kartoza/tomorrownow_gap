@@ -34,15 +34,24 @@ from gap.models import (
     DatasetStore,
     DataSourceFile
 )
-from gap.ingestor.google.collector import GoogleNowcastCollector
-from gap.ingestor.google.ingestor import GoogleNowcastIngestor
+from gap.ingestor.google.collector import (
+    GoogleNowcastCollector,
+    GoogleGraphcastCollector
+)
+from gap.ingestor.google.ingestor import (
+    GoogleNowcastIngestor,
+    GoogleGraphcastIngestor
+)
 from gap.ingestor.google.common import (
     get_forecast_target_time_from_filename
 )
 from gap.ingestor.google.cog import (
     cog_to_xarray_advanced
 )
-from gap.tasks.collector import run_google_nowcast_collector_session
+from gap.tasks.collector import (
+    run_google_nowcast_collector_session,
+    run_google_graphcast_collector_session
+)
 from gap.factories import DataSourceFileFactory
 
 
@@ -88,6 +97,44 @@ def mock_open_dataset(*args, **kwargs):
         'precip_2400_um', 'precip_4000_um', 'precip_5000_um',
         'precip_7000_um', 'precip_10000_um', 'precip_25000_um',
         'precip_30000_um', 'precip_type'
+    ]
+    data_vars = {}
+    for attr in attribs:
+        data_vars[attr] = (
+            ['time', 'lat', 'lon'],
+            da.empty(empty_shape)
+        )
+    return xrDataset(
+        data_vars=data_vars,
+        coords={
+            'time': ('time', times),
+            'lat': ('lat', new_lat),
+            'lon': ('lon', new_lon)
+        }
+    )
+
+
+def mock_open_dataset_graphcast(*args, **kwargs):
+    """Mock open cog as xarray dataset graphcast."""
+    new_lat = np.arange(
+        LAT_METADATA['min'], LAT_METADATA['max'] + LAT_METADATA['inc'],
+        LAT_METADATA['inc']
+    )
+    new_lon = np.arange(
+        LON_METADATA['min'], LON_METADATA['max'] + LON_METADATA['inc'],
+        LON_METADATA['inc']
+    )
+
+    # Create the Dataset
+    forecast_target_time = 1755589868
+    time_coords = pd.to_datetime(forecast_target_time, unit='s')
+    times = np.array([time_coords])
+    empty_shape = (
+        1, len(new_lat), len(new_lon)
+    )
+    attribs = [
+        'total_precipitation_6hr', '10m_u_component_of_wind',
+        '10m_v_component_of_wind', '2m_temperature'
     ]
     data_vars = {}
     for attr in attribs:
@@ -732,12 +779,9 @@ class TestGoogleNowcastCollector(TestCase):
         )
         collector.run()
         session.refresh_from_db()
-        print(session.status)
-        print(session.notes)
         progress_list = CollectorSessionProgress.objects.filter(
             collector=session
         )
-        print(f'progress count {progress_list.count()}')
         self.mock_init_gee.assert_called_once()
         self.mock_gcs_client.assert_called_once()
         self.mock_get_latest_timestamp.assert_called_once()
@@ -882,6 +926,267 @@ class TestGoogleNowcastIngestor(TestCase):
     def test_run_ingestor(self):
         """Test run ingestor."""
         ingestor = GoogleNowcastIngestor(self.session, self.working_dir)
+        self.assertEqual(self.collector.dataset_files.count(), 1)
+        ingestor._run()
+        self.mock_cog_convert.assert_called_once()
+        self.mock_dask_compute.assert_called_once()
+        self.assertEqual(self.collector.dataset_files.count(), 0)
+        self.old_datasourcefile.refresh_from_db()
+        self.assertFalse(self.old_datasourcefile.is_latest)
+        self.assertIsNotNone(self.old_datasourcefile.deleted_at)
+        # find DataSourceFile zarr
+        latest_datasourcefile = DataSourceFile.objects.filter(
+            dataset=self.dataset,
+            format=DatasetStore.ZARR,
+            is_latest=True
+        ).first()
+        self.assertIsNotNone(latest_datasourcefile)
+
+
+class TestGoogleGraphcastCollector(TestCase):
+    """Test Google Graphcast Collector."""
+
+    fixtures = [
+        '1.object_storage_manager.json',
+        '2.provider.json',
+        '3.station_type.json',
+        '4.dataset_type.json',
+        '5.dataset.json',
+        '6.unit.json',
+        '7.attribute.json',
+        '8.dataset_attribute.json'
+    ]
+
+    def setUp(self):
+        """Init test case."""
+        self.init_gee_patcher = mock.patch(
+            'gap.ingestor.google.collector.initialize_earth_engine',
+            side_effect=mock_do_nothing
+        )
+        self.mock_init_gee = self.init_gee_patcher.start()
+        mock_bucket = mock.MagicMock(spec=Bucket)
+        mock_bucket.name = 'nowcast'
+        mock_file = mock.MagicMock(spec=Blob)
+        mock_file.name = 'graphcast_1755568268_6.tif'
+        mock_file.exists.return_value = False
+        mock_bucket.blob.return_value = mock_file
+        mock_bucket.list_blobs.return_value = [mock_file]
+        self.gcs_client_patcher = mock.patch(
+            'core.models.object_storage_manager.'
+            'ObjectStorageManager.get_gcs_client',
+            return_value=mock_bucket
+        )
+        self.mock_gcs_client = self.gcs_client_patcher.start()
+        self.get_latest_timestamp_patcher = mock.patch(
+            'gap.ingestor.google.collector.get_latest_graphcast_timestamp',
+            return_value='2025-08-30T06:00:00Z'
+        )
+        self.mock_get_latest_timestamp = (
+            self.get_latest_timestamp_patcher.start()
+        )
+
+        mock_task1 = mock.MagicMock(spec=ee.batch.Task)
+        mock_task1.active.return_value = False
+        mock_task1.status.return_value = {
+            'state': 'COMPLETED'
+        }
+        task1 = {
+            'task': mock_task1,
+            'timestamp': 1755568268,
+            'img_id': '1755568268_6',
+            'file_name': 'graphcast_1755568268_6.tif',
+            'start_time': None,
+            'elapsed_time': None,
+            'progress': None,
+            'status': None
+        }
+        self.extract_graphcast_at_timestamp_patcher = mock.patch(
+            'gap.ingestor.google.collector.extract_graphcast_at_timestamp',
+            return_value=[task1]
+        )
+        self.mock_extract_graphcast_at_timestamp = (
+            self.extract_graphcast_at_timestamp_patcher.start()
+        )
+        self.working_dir = f'/tmp/{uuid.uuid4().hex}'
+        os.makedirs(self.working_dir, exist_ok=True)
+        # create tif file graphcast_1755568268_6.tif in the working dir
+        with open(
+            os.path.join(self.working_dir, 'graphcast_1755568268_6.tif'),
+            'wb'
+        ) as f:
+            f.write(b'test')
+
+    def tearDown(self):
+        """Tear down the test case."""
+        self.init_gee_patcher.stop()
+        self.gcs_client_patcher.stop()
+        self.get_latest_timestamp_patcher.stop()
+        self.extract_graphcast_at_timestamp_patcher.stop()
+        shutil.rmtree(self.working_dir, ignore_errors=True)
+
+    def test_collector_run(self):
+        """Test run collector successfully."""
+        session = CollectorSession.objects.create(
+            ingestor_type=IngestorType.GOOGLE_GRAPHCAST,
+            additional_config={
+                'remove_temp_file': True,
+                'verbose': True,
+            }
+        )
+        collector = GoogleGraphcastCollector(
+            session, working_dir=self.working_dir
+        )
+        collector.run()
+        session.refresh_from_db()
+        progress_list = CollectorSessionProgress.objects.filter(
+            collector=session
+        )
+        self.mock_init_gee.assert_called_once()
+        self.mock_gcs_client.assert_called_once()
+        self.mock_get_latest_timestamp.assert_called_once()
+        self.mock_extract_graphcast_at_timestamp.assert_called_once()
+        self.assertEqual(
+            progress_list.count(),
+            1
+        )
+        progress = progress_list.first()
+        self.assertEqual(
+            progress.status,
+            IngestorSessionStatus.SUCCESS
+        )
+        self.assertEqual(
+            session.dataset_files.count(),
+            1
+        )
+
+
+class TestGoogleGraphcastIngestor(TestCase):
+    """Test Google Graphcast Ingestor."""
+
+    fixtures = [
+        '1.object_storage_manager.json',
+        '2.provider.json',
+        '3.station_type.json',
+        '4.dataset_type.json',
+        '5.dataset.json',
+        '6.unit.json',
+        '7.attribute.json',
+        '8.dataset_attribute.json'
+    ]
+
+    def setUp(self):
+        """Set the ingestor test class."""
+        self.dataset = Dataset.objects.get(
+            name='Google Graphcast | 10-day Forecast'
+        )
+        self.cog_convert_patcher = mock.patch(
+            'gap.ingestor.google.ingestor.cog_to_xarray_advanced',
+            side_effect=mock_open_dataset_graphcast
+        )
+        self.mock_cog_convert = self.cog_convert_patcher.start()
+        self.dask_compute_patcher = mock.patch(
+            'gap.ingestor.google.ingestor.execute_dask_compute',
+            side_effect=mock_do_nothing
+        )
+        self.mock_dask_compute = self.dask_compute_patcher.start()
+        self.working_dir = f'/tmp/{uuid.uuid4().hex}'
+        os.makedirs(self.working_dir, exist_ok=True)
+        # create tif file graphcast_1755568268_0.tif in the working dir
+        file_path = os.path.join(
+            self.working_dir, 'graphcast_1755568268_6.tif'
+        )
+        with open(file_path, 'wb') as f:
+            f.write(b'test')
+        # upload tif file to s3 storage
+        s3_storage = storages["gap_products"]
+        # Construct remote URL for the file
+        prefix = os.environ.get('GAP_S3_PRODUCTS_DIR_PREFIX', '')
+        self.remote_url = os.path.join(
+            prefix,
+            'google_graphcast_collector',
+            'graphcast_1755568268_6.tif'
+        )
+        with open(file_path, 'rb') as f:
+            s3_storage.save(self.remote_url, f)
+
+        # Create collector and datasourcefile
+        self.collector = CollectorSession.objects.create(
+            ingestor_type=IngestorType.GOOGLE_GRAPHCAST
+        )
+        self.datasourcefile = DataSourceFileFactory.create(
+            dataset=self.dataset,
+            name='graphcast_1755568268_6.tif',
+            format=DatasetStore.COG,
+            metadata={
+                'forecast_target_time': 1755589868,
+                'remote_url': self.remote_url
+            }
+        )
+        self.collector.dataset_files.set([self.datasourcefile])
+        self.session = IngestorSession.objects.create(
+            ingestor_type=IngestorType.GOOGLE_GRAPHCAST,
+            trigger_task=False,
+            additional_config={
+                'verbose': True
+            }
+        )
+        self.session.collectors.set([self.collector])
+        # add latest data source file zarr
+        self.old_datasourcefile = DataSourceFileFactory.create(
+            dataset=self.dataset,
+            name='test_125.zarr',
+            format=DatasetStore.ZARR,
+            is_latest=True
+        )
+
+    def tearDown(self):
+        """Tear down the ingestor test class."""
+        self.cog_convert_patcher.stop()
+        self.dask_compute_patcher.stop()
+        shutil.rmtree(self.working_dir, ignore_errors=True)
+
+    @mock.patch('gap.models.ingestor.CollectorSession.dataset_files')
+    @mock.patch('gap.models.ingestor.CollectorSession.run')
+    @mock.patch('gap.tasks.ingestor.run_ingestor_session.apply_async')
+    def test_run_graphcast_collector_session(
+        self, mock_ingestor, mock_collector, mock_count
+    ):
+        """Test run graphcast collector session."""
+        mock_count.count.return_value = 0
+        run_google_graphcast_collector_session()
+        # assert
+        mock_collector.assert_called_once()
+        mock_ingestor.assert_not_called()
+
+        mock_collector.reset_mock()
+        mock_ingestor.reset_mock()
+        # test with collector result
+        mock_count.count.return_value = 1
+        run_google_graphcast_collector_session()
+
+        # assert
+        session = IngestorSession.objects.filter(
+            ingestor_type=IngestorType.GOOGLE_GRAPHCAST,
+        ).order_by('id').last()
+        self.assertTrue(session)
+        self.assertEqual(session.collectors.count(), 1)
+        mock_collector.assert_called_once()
+        mock_ingestor.assert_called_once_with(
+            args=[session.id],
+            queue='high-priority'
+        )
+        config = session.additional_config
+        self.assertFalse(config.get('use_latest_datasource'))
+        self.assertNotIn(
+            'datasourcefile_id', config
+        )
+        self.assertNotIn(
+            'datasourcefile_exists', config
+        )
+
+    def test_run_ingestor(self):
+        """Test run ingestor."""
+        ingestor = GoogleGraphcastIngestor(self.session, self.working_dir)
         self.assertEqual(self.collector.dataset_files.count(), 1)
         ingestor._run()
         self.mock_cog_convert.assert_called_once()

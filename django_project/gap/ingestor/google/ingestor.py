@@ -236,7 +236,7 @@ class GoogleNowcastIngestor(BaseZarrIngestor):
         self.datasource_file.save()
 
 
-class GoogleGrapcastIngestor(GoogleNowcastIngestor):
+class GoogleGraphcastIngestor(GoogleNowcastIngestor):
     """Ingestor for Google Graphcast Dataset."""
 
     def _init_dataset(self) -> Dataset:

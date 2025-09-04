@@ -121,7 +121,6 @@ def get_latest_graphcast_timestamp(date):
         .first()
 
     start_time = graphcast_img.get('start_time').getInfo()
-    print(f'graphcast start_time: {start_time}')
     # start_time, eg. 2025-08-30T06:00:00Z
     return start_time
 
@@ -133,8 +132,6 @@ def extract_graphcast_at_timestamp(timestamp, bucket_name, verbose=False):
     start_time_str = datetime.fromtimestamp(
         timestamp, tz=timezone.utc
     ).strftime("%Y-%m-%dT%H:%M:%SZ")
-    print(f'fetching from timestamp: {timestamp}')
-    print(start_time_str)
     graphcast_img = ee.ImageCollection(GRAPHCAST_ASSET_ID) \
         .filter(ee.Filter.eq('start_time', start_time_str)) \
         .filterBounds(countries_geom) \

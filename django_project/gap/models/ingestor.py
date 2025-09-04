@@ -256,7 +256,7 @@ class IngestorSession(BaseSession):
         from gap.ingestor.spw import SPWIngestor
         from gap.ingestor.google.ingestor import (
             GoogleNowcastIngestor,
-            GoogleGrapcastIngestor
+            GoogleGraphcastIngestor
         )
 
         ingestor = None
@@ -297,7 +297,7 @@ class IngestorSession(BaseSession):
         elif self.ingestor_type == IngestorType.GOOGLE_NOWCAST:
             ingestor = GoogleNowcastIngestor
         elif self.ingestor_type == IngestorType.GOOGLE_GRAPHCAST:
-            ingestor = GoogleGrapcastIngestor
+            ingestor = GoogleGraphcastIngestor
 
         if ingestor:
             ingestor_obj = ingestor(self, working_dir)
