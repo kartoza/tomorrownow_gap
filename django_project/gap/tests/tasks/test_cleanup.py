@@ -275,7 +275,7 @@ class OldForecastDataCleanupTest(TestCase):
             2023, 9, 29, tzinfo=datetime.timezone.utc
         )
         # cutoff_days=14, so cutoff is 2023-9-15
-        cleanup_old_forecast_data()
+        cleanup_old_forecast_data(cutoff_days=14)
         # Old forecast and its data should be deleted
         self.assertFalse(
             FarmShortTermForecast.objects.filter(
