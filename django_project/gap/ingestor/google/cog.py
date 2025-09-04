@@ -23,7 +23,7 @@ def cog_to_xarray_advanced(
     filepath, chunks=None, reproject_to_wgs84=True,
     separate_bands=True, band_names=None,
     add_variable_metadata=True, ensure_ascending_coords=True,
-    verbose=False
+    forecast_target_time=None, verbose=False
 ):
     """
     Convert COG to xarray with band metadata and chunking support.
@@ -51,6 +51,8 @@ def cog_to_xarray_advanced(
         If True, adds band metadata as attributes to each variable
     ensure_ascending_coords : bool, default=True
         If True, ensures that coordinates are in ascending order
+    forecast_target_time : int, optional
+        The forecast target time (in epoch) for the dataset
     verbose : bool, default=False
         If True, print additional debug information
 
@@ -59,9 +61,10 @@ def cog_to_xarray_advanced(
     xarray.Dataset
         Dataset with proper coordinates and metadata
     """
-    forecast_target_time = get_forecast_target_time_from_filename(
-        os.path.basename(filepath)
-    )
+    if forecast_target_time is None:
+        forecast_target_time = get_forecast_target_time_from_filename(
+            os.path.basename(filepath)
+        )
     time_coords = pd.to_datetime(forecast_target_time, unit='s')
     if verbose:
         logger.info(

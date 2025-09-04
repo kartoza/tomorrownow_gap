@@ -2066,5 +2066,49 @@
       "source_unit": 22,
       "ensembles": false
     }
+  },
+  {
+    "model": "gap.datasetattribute",
+    "pk": 189,
+    "fields": {
+      "dataset": 17,
+      "attribute": 107,
+      "source": "total_precipitation_6hr",
+      "source_unit": 4,
+      "ensembles": false
+    }
+  },
+  {
+    "model": "gap.datasetattribute",
+    "pk": 190,
+    "fields": {
+      "dataset": 17,
+      "attribute": 108,
+      "source": "10m_u_component_of_wind",
+      "source_unit": 8,
+      "ensembles": false
+    }
+  },
+  {
+    "model": "gap.datasetattribute",
+    "pk": 191,
+    "fields": {
+      "dataset": 17,
+      "attribute": 109,
+      "source": "10m_v_component_of_wind",
+      "source_unit": 8,
+      "ensembles": false
+    }
+  },
+  {
+    "model": "gap.datasetattribute",
+    "pk": 192,
+    "fields": {
+      "dataset": 17,
+      "attribute": 23,
+      "source": "2m_temperature",
+      "source_unit": 5,
+      "ensembles": false
+    }
   }
 ]

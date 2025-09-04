@@ -222,5 +222,19 @@
       "is_internal_use": false,
       "observation_type": "NOT_SPECIFIED"
     }
+  },
+  {
+    "model": "gap.dataset",
+    "pk": 17,
+    "fields": {
+      "name": "Google Graphcast | 10-day Forecast",
+      "description": "",
+      "provider": 8,
+      "type": 15,
+      "time_step": "HOURLY",
+      "store_type": "ZARR",
+      "is_internal_use": false,
+      "observation_type": "NOT_SPECIFIED"
+    }
   }
 ]

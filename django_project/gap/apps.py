@@ -23,7 +23,7 @@ class GAPConfig(AppConfig):
         import salientsdk.login_api
         salientsdk.login_api.download_query = patch_download_query
         from gap.tasks.collector import run_salient_collector_historical, run_tio_hourly_collector_session  # noqa
-        from gap.tasks.cleanup import cleanup_incomplete_signups, cleanup_deleted_zarr  # noqa
+        from gap.tasks.cleanup import cleanup_incomplete_signups, cleanup_deleted_zarr, cleanup_old_forecast_data  # noqa
         from gap.tasks.ingestor import store_spw_to_parquet_monthly  # noqa
 
         # Import signals
