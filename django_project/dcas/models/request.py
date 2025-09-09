@@ -2,7 +2,7 @@
 """
 Tomorrow Now GAP DCAS.
 
-.. note:: Models for DCAS Config
+.. note:: Models for DCAS Requests
 """
 
 from django.contrib.gis.db import models

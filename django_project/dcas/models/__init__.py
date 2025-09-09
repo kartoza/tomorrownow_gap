@@ -13,3 +13,4 @@ from dcas.models.error_log import *  # noqa
 from dcas.models.gdd import * 
 from dcas.models.message import *  # noqa
 from dcas.models.download_log import *  # noqa
+from dcas.models.permission import *  # noqa

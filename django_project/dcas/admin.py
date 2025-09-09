@@ -8,7 +8,11 @@ Tomorrow Now GAP DCAS.
 from import_export.admin import ExportMixin
 from import_export_celery.admin_actions import create_export_job_action
 from django.contrib import admin, messages
+from django.contrib.auth.models import Permission
+from django.contrib.contenttypes.models import ContentType
+from django.utils.translation import gettext_lazy as _
 
+from gap.models import Country
 from dcas.models import (
     DCASConfig,
     DCASConfigCountry,
@@ -19,7 +23,10 @@ from dcas.models import (
     GDDConfig,
     GDDMatrix,
     DCASMessagePriority,
-    DCASDownloadLog
+    DCASDownloadLog,
+    DCASPermissionType,
+    DCASCountryUserObjectPermission,
+    DCASCountryGroupObjectPermission
 )
 from dcas.resources import DCASErrorLogResource
 from core.utils.file import format_size
@@ -212,3 +219,50 @@ class DCASDownloadLogAdmin(admin.ModelAdmin):
     list_display = ("output", "user", "requested_at")
     list_filter = ("user",)
     search_fields = ("output__file_name", "user__email")
+
+
+def _view_dcas_output_permission():
+    """Fetch permission to view DCAS output."""
+    permission = Permission.objects.filter(
+        codename=DCASPermissionType.VIEW_DCAS_OUTPUT_COUNTRY
+    ).first()
+    if permission is None:
+        # create a new permission object if it doesn't exist
+        permission = Permission.objects.create(
+            codename=DCASPermissionType.VIEW_DCAS_OUTPUT_COUNTRY,
+            name=_("View DCAS Output Country"),
+            content_type=ContentType.objects.get_for_model(Country)
+        )
+    return permission
+
+
+@admin.register(DCASCountryGroupObjectPermission)
+class DCASCountryGroupObjectPermissionAdmin(admin.ModelAdmin):
+    """DCASCountryGroupObjectPermission admin."""
+
+    list_display = ('group', 'content_object',)
+
+    def get_form(self, request, obj=None, **kwargs):
+        """Override the permission dropdown."""
+        form = super().get_form(request, obj, **kwargs)
+        form.base_fields['permission'].disabled = True
+        form.base_fields['permission'].initial = (
+            _view_dcas_output_permission()
+        )
+        return form
+
+
+@admin.register(DCASCountryUserObjectPermission)
+class DCASCountryUserObjectPermissionAdmin(admin.ModelAdmin):
+    """DCASCountryUserObjectPermission admin."""
+
+    list_display = ('user', 'content_object',)
+
+    def get_form(self, request, obj=None, **kwargs):
+        """Override the permission dropdown."""
+        form = super().get_form(request, obj, **kwargs)
+        form.base_fields['permission'].disabled = True
+        form.base_fields['permission'].initial = (
+            _view_dcas_output_permission()
+        )
+        return form
