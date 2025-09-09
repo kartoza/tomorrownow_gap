@@ -6,6 +6,7 @@ Tomorrow Now GAP.
 """
 
 import os
+import zipfile
 from celery import shared_task
 import traceback
 import datetime
@@ -199,14 +200,23 @@ def notify_dcas_error(date, request_id, error_message):
 def save_dcas_ouput_to_object_storage(file_path):
     """Store dcas csv file to object_storage."""
     s3_storage = storages['gap_products']
-    with open(file_path) as content:
+    # Generate zip name from original file
+    directory = os.path.dirname(file_path)
+    file_name = os.path.basename(file_path)
+    base_name = os.path.splitext(file_name)[0]
+    zip_file_path = os.path.join(directory, base_name + ".zip")
+    with zipfile.ZipFile(
+        zip_file_path, "w", compression=zipfile.ZIP_DEFLATED
+    ) as zipf:
+        zipf.write(file_path, arcname=file_name)
+    with open(zip_file_path, "rb") as content:
         s3_storage.save(
             DCASPreferences.object_storage_path(
-                os.path.basename(file_path)
+                os.path.basename(zip_file_path)
             ),
             content
         )
-    return True
+    return True, zip_file_path
 
 
 def export_dcas_output(request_id, delivery_method):
@@ -240,7 +250,11 @@ def export_dcas_output(request_id, delivery_method):
 
             # save to object storage
             if delivery_method == DCASDeliveryMethod.OBJECT_STORAGE:
-                is_success = save_dcas_ouput_to_object_storage(file_path)
+                is_success, file_path = (
+                    save_dcas_ouput_to_object_storage(file_path)
+                )
+                # get the zip filename
+                filename = os.path.basename(file_path)
             elif delivery_method == DCASDeliveryMethod.SFTP:
                 is_success = dcas_output.upload_to_sftp(file_path)
         except Exception as ex:
