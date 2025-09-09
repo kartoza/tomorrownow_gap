@@ -16,7 +16,7 @@ from dcas.models.request import DCASRequest
 from dcas.models.output import DCASOutput, DCASDeliveryMethod
 from dcas.models.download_log import DCASDownloadLog
 from frontend.models import PagePermission
-from frontend.views import OutputDownloadView
+from frontend.api_views import OutputDownloadView
 from core.tests.common import BaseAPIViewTest
 
 
@@ -82,7 +82,7 @@ class OutputDownloadViewTest(TestCase):
         self.assertEqual(response.status_code, 403)
 
     @override_settings(DEBUG=False)
-    @patch("frontend.views.storages")
+    @patch("frontend.api_views.dcas.storages")
     def test_returns_signed_url_and_logs_download(self, storages_mock):
         """Test that KALRO users can download output and log is created."""
         fake_storage = MagicMock()
@@ -109,7 +109,7 @@ class OutputDownloadViewTest(TestCase):
         self.assertIsNotNone(log)
 
     @override_settings(DEBUG=True)
-    @patch("frontend.views.storages")
+    @patch("frontend.api_views.dcas.storages")
     def test_debug_rewrites_host(self, storages_mock):
         """Test that in DEBUG mode, the URL host is rewritten."""
         fake_storage = MagicMock()

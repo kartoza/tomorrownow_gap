@@ -56,7 +56,7 @@ class OutputListView(generics.ListAPIView):
         # find list of Country that the user has permission to view
         return (
             DCASOutput.objects.filter(
-                file_name__iendswith=".csv", delivered_at__gte=cutoff,
+                delivered_at__gte=cutoff,
                 request__country__in=permitted_countries
             ).order_by("-delivered_at")
         )
