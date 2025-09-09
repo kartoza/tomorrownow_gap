@@ -44,12 +44,17 @@ def get_latest_nowcast_timestamp(date):
     start_datetime = datetime.combine(date, time.min) - timedelta(hours=1)
     end_datetime = datetime.combine(date, time.max)
 
-    nowcast_img = ee.ImageCollection(NOWCAST_ASSET_ID) \
+    nowcast_img_col = ee.ImageCollection(NOWCAST_ASSET_ID) \
         .filterDate(start_datetime, end_datetime) \
         .filterBounds(get_countries()) \
         .sort('forecast_target_time', False) \
-        .filter(ee.Filter.eq('forecast_seconds', 0)) \
-        .first()
+        .filter(ee.Filter.eq('forecast_seconds', 0))
+
+    count = nowcast_img_col.size().getInfo()
+    if count == 0:
+        raise ValueError(f'No Nowcast images found for date: {date}')
+
+    nowcast_img = nowcast_img_col.first()
 
     timestamp = nowcast_img.get('timestamp').getInfo()
 
@@ -111,14 +116,19 @@ def extract_nowcast_at_timestamp(timestamp, bucket_name, verbose=False):
 def get_latest_graphcast_timestamp(date):
     """Get the latest graphcast image for a given date."""
     # start from one hour behind to include prev day images
-    start_datetime = datetime.combine(date, time.min) - timedelta(hours=1)
+    start_datetime = datetime.combine(date, time.min) - timedelta(hours=6)
     end_datetime = datetime.combine(date, time.max)
 
-    graphcast_img = ee.ImageCollection(GRAPHCAST_ASSET_ID) \
+    graphcast_img_col = ee.ImageCollection(GRAPHCAST_ASSET_ID) \
         .filterDate(start_datetime, end_datetime) \
         .filterBounds(get_countries()) \
-        .sort('start_time', False) \
-        .first()
+        .sort('start_time', False)
+
+    count = graphcast_img_col.size().getInfo()
+    if count == 0:
+        raise ValueError(f'No Graphcast images found for date: {date}')
+
+    graphcast_img = graphcast_img_col.first()
 
     start_time = graphcast_img.get('start_time').getInfo()
     # start_time, eg. 2025-08-30T06:00:00Z
