@@ -85,7 +85,7 @@ class DCASPipelineOutput:
 
     def __init__(
         self, request_date, duck_db_num_threads=None, duckdb_memory_limit=None,
-        dask_num_threads=None
+        dask_num_threads=None, country_name=None
     ):
         """Initialize DCASPipelineOutput."""
         self.fs = None
@@ -93,6 +93,10 @@ class DCASPipelineOutput:
         self.duck_db_num_threads = duck_db_num_threads
         self.duckdb_memory_limit = duckdb_memory_limit or '1GB'
         self.dask_num_threads = dask_num_threads
+        self.country_name = country_name
+        if country_name is None:
+            # Set Default Country "Kenya"
+            self.country_name = 'Kenya'
 
     def setup(self):
         """Set DCASPipelineOutput."""
@@ -141,7 +145,7 @@ class DCASPipelineOutput:
         dt = self.request_date.strftime('%Y%m%d')
         return os.path.join(
             self.TMP_BASE_DIR,
-            f'DCAS_output_{dt}.csv'
+            f'DCAS_{self.country_name}_{dt}.csv'
         )
 
     def _setup_s3fs(self):
