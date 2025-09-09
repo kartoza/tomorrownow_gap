@@ -4,7 +4,6 @@ from django.urls import path, re_path
 
 from .views import (
     HomeView, SentryProxyView, EmailCheckView,
-    OutputDownloadView, OutputListView,
     PermittedPagesView
 )
 from frontend.api_views import (
@@ -13,7 +12,8 @@ from frontend.api_views import (
     MySignUpRequestView, ForgotPasswordView,
     ResetPasswordConfirmView, DecodeSocialSignupTokenView,
     UserInfoAPI,
-    APIKeyListCreate, APIKeyDestroy
+    APIKeyListCreate, APIKeyDestroy,
+    OutputDownloadView, OutputListView,
 )
 
 
