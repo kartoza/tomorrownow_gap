@@ -218,7 +218,10 @@ def export_dcas_output(request_id, delivery_method):
     dcas_output = DCASPipelineOutput(
         dcas_request.requested_at.date(),
         duck_db_num_threads=dcas_config.duck_db_num_threads,
-        duckdb_memory_limit=dcas_config.duck_db_memory_limit
+        duckdb_memory_limit=dcas_config.duck_db_memory_limit,
+        country_name=(
+            dcas_request.country.name if dcas_request.country else None
+        )
     )
 
     dcas_ouput_file = DCASOutput.objects.create(
