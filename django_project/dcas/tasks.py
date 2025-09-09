@@ -250,7 +250,9 @@ def export_dcas_output(request_id, delivery_method):
 
             # save to object storage
             if delivery_method == DCASDeliveryMethod.OBJECT_STORAGE:
-                is_success, file_path = save_dcas_ouput_to_object_storage(file_path)
+                is_success, file_path = (
+                    save_dcas_ouput_to_object_storage(file_path)
+                )
                 # get the zip filename
                 filename = os.path.basename(file_path)
             elif delivery_method == DCASDeliveryMethod.SFTP:
