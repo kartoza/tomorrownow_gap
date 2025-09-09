@@ -24,7 +24,7 @@ from dcas.models import (
 from dcas.resources import DCASErrorLogResource
 from core.utils.file import format_size
 from dcas.tasks import (
-    run_dcas,
+    execute_dcas_pipeline,
     export_dcas_minio,
     export_dcas_sftp,
     log_dcas_error,
@@ -64,7 +64,7 @@ class DCASRuleAdmin(admin.ModelAdmin):
 @admin.action(description='Trigger DCAS processing')
 def trigger_dcas_processing(modeladmin, request, queryset):
     """Trigger dcas processing."""
-    run_dcas.delay(queryset.first().id)
+    execute_dcas_pipeline.delay(queryset.first().id)
     modeladmin.message_user(
         request,
         'Process will be started in background!',

@@ -19,7 +19,10 @@ from django.conf import settings
 
 from core.models.background_task import TaskStatus
 from core.utils.emails import get_admin_emails
-from gap.models import FarmRegistryGroup, FarmRegistry, Preferences
+from gap.models import (
+    FarmRegistryGroup, FarmRegistry, Preferences,
+    Country
+)
 from dcas.models import (
     DCASErrorLog, DCASRequest, DCASOutput, DCASDeliveryMethod
 )
@@ -57,10 +60,11 @@ class DCASPreferences:
         'grid_id'
     ]
 
-    def __init__(self, current_date: datetime.date):
+    def __init__(self, current_date: datetime.date, selected_country=None):
         """Initialize DCASPreferences class."""
         self.dcas_config = Preferences.load().dcas_config
         self.current_date = current_date
+        self.selected_country = selected_country
 
     @property
     def request_date(self):
@@ -78,7 +82,8 @@ class DCASPreferences:
     @property
     def farm_registry_groups(self):
         """Get farm registry group ids that will be used in the pipeline."""
-        group_ids = self.dcas_config.get('farm_registries', [])
+        conf = self.countries.get(self.selected_country, {})
+        group_ids = conf.get('farm_registries', [])
         if len(group_ids) == 0:
             # use the latest
             farm_registry_group = FarmRegistryGroup.objects.filter(
@@ -142,6 +147,11 @@ class DCASPreferences:
         if columns is None:
             return self.default_csv_columns
         return columns
+
+    @property
+    def countries(self) -> dict:
+        """Get the countries from config dict."""
+        return self.dcas_config.get('countries', {})
 
     def to_dict(self):
         """Export the config to dict."""
@@ -274,39 +284,18 @@ def export_dcas_sftp(request_id):
     export_dcas_output(request_id, DCASDeliveryMethod.SFTP)
 
 
-@shared_task(name="run_dcas", queue="high-priority")
-def run_dcas(request_id=None):
-    """Task to run dcas pipeline."""
-    current_dt = timezone.now()
-
-    # create the request object
-    dcas_request = None
-    if request_id:
-        dcas_request = DCASRequest.objects.filter(
-            id=request_id
-        ).first()
-
-    if dcas_request is None:
-        dcas_request = DCASRequest.objects.create(
-            requested_at=current_dt,
-            status=TaskStatus.PENDING
-        )
-    else:
-        dcas_request.start_time = None
-        dcas_request.end_time = None
-        dcas_request.status = TaskStatus.PENDING
-        dcas_request.progress_text = None
-        dcas_request.save()
-
-    dcas_config = DCASPreferences(dcas_request.requested_at.date())
-
-    if not dcas_config.is_scheduled_to_run:
-        dcas_request.progress_text = (
-            f'DCAS: skipping weekday {dcas_config.request_date.weekday()}'
-        )
-        dcas_request.save()
-        logger.info(dcas_request.progress_text)
-        return
+@shared_task(name="execute_dcas_pipeline", queue="high-priority")
+def execute_dcas_pipeline(dcas_request_id):
+    """Run dcas pipeline."""
+    dcas_request = DCASRequest.objects.get(
+        id=dcas_request_id
+    )
+    current_dt = dcas_request.requested_at
+    dcas_config = DCASPreferences(
+        dcas_request.requested_at.date(),
+        selected_country=dcas_request.country.name if
+        dcas_request.country else None
+    )
 
     # load farm registry group
     farm_registry_groups = dcas_config.farm_registry_groups
@@ -399,6 +388,35 @@ def run_dcas(request_id=None):
 
         # cleanup
         pipeline.cleanup()
+
+
+@shared_task(name="run_dcas", queue="high-priority")
+def run_dcas():
+    """Task to run dcas pipeline."""
+    current_dt = timezone.now()
+    dcas_config = DCASPreferences(current_dt.date())
+
+    if not dcas_config.is_scheduled_to_run:
+        raise Exception(
+            f'DCAS: skipping weekday {dcas_config.request_date.weekday()}'
+        )
+
+    if dcas_config.countries is None or len(dcas_config.countries) == 0:
+        raise Exception('DCAS: No countries configured!')
+
+    # create the request object for each country in the config
+    for country_name in dcas_config.countries.keys():
+        country = Country.objects.get(name=country_name)
+        dcas_request = DCASRequest.objects.create(
+            requested_at=current_dt,
+            status=TaskStatus.PENDING,
+            country=country
+        )
+        logger.info(
+            f'Created DCASRequest ({dcas_request.id}) '
+            f'for country {country_name}'
+        )
+        execute_dcas_pipeline.delay(dcas_request.id) 
 
 
 @shared_task(name='log_dcas_error')
