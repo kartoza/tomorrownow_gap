@@ -20,3 +20,4 @@ The devops content is divided into two sections:
 
 * The [devops guide](guide/index.md), which describes common workflows for deployment and management of running instances in a tutorial format.
 * The [devops manual](manual/index.md), which provides links and references to deployment configuration files, frameworks and deployment systems used etc.
+* The [migration](migration/index.md), which touches on migration from MinIO to DigitalOcean Spaces.

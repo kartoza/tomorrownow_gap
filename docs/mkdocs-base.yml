@@ -56,3 +56,8 @@ nav:
         - Architecture: developer/architecture.md
         - Data model: developer/data-model.md
         - Hyrax Configuration: developer/hyrax-config.md
+    - Devops:
+        - devops/index.md
+        - Guide: devops/guide/index.md
+        - Manual: devops/manual/index.md
+        - Migration: devops/migration/index.md
