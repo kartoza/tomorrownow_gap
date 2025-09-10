@@ -1,0 +1,853 @@
+
+<!DOCTYPE html>
+
+<html class="no-js" lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width,initial-scale=1" name="viewport"/>
+<meta content="Project technical and user documentation." name="description"/>
+<meta content="Kartoza" name="author"/>
+<link href="../data-model/" rel="prev"/>
+<link href="../../devops/" rel="next"/>
+<link href="../../assets/logo.png" rel="icon"/>
+<meta content="mkdocs-1.6.1, mkdocs-material-9.6.19" name="generator"/>
+<title>Documentation - Tomorrow Now GAP</title>
+<link href="../../assets/stylesheets/main.7e37652d.min.css" rel="stylesheet"/>
+<link href="../../assets/stylesheets/palette.06af60db.min.css" rel="stylesheet"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&amp;display=fallback" rel="stylesheet"/>
+<style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+<link href="../../assets/_mkdocstrings.css" rel="stylesheet"/>
+<link href="../../css/print.css" rel="stylesheet"/>
+<script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+</head>
+<body data-md-color-accent="grey" data-md-color-primary="blue" data-md-color-scheme="default" dir="ltr">
+<input autocomplete="off" class="md-toggle" data-md-toggle="drawer" id="__drawer" type="checkbox"/>
+<input autocomplete="off" class="md-toggle" data-md-toggle="search" id="__search" type="checkbox"/>
+<label class="md-overlay" for="__drawer"></label>
+<div data-md-component="skip">
+<a class="md-skip" href="#hyrax-configuration">13. 
+          Skip to content
+        </a>
+</div>
+<div data-md-component="announce">
+</div>
+<header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
+<nav aria-label="Header" class="md-header__inner md-grid">
+<a aria-label="Tomorrow Now GAP" class="md-header__button md-logo" data-md-component="logo" href="../.." title="Tomorrow Now GAP">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M18 22a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2h-6v7L9.5 7.5 7 9V2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2z"></path></svg>
+</a>
+<label class="md-header__button md-icon" for="__drawer">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"></path></svg>
+</label>
+<div class="md-header__title" data-md-component="header-title">
+<div class="md-header__ellipsis">
+<div class="md-header__topic">
+<span class="md-ellipsis">
+            Tomorrow Now GAP
+          </span>
+</div>
+<div class="md-header__topic" data-md-component="header-topic">
+<span class="md-ellipsis">
+            
+              Documentation
+            
+          </span>
+</div>
+</div>
+</div>
+<form class="md-header__option" data-md-component="palette">
+<input aria-label="Switch to dark mode" class="md-option" data-md-color-accent="grey" data-md-color-media="" data-md-color-primary="blue" data-md-color-scheme="default" id="__palette_0" name="__palette" type="radio"/>
+<label class="md-header__button md-icon" for="__palette_1" hidden="" title="Switch to dark mode">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"></path></svg>
+</label>
+<input aria-label="Switch to light mode" class="md-option" data-md-color-accent="grey" data-md-color-media="" data-md-color-primary="blue" data-md-color-scheme="slate" id="__palette_1" name="__palette" type="radio"/>
+<label class="md-header__button md-icon" for="__palette_0" hidden="" title="Switch to light mode">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 18V6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-2.69L23.31 12 20 8.69V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20z"></path></svg>
+</label>
+</form>
+<script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+<label class="md-header__button md-icon" for="__search">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"></path></svg>
+</label>
+<div class="md-search" data-md-component="search" role="dialog">
+<label class="md-search__overlay" for="__search"></label>
+<div class="md-search__inner" role="search">
+<form class="md-search__form" name="search">
+<input aria-label="Search" autocapitalize="off" autocomplete="off" autocorrect="off" class="md-search__input" data-md-component="search-query" name="query" placeholder="Search" required="" spellcheck="false" type="text"/>
+<label class="md-search__icon md-icon" for="__search">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"></path></svg>
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"></path></svg>
+</label>
+<nav aria-label="Search" class="md-search__options">
+<a aria-label="Share" class="md-search__icon md-icon" data-clipboard="" data-clipboard-text="" data-md-component="search-share" href="javascript:void(0)" tabindex="-1" title="Share">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9a3 3 0 0 0-3 3 3 3 0 0 0 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.15c-.05.21-.08.43-.08.66 0 1.61 1.31 2.91 2.92 2.91s2.92-1.3 2.92-2.91A2.92 2.92 0 0 0 18 16.08"></path></svg>
+</a>
+<button aria-label="Clear" class="md-search__icon md-icon" tabindex="-1" title="Clear" type="reset">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"></path></svg>
+</button>
+</nav>
+<div class="md-search__suggest" data-md-component="search-suggest"></div>
+</form>
+<div class="md-search__output">
+<div class="md-search__scrollwrap" data-md-scrollfix="" tabindex="0">
+<div class="md-search-result" data-md-component="search-result">
+<div class="md-search-result__meta">
+            Initializing search
+          </div>
+<ol class="md-search-result__list" role="presentation"></ol>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="md-header__source">
+<a class="md-source" data-md-component="source" href="https://github.com/kartoza/tomorrownow_gap.git" title="Go to repository">
+<div class="md-source__icon md-icon">
+<svg viewbox="0 0 448 512" xmlns="http://www.w3.org/2000/svg"><!--! Font Awesome Free 7.0.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4" fill="currentColor"></path></svg>
+</div>
+<div class="md-source__repository">
+    TomorrowNowGAP
+  </div>
+</a>
+</div>
+</nav>
+<nav aria-label="Tabs" class="md-tabs" data-md-component="tabs">
+<div class="md-grid">
+<ul class="md-tabs__list">
+<li class="md-tabs__item">
+<a class="md-tabs__link" href="../..">
+          
+  
+  
+    
+  
+  Home
+
+        </a>
+</li>
+<li class="md-tabs__item">
+<a class="md-tabs__link" href="../../administrator/">
+          
+  
+  
+    
+  
+  Administrators
+
+        </a>
+</li>
+<li class="md-tabs__item md-tabs__item--active">
+<a class="md-tabs__link" href="../">
+          
+  
+  
+    
+  
+  Developers
+
+        </a>
+</li>
+<li class="md-tabs__item">
+<a class="md-tabs__link" href="../../devops/">
+          
+  
+  
+    
+  
+  Devops
+
+        </a>
+</li>
+</ul>
+</div>
+</nav>
+</header>
+<div class="md-container" data-md-component="container">
+<main class="md-main" data-md-component="main">
+<div class="md-main__inner md-grid">
+<div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation">
+<div class="md-sidebar__scrollwrap">
+<div class="md-sidebar__inner">
+<nav aria-label="Navigation" class="md-nav md-nav--primary md-nav--lifted" data-md-level="0">
+<label class="md-nav__title" for="__drawer">
+<a aria-label="Tomorrow Now GAP" class="md-nav__button md-logo" data-md-component="logo" href="../.." title="Tomorrow Now GAP">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M18 22a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2h-6v7L9.5 7.5 7 9V2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2z"></path></svg>
+</a>
+    Tomorrow Now GAP
+  </label>
+<div class="md-nav__source">
+<a class="md-source" data-md-component="source" href="https://github.com/kartoza/tomorrownow_gap.git" title="Go to repository">
+<div class="md-source__icon md-icon">
+<svg viewbox="0 0 448 512" xmlns="http://www.w3.org/2000/svg"><!--! Font Awesome Free 7.0.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4" fill="currentColor"></path></svg>
+</div>
+<div class="md-source__repository">
+    TomorrowNowGAP
+  </div>
+</a>
+</div>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item md-nav__item--nested">
+<input class="md-nav__toggle md-toggle md-toggle--indeterminate" id="__nav_1" type="checkbox"/>
+<div class="md-nav__link md-nav__container">
+<a class="md-nav__link" href="../..">
+<span class="md-ellipsis">
+    Home
+    
+  </span>
+</a>
+<label class="md-nav__link" for="__nav_1" id="__nav_1_label" tabindex="0">
+<span class="md-nav__icon md-icon"></span>
+</label>
+</div>
+<nav aria-expanded="false" aria-labelledby="__nav_1_label" class="md-nav" data-md-level="1">
+<label class="md-nav__title" for="__nav_1">
+<span class="md-nav__icon md-icon"></span>
+            Home
+          </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../quick_installation/">
+<span class="md-ellipsis">
+    Quick installation
+    
+  </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item md-nav__item--nested">
+<input class="md-nav__toggle md-toggle md-toggle--indeterminate" id="__nav_2" type="checkbox"/>
+<div class="md-nav__link md-nav__container">
+<a class="md-nav__link" href="../../administrator/">
+<span class="md-ellipsis">
+    Administrators
+    
+  </span>
+</a>
+<label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+<span class="md-nav__icon md-icon"></span>
+</label>
+</div>
+<nav aria-expanded="false" aria-labelledby="__nav_2_label" class="md-nav" data-md-level="1">
+<label class="md-nav__title" for="__nav_2">
+<span class="md-nav__icon md-icon"></span>
+            Administrators
+          </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item md-nav__item--nested">
+<input class="md-nav__toggle md-toggle md-toggle--indeterminate" id="__nav_2_2" type="checkbox"/>
+<div class="md-nav__link md-nav__container">
+<a class="md-nav__link" href="../../administrator/guide/">
+<span class="md-ellipsis">
+    Guide
+    
+  </span>
+</a>
+<label class="md-nav__link" for="__nav_2_2" id="__nav_2_2_label" tabindex="0">
+<span class="md-nav__icon md-icon"></span>
+</label>
+</div>
+<nav aria-expanded="false" aria-labelledby="__nav_2_2_label" class="md-nav" data-md-level="2">
+<label class="md-nav__title" for="__nav_2_2">
+<span class="md-nav__icon md-icon"></span>
+            Guide
+          </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../administrator/guide/access-admin-panel/">
+<span class="md-ellipsis">
+    Access Admin Panel
+    
+  </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item md-nav__item--nested">
+<input class="md-nav__toggle md-toggle md-toggle--indeterminate" id="__nav_2_3" type="checkbox"/>
+<div class="md-nav__link md-nav__container">
+<a class="md-nav__link" href="../../administrator/manual/">
+<span class="md-ellipsis">
+    Manual
+    
+  </span>
+</a>
+<label class="md-nav__link" for="__nav_2_3" id="__nav_2_3_label" tabindex="0">
+<span class="md-nav__icon md-icon"></span>
+</label>
+</div>
+<nav aria-expanded="false" aria-labelledby="__nav_2_3_label" class="md-nav" data-md-level="2">
+<label class="md-nav__title" for="__nav_2_3">
+<span class="md-nav__icon md-icon"></span>
+            Manual
+          </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../administrator/manual/django-admin/">
+<span class="md-ellipsis">
+    Django Administration
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../administrator/manual/django-table/">
+<span class="md-ellipsis">
+    Django Tables
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../administrator/manual/django-add-record/">
+<span class="md-ellipsis">
+    Add Record in Table
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../administrator/manual/django-change-record/">
+<span class="md-ellipsis">
+    Edit Record in Table
+    
+  </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+<input checked="" class="md-nav__toggle md-toggle" id="__nav_3" type="checkbox"/>
+<div class="md-nav__link md-nav__container">
+<a class="md-nav__link" href="../">
+<span class="md-ellipsis">
+    Developers
+    
+  </span>
+</a>
+<label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+<span class="md-nav__icon md-icon"></span>
+</label>
+</div>
+<nav aria-expanded="true" aria-labelledby="__nav_3_label" class="md-nav" data-md-level="1">
+<label class="md-nav__title" for="__nav_3">
+<span class="md-nav__icon md-icon"></span>
+            Developers
+          </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="../architecture/">
+<span class="md-ellipsis">
+    Architecture
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../data-model/">
+<span class="md-ellipsis">
+    Data model
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item md-nav__item--active">
+<input class="md-nav__toggle md-toggle" id="__toc" type="checkbox"/>
+<label class="md-nav__link md-nav__link--active" for="__toc">
+<span class="md-ellipsis">
+    Hyrax Configuration
+    
+  </span>
+<span class="md-nav__icon md-icon"></span>
+</label>
+<a class="md-nav__link md-nav__link--active" href="./">
+<span class="md-ellipsis">
+    Hyrax Configuration
+    
+  </span>
+</a>
+<nav aria-label="Table of contents" class="md-nav md-nav--secondary">
+<label class="md-nav__title" for="__toc">
+<span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+<ul class="md-nav__list" data-md-component="toc" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#pre-requisites">13.1 
+<span class="md-ellipsis">
+      Pre-requisites
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#important-notes">13.2 
+<span class="md-ellipsis">
+      Important Notes
+    </span>
+</a>
+<nav aria-label="Important Notes" class="md-nav">
+<ul class="md-nav__list">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#cbam-datasets">13.2.1 
+<span class="md-ellipsis">
+      CBAM Datasets
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#salient-datasets">13.2.2 
+<span class="md-ellipsis">
+      Salient Datasets
+    </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#custom-siteconf">13.3 
+<span class="md-ellipsis">
+      Custom site.conf
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#s3-credentials">13.4 
+<span class="md-ellipsis">
+      S3 Credentials
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#hyrax-service-in-docker-compose-files">13.5 
+<span class="md-ellipsis">
+      Hyrax Service in docker compose files
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#accessing-hyrax-ui">13.6 
+<span class="md-ellipsis">
+      Accessing Hyrax UI
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#accessing-using-python-script">13.7 
+<span class="md-ellipsis">
+      Accessing using Python Script
+    </span>
+</a>
+<nav aria-label="Accessing using Python Script" class="md-nav">
+<ul class="md-nav__list">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#cbam-dataset">13.7.1 
+<span class="md-ellipsis">
+      CBAM Dataset
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#salient-dataset">13.7.2 
+<span class="md-ellipsis">
+      Salient Dataset
+    </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+</ul>
+</nav>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item md-nav__item--nested">
+<input class="md-nav__toggle md-toggle md-toggle--indeterminate" id="__nav_4" type="checkbox"/>
+<div class="md-nav__link md-nav__container">
+<a class="md-nav__link" href="../../devops/">
+<span class="md-ellipsis">
+    Devops
+    
+  </span>
+</a>
+<label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+<span class="md-nav__icon md-icon"></span>
+</label>
+</div>
+<nav aria-expanded="false" aria-labelledby="__nav_4_label" class="md-nav" data-md-level="1">
+<label class="md-nav__title" for="__nav_4">
+<span class="md-nav__icon md-icon"></span>
+            Devops
+          </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../devops/guide/">
+<span class="md-ellipsis">
+    Guide
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../devops/manual/">
+<span class="md-ellipsis">
+    Manual
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../devops/migration/">
+<span class="md-ellipsis">
+    Migration
+    
+  </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+</ul>
+</nav>
+</div>
+</div>
+</div>
+<div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc">
+<div class="md-sidebar__scrollwrap">
+<div class="md-sidebar__inner">
+<nav aria-label="Table of contents" class="md-nav md-nav--secondary">
+<label class="md-nav__title" for="__toc">
+<span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+<ul class="md-nav__list" data-md-component="toc" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#pre-requisites">13.1 
+<span class="md-ellipsis">
+      Pre-requisites
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#important-notes">13.2 
+<span class="md-ellipsis">
+      Important Notes
+    </span>
+</a>
+<nav aria-label="Important Notes" class="md-nav">
+<ul class="md-nav__list">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#cbam-datasets">13.2.1 
+<span class="md-ellipsis">
+      CBAM Datasets
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#salient-datasets">13.2.2 
+<span class="md-ellipsis">
+      Salient Datasets
+    </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#custom-siteconf">13.3 
+<span class="md-ellipsis">
+      Custom site.conf
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#s3-credentials">13.4 
+<span class="md-ellipsis">
+      S3 Credentials
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#hyrax-service-in-docker-compose-files">13.5 
+<span class="md-ellipsis">
+      Hyrax Service in docker compose files
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#accessing-hyrax-ui">13.6 
+<span class="md-ellipsis">
+      Accessing Hyrax UI
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#accessing-using-python-script">13.7 
+<span class="md-ellipsis">
+      Accessing using Python Script
+    </span>
+</a>
+<nav aria-label="Accessing using Python Script" class="md-nav">
+<ul class="md-nav__list">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#cbam-dataset">13.7.1 
+<span class="md-ellipsis">
+      CBAM Dataset
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#salient-dataset">13.7.2 
+<span class="md-ellipsis">
+      Salient Dataset
+    </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+</ul>
+</nav>
+</div>
+</div>
+</div>
+<div class="md-content" data-md-component="content">
+<article class="md-content__inner md-typeset">
+<div><h1 id="hyrax-configuration"><span class="enumerate-headings-plugin enumerate-heading-plugin">13.</span> Hyrax Configuration<a class="headerlink" href="#hyrax-configuration" title="Permanent link">¶</a></h1>
+<p>Hyrax is a data server developed by OPeNDAP as a reference server for the Data Access Protocol, versions 2 and 4. This documentation shows how to integrate Hyrax into GAP Platform to read NetCDF files that are hosted in S3 Object Storage.</p>
+<h2 id="pre-requisites"><span class="enumerate-headings-plugin enumerate-heading-plugin">13.1</span> Pre-requisites<a class="headerlink" href="#pre-requisites" title="Permanent link">¶</a></h2>
+<ul>
+<li>NetCDF Files hosted in a S3 bucket</li>
+<li>AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY</li>
+<li>AWS_ENDPOINT_URL (optional) if using a different storage server (e.g. minio)</li>
+<li>Local volume for mounting file cache</li>
+<li>Hyrax image: opendap/hyrax:1.17.0-122</li>
+<li>PyDAP package for reading URL from OpenDAP: pydap==3.4.1</li>
+<li>numpy==1.26.4 is needed for pydap that is not compatible with latest numpy version</li>
+</ul>
+<h2 id="important-notes"><span class="enumerate-headings-plugin enumerate-heading-plugin">13.2</span> Important Notes<a class="headerlink" href="#important-notes" title="Permanent link">¶</a></h2>
+<p>When NetCDF files are hosted in S3, we can leverage DMR++ files to access the NetCDF file using subsetting. This is useful to avoid caching the full NetCDF file before reading it. To learn more about DMR++, click <a href="http://docs.opendap.org/index.php/DMR%2B%2B">here</a>.</p>
+<p>However, the downside is that we need to generate DMR++ files first and put them in the Hyrax data directory. Use below command to generate the DMR++ file.</p>
+<div class="highlight"><pre><span></span><code><a href="#__codelineno-0-1" id="__codelineno-0-1" name="__codelineno-0-1"></a>get_dmrpp -b $(pwd) -o output.dmrpp -u http://minio:9000/tomorrownow/cbam/2019-11-06.nc.h5 s3://tomorrownow/cbam/2019-11-06.nc.h5
+</code></pre></div>
+<ul>
+<li>http://minio:9000/tomorrownow/cbam/2019-11-06.nc.h5 is a URL to access the file. This URL will be included in the output.dmrpp file</li>
+<li>s3://tomorrownow/cbam/2019-11-06.nc.h5 is the location that get_dmrpp binary will try to find the NetCDF file</li>
+<li>get_dmrpp binary will use aws cli and it's recommended to upgrade to aws cli v2 to support endpoint-url in the AWS config file.</li>
+<li>Configure endpoint-url in ~/.aws/config if endpoint-url is not a default AWS URL (e.g. minio).</li>
+</ul>
+<h3 id="cbam-datasets"><span class="enumerate-headings-plugin enumerate-heading-plugin">13.2.1</span> CBAM Datasets<a class="headerlink" href="#cbam-datasets" title="Permanent link">¶</a></h3>
+<p>We need to rename the NetCDF Files from CBAM to make the Hyrax and get_dmrpp binary able to read the files. The Hyrax is using a regex to determine the Backend Module for reading and the CBAM files seems to be a HDF5 files.</p>
+<div class="highlight"><pre><span></span><code><a href="#__codelineno-1-1" id="__codelineno-1-1" name="__codelineno-1-1"></a>mv 2019-11-01.nc 2019-11-01.nc.h5
+</code></pre></div>
+<h3 id="salient-datasets"><span class="enumerate-headings-plugin enumerate-heading-plugin">13.2.2</span> Salient Datasets<a class="headerlink" href="#salient-datasets" title="Permanent link">¶</a></h3>
+<p>We encountered error when generating DMR++ file for Salient Data Sample file, so the only option is to copy the whole NetCDF file into Hyrax Data Directory. When checking the type of NetCDF using command <code>ncdump -k downscale_2024-03-13_rwanda.nc</code>, the type is <code>64-bit offset</code> which may not compatible with get_dmrpp binary. However, we do not need to rename the file with h5 like we do for CBAM datasets.</p>
+<h2 id="custom-siteconf"><span class="enumerate-headings-plugin enumerate-heading-plugin">13.3</span> Custom site.conf<a class="headerlink" href="#custom-siteconf" title="Permanent link">¶</a></h2>
+<p>Below is the custom configuration for Hyrax:</p>
+<div class="highlight"><pre><span></span><code><a href="#__codelineno-2-1" id="__codelineno-2-1" name="__codelineno-2-1"></a># allow minio to allowed host Hyrax for dev
+<a href="#__codelineno-2-2" id="__codelineno-2-2" name="__codelineno-2-2"></a>AllowedHosts+=^http:\/\/minio\:9000\/.*$
+<a href="#__codelineno-2-3" id="__codelineno-2-3" name="__codelineno-2-3"></a>Gateway.Whitelist+=http://minio:9000
+<a href="#__codelineno-2-4" id="__codelineno-2-4" name="__codelineno-2-4"></a># use parallel transfers
+<a href="#__codelineno-2-5" id="__codelineno-2-5" name="__codelineno-2-5"></a>DMRPP.UseParallelTransfers = yes
+<a href="#__codelineno-2-6" id="__codelineno-2-6" name="__codelineno-2-6"></a># fix error on finding effective url during caching
+<a href="#__codelineno-2-7" id="__codelineno-2-7" name="__codelineno-2-7"></a>Http.cache.effective.urls=false
+<a href="#__codelineno-2-8" id="__codelineno-2-8" name="__codelineno-2-8"></a># credentials manager
+<a href="#__codelineno-2-9" id="__codelineno-2-9" name="__codelineno-2-9"></a>CredentialsManager.config=/etc/bes/credentials.conf
+<a href="#__codelineno-2-10" id="__codelineno-2-10" name="__codelineno-2-10"></a>
+<a href="#__codelineno-2-11" id="__codelineno-2-11" name="__codelineno-2-11"></a>DAP.GlobalMetadataStore.path = /usr/share/mds
+<a href="#__codelineno-2-12" id="__codelineno-2-12" name="__codelineno-2-12"></a>DAP.Use.Dmrpp = yes
+</code></pre></div>
+<h2 id="s3-credentials"><span class="enumerate-headings-plugin enumerate-heading-plugin">13.4</span> S3 Credentials<a class="headerlink" href="#s3-credentials" title="Permanent link">¶</a></h2>
+<p>To allow Hyrax accessing S3, the credentials.conf must be used. We created a custom <code>entrypoint.sh</code> script that will write during the startup of the container.</p>
+<div class="highlight"><pre><span></span><code><a href="#__codelineno-3-1" id="__codelineno-3-1" name="__codelineno-3-1"></a>#!/bin/bash
+<a href="#__codelineno-3-2" id="__codelineno-3-2" name="__codelineno-3-2"></a>
+<a href="#__codelineno-3-3" id="__codelineno-3-3" name="__codelineno-3-3"></a>file="/etc/bes/credentials.conf"
+<a href="#__codelineno-3-4" id="__codelineno-3-4" name="__codelineno-3-4"></a>
+<a href="#__codelineno-3-5" id="__codelineno-3-5" name="__codelineno-3-5"></a>if [ -f "$file" ] ; then
+<a href="#__codelineno-3-6" id="__codelineno-3-6" name="__codelineno-3-6"></a>    rm "$file"
+<a href="#__codelineno-3-7" id="__codelineno-3-7" name="__codelineno-3-7"></a>fi
+<a href="#__codelineno-3-8" id="__codelineno-3-8" name="__codelineno-3-8"></a>
+<a href="#__codelineno-3-9" id="__codelineno-3-9" name="__codelineno-3-9"></a>touch "$file"
+<a href="#__codelineno-3-10" id="__codelineno-3-10" name="__codelineno-3-10"></a>echo "tomorrownow = url:${AWS_ENDPOINT_URL}${S3_AWS_BUCKET_NAME}/" &gt;&gt; "$file"
+<a href="#__codelineno-3-11" id="__codelineno-3-11" name="__codelineno-3-11"></a>echo "tomorrownow += id:${AWS_ACCESS_KEY_ID}" &gt;&gt; "$file"
+<a href="#__codelineno-3-12" id="__codelineno-3-12" name="__codelineno-3-12"></a>echo "tomorrownow += key:${AWS_SECRET_ACCESS_KEY}" &gt;&gt; "$file"
+<a href="#__codelineno-3-13" id="__codelineno-3-13" name="__codelineno-3-13"></a>echo "tomorrownow += region:us-east-1" &gt;&gt; "$file"
+<a href="#__codelineno-3-14" id="__codelineno-3-14" name="__codelineno-3-14"></a>echo "tomorrownow += bucket:${AWS_ENDPOINT_URL}" &gt;&gt; "$file"
+<a href="#__codelineno-3-15" id="__codelineno-3-15" name="__codelineno-3-15"></a>
+<a href="#__codelineno-3-16" id="__codelineno-3-16" name="__codelineno-3-16"></a>chmod 600 "$file"
+<a href="#__codelineno-3-17" id="__codelineno-3-17" name="__codelineno-3-17"></a>chown bes:bes "$file"
+<a href="#__codelineno-3-18" id="__codelineno-3-18" name="__codelineno-3-18"></a>
+<a href="#__codelineno-3-19" id="__codelineno-3-19" name="__codelineno-3-19"></a># run original entrypoint
+<a href="#__codelineno-3-20" id="__codelineno-3-20" name="__codelineno-3-20"></a>./entrypoint.sh
+</code></pre></div>
+<h2 id="hyrax-service-in-docker-compose-files"><span class="enumerate-headings-plugin enumerate-heading-plugin">13.5</span> Hyrax Service in docker compose files<a class="headerlink" href="#hyrax-service-in-docker-compose-files" title="Permanent link">¶</a></h2>
+<p>docker-compose.yml
+</p><div class="highlight"><pre><span></span><code><a href="#__codelineno-4-1" id="__codelineno-4-1" name="__codelineno-4-1"></a>  hyrax:
+<a href="#__codelineno-4-2" id="__codelineno-4-2" name="__codelineno-4-2"></a>    image: opendap/hyrax:1.17.0-122
+<a href="#__codelineno-4-3" id="__codelineno-4-3" name="__codelineno-4-3"></a>    ports:
+<a href="#__codelineno-4-4" id="__codelineno-4-4" name="__codelineno-4-4"></a>      - "8181:8080"
+<a href="#__codelineno-4-5" id="__codelineno-4-5" name="__codelineno-4-5"></a>    environment:
+<a href="#__codelineno-4-6" id="__codelineno-4-6" name="__codelineno-4-6"></a>      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-minio_tomorrownow}
+<a href="#__codelineno-4-7" id="__codelineno-4-7" name="__codelineno-4-7"></a>      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-minio_tomorrownow}
+<a href="#__codelineno-4-8" id="__codelineno-4-8" name="__codelineno-4-8"></a>      - AWS_ENDPOINT_URL=${AWS_ENDPOINT_URL}
+<a href="#__codelineno-4-9" id="__codelineno-4-9" name="__codelineno-4-9"></a>      - S3_AWS_BUCKET_NAME=${S3_AWS_BUCKET_NAME:-tomorrownow}
+<a href="#__codelineno-4-10" id="__codelineno-4-10" name="__codelineno-4-10"></a>    volumes:
+<a href="#__codelineno-4-11" id="__codelineno-4-11" name="__codelineno-4-11"></a>      - hyrax-data:/usr/share/hyrax
+<a href="#__codelineno-4-12" id="__codelineno-4-12" name="__codelineno-4-12"></a>    restart: always
+</code></pre></div>
+<p>docker-compose.override.yml
+</p><div class="highlight"><pre><span></span><code><a href="#__codelineno-5-1" id="__codelineno-5-1" name="__codelineno-5-1"></a>  hyrax:
+<a href="#__codelineno-5-2" id="__codelineno-5-2" name="__codelineno-5-2"></a>    entrypoint: [ "/custom_entrypoint.sh" ]
+<a href="#__codelineno-5-3" id="__codelineno-5-3" name="__codelineno-5-3"></a>    volumes:
+<a href="#__codelineno-5-4" id="__codelineno-5-4" name="__codelineno-5-4"></a>      - ./volumes/hyrax_data:/usr/share/hyrax
+<a href="#__codelineno-5-5" id="__codelineno-5-5" name="__codelineno-5-5"></a>      - ./hyrax/site.conf:/etc/bes/site.conf:ro
+<a href="#__codelineno-5-6" id="__codelineno-5-6" name="__codelineno-5-6"></a>      - ./hyrax/entrypoint.sh:/custom_entrypoint.sh
+<a href="#__codelineno-5-7" id="__codelineno-5-7" name="__codelineno-5-7"></a>    links:
+<a href="#__codelineno-5-8" id="__codelineno-5-8" name="__codelineno-5-8"></a>      - django
+<a href="#__codelineno-5-9" id="__codelineno-5-9" name="__codelineno-5-9"></a>      - worker
+</code></pre></div>
+<p><code>/volumes/hyrax_data</code> is the volume for storing cache of dmrpp files or Salient data files. </p>
+<h2 id="accessing-hyrax-ui"><span class="enumerate-headings-plugin enumerate-heading-plugin">13.6</span> Accessing Hyrax UI<a class="headerlink" href="#accessing-hyrax-ui" title="Permanent link">¶</a></h2>
+<p>Hyrax has a UI that can be accessed in http://localhost:8181/opendap/.</p>
+<p><img alt="Hyrax UI" src="../img/hyrax-ui.png"/></p>
+<p>We can query using html UI and export the data into different format like csv.</p>
+<p><img alt="Hyrax Export" src="../img/hyrax-export.png"/></p>
+<p><strong>Note:</strong> we can use slicing syntax to access the data: [start:step:end].</p>
+<h2 id="accessing-using-python-script"><span class="enumerate-headings-plugin enumerate-heading-plugin">13.7</span> Accessing using Python Script<a class="headerlink" href="#accessing-using-python-script" title="Permanent link">¶</a></h2>
+<h3 id="cbam-dataset"><span class="enumerate-headings-plugin enumerate-heading-plugin">13.7.1</span> CBAM Dataset<a class="headerlink" href="#cbam-dataset" title="Permanent link">¶</a></h3>
+<div class="highlight"><pre><span></span><code><a href="#__codelineno-6-1" id="__codelineno-6-1" name="__codelineno-6-1"></a>from pydap.client import open_url, open_dods_url
+<a href="#__codelineno-6-2" id="__codelineno-6-2" name="__codelineno-6-2"></a>
+<a href="#__codelineno-6-3" id="__codelineno-6-3" name="__codelineno-6-3"></a>CBAM_METADATA = {
+<a href="#__codelineno-6-4" id="__codelineno-6-4" name="__codelineno-6-4"></a>    'lon': {
+<a href="#__codelineno-6-5" id="__codelineno-6-5" name="__codelineno-6-5"></a>        'min': 26.9665,
+<a href="#__codelineno-6-6" id="__codelineno-6-6" name="__codelineno-6-6"></a>        'inc': 0.036006329,
+<a href="#__codelineno-6-7" id="__codelineno-6-7" name="__codelineno-6-7"></a>        'size': 475
+<a href="#__codelineno-6-8" id="__codelineno-6-8" name="__codelineno-6-8"></a>    },
+<a href="#__codelineno-6-9" id="__codelineno-6-9" name="__codelineno-6-9"></a>    'lat': {
+<a href="#__codelineno-6-10" id="__codelineno-6-10" name="__codelineno-6-10"></a>        'min': -12.5969,
+<a href="#__codelineno-6-11" id="__codelineno-6-11" name="__codelineno-6-11"></a>        'inc': 0.03574368,
+<a href="#__codelineno-6-12" id="__codelineno-6-12" name="__codelineno-6-12"></a>        'size': 539
+<a href="#__codelineno-6-13" id="__codelineno-6-13" name="__codelineno-6-13"></a>    }
+<a href="#__codelineno-6-14" id="__codelineno-6-14" name="__codelineno-6-14"></a>}
+<a href="#__codelineno-6-15" id="__codelineno-6-15" name="__codelineno-6-15"></a>
+<a href="#__codelineno-6-16" id="__codelineno-6-16" name="__codelineno-6-16"></a>def find_idx(value, base_min, inc):
+<a href="#__codelineno-6-17" id="__codelineno-6-17" name="__codelineno-6-17"></a>    return round((value - base_min) / inc)
+<a href="#__codelineno-6-18" id="__codelineno-6-18" name="__codelineno-6-18"></a>
+<a href="#__codelineno-6-19" id="__codelineno-6-19" name="__codelineno-6-19"></a># Function to slice along multiple specified axes
+<a href="#__codelineno-6-20" id="__codelineno-6-20" name="__codelineno-6-20"></a>def slice_along_axes(array, indices):
+<a href="#__codelineno-6-21" id="__codelineno-6-21" name="__codelineno-6-21"></a>    slices = [slice(None)] * array.ndim  # Create a list of slices
+<a href="#__codelineno-6-22" id="__codelineno-6-22" name="__codelineno-6-22"></a>
+<a href="#__codelineno-6-23" id="__codelineno-6-23" name="__codelineno-6-23"></a>    # Set the slices for the specified axes
+<a href="#__codelineno-6-24" id="__codelineno-6-24" name="__codelineno-6-24"></a>    for axis, index in indices.items():
+<a href="#__codelineno-6-25" id="__codelineno-6-25" name="__codelineno-6-25"></a>        slices[axis] = index
+<a href="#__codelineno-6-26" id="__codelineno-6-26" name="__codelineno-6-26"></a>
+<a href="#__codelineno-6-27" id="__codelineno-6-27" name="__codelineno-6-27"></a>    return array[tuple(slices)]
+<a href="#__codelineno-6-28" id="__codelineno-6-28" name="__codelineno-6-28"></a>
+<a href="#__codelineno-6-29" id="__codelineno-6-29" name="__codelineno-6-29"></a>
+<a href="#__codelineno-6-30" id="__codelineno-6-30" name="__codelineno-6-30"></a>search_lat = -3.25
+<a href="#__codelineno-6-31" id="__codelineno-6-31" name="__codelineno-6-31"></a>search_lon = 30.4
+<a href="#__codelineno-6-32" id="__codelineno-6-32" name="__codelineno-6-32"></a>idx_lat = find_idx(search_lat, CBAM_METADATA['lat']['min'], CBAM_METADATA['lat']['inc'])
+<a href="#__codelineno-6-33" id="__codelineno-6-33" name="__codelineno-6-33"></a>idx_lon = find_idx(search_lon, CBAM_METADATA['lon']['min'], CBAM_METADATA['lon']['inc'])
+<a href="#__codelineno-6-34" id="__codelineno-6-34" name="__codelineno-6-34"></a>dataset = open_url('http://hyrax:8080/opendap/cbam/2019-11-09.nc.h5.dmrpp')
+<a href="#__codelineno-6-35" id="__codelineno-6-35" name="__codelineno-6-35"></a>mtt = dataset['max_total_temperature']
+<a href="#__codelineno-6-36" id="__codelineno-6-36" name="__codelineno-6-36"></a>result = slice_along_axes(mtt['max_total_temperature'], {1: idx_lat, 2: idx_lon})
+<a href="#__codelineno-6-37" id="__codelineno-6-37" name="__codelineno-6-37"></a>print(result)
+</code></pre></div>
+<h3 id="salient-dataset"><span class="enumerate-headings-plugin enumerate-heading-plugin">13.7.2</span> Salient Dataset<a class="headerlink" href="#salient-dataset" title="Permanent link">¶</a></h3>
+<div class="highlight"><pre><span></span><code><a href="#__codelineno-7-1" id="__codelineno-7-1" name="__codelineno-7-1"></a>from pydap.client import open_url, open_dods_url
+<a href="#__codelineno-7-2" id="__codelineno-7-2" name="__codelineno-7-2"></a>
+<a href="#__codelineno-7-3" id="__codelineno-7-3" name="__codelineno-7-3"></a>SALIENT_METADATA = {
+<a href="#__codelineno-7-4" id="__codelineno-7-4" name="__codelineno-7-4"></a>    'lon': {
+<a href="#__codelineno-7-5" id="__codelineno-7-5" name="__codelineno-7-5"></a>        'min': 28.875,
+<a href="#__codelineno-7-6" id="__codelineno-7-6" name="__codelineno-7-6"></a>        'inc': 0.25,
+<a href="#__codelineno-7-7" id="__codelineno-7-7" name="__codelineno-7-7"></a>        'size': 9
+<a href="#__codelineno-7-8" id="__codelineno-7-8" name="__codelineno-7-8"></a>    },
+<a href="#__codelineno-7-9" id="__codelineno-7-9" name="__codelineno-7-9"></a>    'lat': {
+<a href="#__codelineno-7-10" id="__codelineno-7-10" name="__codelineno-7-10"></a>        'min': -2.875,
+<a href="#__codelineno-7-11" id="__codelineno-7-11" name="__codelineno-7-11"></a>        'inc': 0.25,
+<a href="#__codelineno-7-12" id="__codelineno-7-12" name="__codelineno-7-12"></a>        'size': 8
+<a href="#__codelineno-7-13" id="__codelineno-7-13" name="__codelineno-7-13"></a>    }
+<a href="#__codelineno-7-14" id="__codelineno-7-14" name="__codelineno-7-14"></a>}
+<a href="#__codelineno-7-15" id="__codelineno-7-15" name="__codelineno-7-15"></a>
+<a href="#__codelineno-7-16" id="__codelineno-7-16" name="__codelineno-7-16"></a>def find_idx(value, base_min, inc):
+<a href="#__codelineno-7-17" id="__codelineno-7-17" name="__codelineno-7-17"></a>    return round((value - base_min) / inc)
+<a href="#__codelineno-7-18" id="__codelineno-7-18" name="__codelineno-7-18"></a>
+<a href="#__codelineno-7-19" id="__codelineno-7-19" name="__codelineno-7-19"></a># Function to slice along multiple specified axes
+<a href="#__codelineno-7-20" id="__codelineno-7-20" name="__codelineno-7-20"></a>def slice_along_axes(array, indices):
+<a href="#__codelineno-7-21" id="__codelineno-7-21" name="__codelineno-7-21"></a>    slices = [slice(None)] * array.ndim  # Create a list of slices
+<a href="#__codelineno-7-22" id="__codelineno-7-22" name="__codelineno-7-22"></a>
+<a href="#__codelineno-7-23" id="__codelineno-7-23" name="__codelineno-7-23"></a>    # Set the slices for the specified axes
+<a href="#__codelineno-7-24" id="__codelineno-7-24" name="__codelineno-7-24"></a>    for axis, index in indices.items():
+<a href="#__codelineno-7-25" id="__codelineno-7-25" name="__codelineno-7-25"></a>        slices[axis] = index
+<a href="#__codelineno-7-26" id="__codelineno-7-26" name="__codelineno-7-26"></a>
+<a href="#__codelineno-7-27" id="__codelineno-7-27" name="__codelineno-7-27"></a>    return array[tuple(slices)]
+<a href="#__codelineno-7-28" id="__codelineno-7-28" name="__codelineno-7-28"></a>
+<a href="#__codelineno-7-29" id="__codelineno-7-29" name="__codelineno-7-29"></a>
+<a href="#__codelineno-7-30" id="__codelineno-7-30" name="__codelineno-7-30"></a>search_lat = -2.215
+<a href="#__codelineno-7-31" id="__codelineno-7-31" name="__codelineno-7-31"></a>search_lon = 29.125
+<a href="#__codelineno-7-32" id="__codelineno-7-32" name="__codelineno-7-32"></a>idx_lat = find_idx(search_lat, SALIENT_METADATA['lat']['min'], CBAM_METADATA['lat']['inc'])
+<a href="#__codelineno-7-33" id="__codelineno-7-33" name="__codelineno-7-33"></a>idx_lon = find_idx(search_lon, SALIENT_METADATA['lon']['min'], CBAM_METADATA['lon']['inc'])
+<a href="#__codelineno-7-34" id="__codelineno-7-34" name="__codelineno-7-34"></a>dataset = open_url('http://hyrax:8080/opendap/salient/downscale_2024-03-13_rwanda.nc')
+<a href="#__codelineno-7-35" id="__codelineno-7-35" name="__codelineno-7-35"></a>temp_clim = dataset.temp_clim
+<a href="#__codelineno-7-36" id="__codelineno-7-36" name="__codelineno-7-36"></a>result = slice_along_axes(temp_clim['temp_clim'], {1: idx_lat, 2: idx_lon})
+<a href="#__codelineno-7-37" id="__codelineno-7-37" name="__codelineno-7-37"></a>print(result)
+</code></pre></div></div>
+<aside class="md-source-file">
+<span class="md-source-file__fact">
+<span class="md-icon" title="Last update">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"></path></svg>
+</span>
+<span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="August 9, 2024 06:27:58 UTC">August 9, 2024</span>
+</span>
+</aside>
+</article>
+</div>
+<script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+</div>
+<button class="md-top md-icon" data-md-component="top" hidden="" type="button">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"></path></svg>
+  Back to top
+</button>
+</main>
+<footer class="md-footer">
+<div class="md-footer-meta md-typeset">
+<div class="md-footer-meta__inner md-grid">
+<div class="md-copyright">
+<div class="md-copyright__highlight">
+      Kartoza and Contributors
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" rel="noopener" target="_blank">
+      Material for MkDocs
+    </a>
+</div>
+<div class="md-social">
+<a class="md-social__link" href="https://github.com/kartoza" rel="noopener" target="_blank" title="github.com">
+<svg viewbox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><!--! Font Awesome Free 7.0.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2" fill="currentColor"></path></svg>
+</a>
+</div>
+</div>
+</div>
+</footer>
+</div>
+<div class="md-dialog" data-md-component="dialog">
+<div class="md-dialog__inner md-typeset"></div>
+</div>
+<script id="__config" type="application/json">{"base": "../..", "features": ["content.code.annotate", "content.tabs.link", "header.autohide", "navigation.expand", "navigation.indexes", "navigation.instant", "navigation.sections", "navigation.tabs", "navigation.tabs.sticky", "navigation.top", "navigation.tracking", "search.highlight", "search.share", "search.suggest", "toc.follow"], "search": "../../assets/javascripts/workers/search.973d3a69.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+<script src="../../assets/javascripts/bundle.92b07e13.min.js"></script>
+<script src="https://unpkg.com/tablesort@5.3.0/dist/tablesort.min.js"></script>
+<script src="../../js/tablesort.js"></script>
+</body>
+</html>
