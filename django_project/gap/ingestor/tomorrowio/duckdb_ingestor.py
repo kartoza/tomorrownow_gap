@@ -163,11 +163,14 @@ class TioShortTermDuckDBIngestor(TioShortTermIngestor):
         for variable in self.variables:
             new_data[variable] = np.full(data_shape, np.nan, dtype='f8')
 
+        precision = self.get_config('geohash_precision', 8)
         grid_ids = {}
         for idx_lat, lat in enumerate(lat_arr):
             for idx_lon, lon in enumerate(lon_arr):
                 # find grid id by geohash of lat and lon
-                grid_hash = geohash.encode(lat.value, lon.value, precision=8)
+                grid_hash = geohash.encode(
+                    lat.value, lon.value, precision=precision
+                )
                 if grid_hash not in grids:
                     warnings['missing_hash'] += 1
                     continue
@@ -284,7 +287,11 @@ class TioShortTermDuckDBIngestor(TioShortTermIngestor):
             'countries', None
         )
         queryset_list = []
+        grid_all_qs = Grid.objects.none()
         if countries:
+            grid_all_qs = Grid.objects.filter(
+                country__name__in=countries
+            )
             for country_name in countries:
                 queryset_list.append({
                     'country': country_name,
@@ -293,10 +300,23 @@ class TioShortTermDuckDBIngestor(TioShortTermIngestor):
                     )
                 })
         else:
+            grid_all_qs = Grid.objects.all()
             queryset_list.append({
                 'country': 'All Countries',
                 'queryset': Grid.objects.all()
             })
+
+        # use grid dict from all included countries
+        grid_dict = {}
+        grid_all_qs = grid_all_qs.annotate(
+            centroid=Centroid('geometry')
+        )
+        precision = self.get_config('geohash_precision', 8)
+        for grid in grid_all_qs:
+            lat = round(grid.centroid.y, precision)
+            lon = round(grid.centroid.x, precision)
+            grid_hash = geohash.encode(lat, lon, precision=precision)
+            grid_dict[grid_hash] = grid.id
 
         # process for each country queryset
         for country_qs in queryset_list:
@@ -321,14 +341,12 @@ class TioShortTermDuckDBIngestor(TioShortTermIngestor):
             # get lat and lon array from grids
             lat_arr = set()
             lon_arr = set()
-            grid_dict = {}
+            precision = self.get_config('geohash_precision', 8)
             for grid in grids:
-                lat = round(grid.centroid.y, 8)
-                lon = round(grid.centroid.x, 8)
-                grid_hash = geohash.encode(lat, lon, precision=8)
+                lat = round(grid.centroid.y, precision)
+                lon = round(grid.centroid.x, precision)
                 lat_arr.add(lat)
                 lon_arr.add(lon)
-                grid_dict[grid_hash] = grid.id
             lat_arr = sorted(lat_arr)
             lon_arr = sorted(lon_arr)
 

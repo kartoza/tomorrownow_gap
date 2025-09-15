@@ -84,19 +84,27 @@ class TioShortTermIngestor(BaseZarrIngestor):
         }
 
         # min+max are the BBOX that GAP processes
-        self.lat_metadata = {
-            'min': -27,
-            'max': 16,
-            'inc': 0.03586314,
-            'original_min': -4.65013565
-        }
-        self.lon_metadata = {
-            'min': 21.8,
-            'max': 52,
-            'inc': 0.036353,
-            'original_min': 33.91823667
-        }
-        self.reindex_tolerance = 0.001
+        self.lat_metadata = self.get_config(
+            'lat_metadata',
+            {
+                'min': -27,
+                'max': 16,
+                'inc': 0.03586314,
+                'original_min': -4.65013565
+            }
+        )
+        self.lon_metadata = self.get_config(
+            'lon_metadata',
+            {
+                'min': 21.8,
+                'max': 52,
+                'inc': 0.036353,
+                'original_min': 33.91823667
+            }
+        )
+        self.reindex_tolerance = self.get_config(
+            'reindex_tolerance', 0.001
+        )
         self.existing_dates = None
 
     def _init_dataset(self) -> Dataset:
@@ -430,7 +438,11 @@ class TioShortTermIngestor(BaseZarrIngestor):
             logger.error(traceback.format_exc())
             raise e
         finally:
-            if is_success and self.TRIGGER_DCAS:
+            is_trigger_dcas = self.get_config(
+                'trigger_dcas',
+                self.TRIGGER_DCAS
+            )
+            if is_success and is_trigger_dcas:
                 trigger_task_after_ingestor_completed()
 
     def _process_tio_shortterm_data(

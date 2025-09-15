@@ -96,7 +96,7 @@ class CropInsightFarmGenerator:
                 for attr_name, val in v.items():
                     try:
                         attr = attributes_dict[attr_name]
-                        if attr:
+                        if attr and val is not None:
                             batch_insert.append(
                                 FarmShortTermForecastData(
                                     forecast=c,

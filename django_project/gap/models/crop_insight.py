@@ -725,8 +725,7 @@ class CropInsightRequest(models.Model):
         if self.farm_group:
             group = f'{self.farm_group.normalize_name()}_'
         return (
-            f"SPW_{group}{east_africa_time.strftime('%Y_%m_%d')}_"
-            f'({str(self.unique_id).replace('-', '_')}).csv'
+            f"SPW_{group}{east_africa_time.strftime('%Y_%m_%d')}.csv"
         )
 
     def _process_chunk(self, chunk, port):
