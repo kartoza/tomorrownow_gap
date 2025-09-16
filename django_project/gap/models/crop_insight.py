@@ -468,12 +468,9 @@ class CropPlanData:
                     spw.signal, self.farm_group
                 )
                 spw_top_message = spw_output.plant_now_string
-                if spw_output.farm_group is None:
-                    spw_description = spw_output.description
-                else:
-                    spw_description = spw_output.get_description(
-                        language_code='en'
-                    )
+                spw_description = spw_output.get_description(
+                    language_code='en'
+                )
                 if self.farm_group.has_desc_sw_field:
                     spw_description_sw = spw_output.get_description(
                         language_code='sw'

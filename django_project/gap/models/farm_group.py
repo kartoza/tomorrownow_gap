@@ -161,7 +161,7 @@ class FarmGroup(Definition):
     def has_desc_sw_field(self):
         """Return if the farm group has description in swahili."""
         return self.farmgroupcropinsightfield_set.filter(
-            field='SPWDescription_sw',
+            field__in=['SPWDescription_sw'],
             active=True
         ).exists()
 
