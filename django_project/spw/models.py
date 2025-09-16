@@ -158,7 +158,7 @@ class SPWOutput(models.Model):
 
     identifier = models.CharField(
         unique=True,
-        max_length=100,
+        max_length=512,
         help_text=(
             'e.g: Plant NOW Tier 1a. '
             'Make sure the result this is coming from SPW R Model.'
@@ -174,14 +174,46 @@ class SPWOutput(models.Model):
     description = models.TextField(
         null=True, blank=True
     )
+    spw_top_message = models.TextField(
+        null=True, blank=True,
+        help_text=(
+            'Top message that will be shown in SPW output.'
+        )
+    )
+    description_sw = models.TextField(
+        null=True, blank=True
+    )
 
     @property
     def plant_now_string(self):
         """Return plant now string.
 
-        Plant Now or DO NOT PLANT
+        Plant Now or DO NOT PLANT or custom message
         """
+        if self.spw_top_message:
+            return self.spw_top_message
         return 'Plant Now' if self.is_plant_now else 'DO NOT PLANT'
+
+    def get_description(self, language_code=None):
+        """Return description based on language code."""
+        if language_code == 'sw':
+            return self.description_sw
+
+        return self.description
+
+    @classmethod
+    def get_output_by_farm_group(cls, identifier: str, farm_group):
+        """Return SPWOutput by farm group or default."""
+        if farm_group:
+            key = f'{farm_group.name}-{identifier}'
+            output = cls.objects.filter(
+                identifier=key
+            ).first()
+            if output:
+                return output
+
+        # get default output
+        return cls.objects.get(identifier=identifier)
 
 
 class SPWErrorLog(models.Model):

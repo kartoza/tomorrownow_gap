@@ -8,6 +8,7 @@ Tomorrow Now GAP.
 import logging
 from django.contrib.auth import get_user_model
 from django.contrib.gis.db import models
+from django.utils.functional import cached_property
 
 from core.group_email_receiver import crop_plan_receiver
 from core.models.common import Definition
@@ -155,6 +156,14 @@ class FarmGroup(Definition):
             )
             farm_groups = farm_groups.filter(name__in=group_filter_names)
         return farm_groups
+
+    @cached_property
+    def has_desc_sw_field(self):
+        """Return if the farm group has description in swahili."""
+        return self.farmgroupcropinsightfield_set.filter(
+            field__in=['SPWDescription_sw'],
+            active=True
+        ).exists()
 
 
 class FarmGroupCropInsightField(models.Model):

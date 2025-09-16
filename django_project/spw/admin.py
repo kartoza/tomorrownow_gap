@@ -63,8 +63,10 @@ class SPWOutputAdmin(admin.ModelAdmin):
     """Admin page for SPWOutput."""
 
     list_display = (
-        'identifier', 'tier', 'plant_now_string', 'description'
+        'identifier', 'tier', 'plant_now_string',
+        'description'
     )
+    list_filter = ('tier',)
 
 
 @admin.register(SPWErrorLog)

@@ -364,12 +364,14 @@ class CropPlanData:
 
     def __init__(
             self, farm: Farm, generated_date: date, forecast_days: int = 13,
-            forecast_fields: list = None, tamsat_spw_df = None
+            forecast_fields: list = None, tamsat_spw_df = None,
+            farm_group: FarmGroup = None
     ):
         """Initialize the report model for the Insight Request Report."""
         self.generated_date = generated_date
         self.farm = farm
         self.tamsat_spw_df = tamsat_spw_df
+        self.farm_group = farm_group
 
         # Update data
         self.farm_id = self.farm.unique_id
@@ -454,15 +456,25 @@ class CropPlanData:
         last_4_days = ''
         last_2_days = ''
         today_tomorrow = ''
+        # Swahili version
+        spw_description_sw = ''
         spw = FarmSuitablePlantingWindowSignal.objects.filter(
             farm=self.farm,
             generated_date=self.generated_date
         ).first()
         if spw:
             try:
-                spw_output = SPWOutput.objects.get(identifier=spw.signal)
+                spw_output = SPWOutput.get_output_by_farm_group(
+                    spw.signal, self.farm_group
+                )
                 spw_top_message = spw_output.plant_now_string
-                spw_description = spw_output.description
+                spw_description = spw_output.get_description(
+                    language_code='en'
+                )
+                if self.farm_group.has_desc_sw_field:
+                    spw_description_sw = spw_output.get_description(
+                        language_code='sw'
+                    )
             except SPWOutput.DoesNotExist:
                 spw_top_message = spw.signal
                 spw_description = ''
@@ -489,8 +501,8 @@ class CropPlanData:
             default_fields[6]: too_wet,
             default_fields[7]: last_4_days,
             default_fields[8]: last_2_days,
-            default_fields[9]: today_tomorrow
-
+            default_fields[9]: today_tomorrow,
+            'SPWDescription_sw': spw_description_sw
         }
 
         # ----------------------------------------
@@ -837,7 +849,8 @@ class CropInsightRequest(models.Model):
                     'rainAccumulationSum', 'precipitationProbability',
                     'rainAccumulationType'
                 ],
-                tamsat_spw_df=tamsat_spw_df
+                tamsat_spw_df=tamsat_spw_df,
+                farm_group=self.farm_group
             ).data
 
             # Create header

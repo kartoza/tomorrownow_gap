@@ -31,5 +31,5 @@ class Definition(models.Model):
         ordering = ['name']
 
     def normalize_name(self):
-        """Normalize name to lowercase and remove spaces."""
+        """Normalize name to remove spaces and dashes."""
         return self.name.replace(' ', '_').replace('-', '_')
