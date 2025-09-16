@@ -15,6 +15,7 @@ from django.dispatch import receiver
 from django.utils.translation import gettext_lazy as _
 
 from core.models.background_task import TaskStatus
+from message.models import MessageTemplate, MessageApplication
 
 User = get_user_model()
 
@@ -174,14 +175,56 @@ class SPWOutput(models.Model):
     description = models.TextField(
         null=True, blank=True
     )
+    spw_top_message = models.TextField(
+        null=True, blank=True,
+        help_text=(
+            'Top message that will be shown in SPW output.'
+        )
+    )
+    farm_group_name = models.CharField(
+        max_length=512,
+        null=True, blank=True
+    )
 
     @property
     def plant_now_string(self):
         """Return plant now string.
 
-        Plant Now or DO NOT PLANT
+        Plant Now or DO NOT PLANT or custom message
         """
+        if self.spw_top_message:
+            return self.spw_top_message
         return 'Plant Now' if self.is_plant_now else 'DO NOT PLANT'
+
+    def get_description(self, language_code=None):
+        """Return description based on language code."""
+        if language_code:
+            # construct key for translation message template
+            key = f'spw_output_{self.tier}' if self.farm_group is None else (
+                f'spw_output_{self.farm_group.normalize_name().lower()}'
+                f'_{self.tier}'
+            )
+            template = MessageTemplate.objects.filter(
+                application=MessageApplication.SPW,
+                code=key
+            ).first()
+            if template:
+                return template.get_message(language_code=language_code)
+
+        return self.description
+
+    @classmethod
+    def get_output_by_farm_group(cls, identifier: str, farm_group):
+        """Return SPWOutput by farm group or default."""
+        output = cls.objects.filter(
+            identifier=identifier,
+            farm_group=farm_group.name if farm_group else None
+        ).first()
+        if output:
+            return output
+
+        # get default output
+        return cls.objects.get(identifier=identifier, farm_group=None)
 
 
 class SPWErrorLog(models.Model):

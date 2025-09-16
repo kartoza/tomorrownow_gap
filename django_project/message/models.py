@@ -19,6 +19,7 @@ class MessageApplication:
 
     PRISE = 'PRISE'  # Message that will be used for CABI PRISE
     DCAS = 'DCAS'
+    SPW = 'SPW'
 
 
 class MessageTemplate(models.Model):
@@ -38,11 +39,11 @@ class MessageTemplate(models.Model):
         choices=(
             (MessageApplication.PRISE, _(MessageApplication.PRISE)),
             (MessageApplication.DCAS, _(MessageApplication.DCAS)),
+            (MessageApplication.SPW, _(MessageApplication.SPW)),
         ),
         max_length=512
     )
     group = models.CharField(
-        default=PriseMessageGroup.START_SEASON,
         choices=(
             (
                 PriseMessageGroup.START_SEASON,
@@ -61,7 +62,9 @@ class MessageTemplate(models.Model):
                 _(PriseMessageGroup.END_SEASON)
             ),
         ),
-        max_length=512
+        max_length=512,
+        null=True,
+        blank=True
     )
     note = models.TextField(
         blank=True, null=True,
