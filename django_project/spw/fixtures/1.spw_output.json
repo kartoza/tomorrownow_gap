@@ -102,7 +102,7 @@
       "identifier": "KALRO 2025 A-Plant NOW Tier 1a",
       "tier": "1a",
       "is_plant_now": true,
-      "description": "Plant now because the signs shows there may be enough rain, and the soil may have enough water to support good germination.",
+      "description": "Plant now because the signs shows there may be enough rain and the soil may have enough water to support good germination.",
       "spw_top_message": "Plant Now",
       "description_sw": "Panda sasa kwa sababu dalili zinaonyesha uwezekano wa kuwa na mvua ya kutosha na udongo kuwa na maji ya kutosha kuwezesha mbegu kumea vizuri."
     }
@@ -114,7 +114,7 @@
       "identifier": "KALRO 2025 A-Plant NOW Tier 1b",
       "tier": "1b",
       "is_plant_now": true,
-      "description": "Plant now because the signs shows there may be enough rain, and the soil may have enough water to support good germination.",
+      "description": "Plant now because the signs shows there may be enough rain and the soil may have enough water to support good germination.",
       "spw_top_message": "Plant Now",
       "description_sw": "Panda sasa kwa sababu dalili zinaonyesha uwezekano wa kuwa na mvua ya kutosha na udongo kuwa na maji ya kutosha kuwezesha mbegu kumea vizuri."
     }
@@ -126,7 +126,7 @@
       "identifier": "KALRO 2025 A-Plant NOW Tier 1c",
       "tier": "1c",
       "is_plant_now": true,
-      "description": "Plant now because the signs shows there may be enough rain, and the soil may have enough water to support good germination.",
+      "description": "Plant now because the signs shows there may be enough rain and the soil may have enough water to support good germination.",
       "spw_top_message": "Plant Now",
       "description_sw": "Panda sasa kwa sababu dalili zinaonyesha uwezekano wa kuwa na mvua ya kutosha na udongo kuwa na maji ya kutosha kuwezesha mbegu kumea vizuri."
     }
@@ -150,9 +150,9 @@
       "identifier": "KALRO 2025 A-Do NOT plant, WATCH Tier 3a",
       "tier": "3a",
       "is_plant_now": false,
-      "description": "Delay planting until the rains are steady. Prepare land, get inputs ready and wait for weekly updates.",
+      "description": "Delay planting until the rains are steady. Prepare land - get inputs ready and wait for weekly updates.",
       "spw_top_message": "Watch",
-      "description_sw": "Kawia kupanda mimea hadi mvua iwe ya kutosha.  Endelea kutayarisha shamba, weka tayari mbegu na mbolea huku ukisubiri kujulishwa kila wiki."
+      "description_sw": "Kawia kupanda mimea hadi mvua iwe ya kutosha. Endelea kutayarisha shamba - weka tayari mbegu na mbolea huku ukisubiri kujulishwa kila wiki."
     }
   },
   {
@@ -162,9 +162,9 @@
       "identifier": "KALRO 2025 A-Do NOT plant, WATCH Tier 3b",
       "tier": "3b",
       "is_plant_now": false,
-      "description": "Delay planting until the rains are steady. Prepare land, get inputs ready and wait for weekly updates.",
+      "description": "Delay planting until the rains are steady. Prepare land - get inputs ready and wait for weekly updates.",
       "spw_top_message": "Watch",
-      "description_sw": "Kawia kupanda mimea hadi mvua iwe ya kutosha.  Endelea kutayarisha shamba, weka tayari mbegu na mbolea huku ukisubiri kujulishwa kila wiki."
+      "description_sw": "Kawia kupanda mimea hadi mvua iwe ya kutosha. Endelea kutayarisha shamba - weka tayari mbegu na mbolea huku ukisubiri kujulishwa kila wiki."
     }
   },
   {
@@ -174,9 +174,9 @@
       "identifier": "KALRO 2025 A-Do NOT plant, out of season rain Tier 4a",
       "tier": "4a",
       "is_plant_now": false,
-      "description": "Delay planting. Not enough rain for germination. Prepare land, get inputs ready and wait for weekly updates.",
+      "description": "Delay planting. Not enough rain for germination. Prepare land - get inputs ready and wait for weekly updates.",
       "spw_top_message": "DO NOT PLANT",
-      "description_sw": "Kawia kupanda.Hakuna mvua ya kutosha kuwezesha mbegu kumea. Tayarisha shamba, weka tayari mbegu na mbolea huku ukisubiri kujulishwa kila wiki."
+      "description_sw": "Kawia kupanda. Hakuna mvua ya kutosha kuwezesha mbegu kumea. Tayarisha shamba - weka tayari mbegu na mbolea huku ukisubiri kujulishwa kila wiki."
     }
   },
   {
@@ -186,9 +186,9 @@
       "identifier": "KALRO 2025 A-Do NOT plant, DRY Tier 4b",
       "tier": "4b",
       "is_plant_now": false,
-      "description": "Delay planting. Not enough rain for germination. Prepare land, get inputs ready and wait for weekly updates.",
+      "description": "Delay planting. Not enough rain for germination. Prepare land - get inputs ready and wait for weekly updates.",
       "spw_top_message": "DO NOT PLANT",
-      "description_sw": "Kawia kupanda.Hakuna mvua ya kutosha kuwezesha mbegu kumea. Tayarisha shamba, weka tayari mbegu na mbolea huku ukisubiri kujulishwa kila wiki."
+      "description_sw": "Kawia kupanda. Hakuna mvua ya kutosha kuwezesha mbegu kumea. Tayarisha shamba - weka tayari mbegu na mbolea huku ukisubiri kujulishwa kila wiki."
     }
   },
   {
@@ -198,7 +198,7 @@
       "identifier": "KALRO 2025 B-Plant NOW Tier 1a",
       "tier": "1a",
       "is_plant_now": true,
-      "description": "Plant now because the signs shows there may be enough rain, and the soil may have enough water to support good germination.",
+      "description": "Plant now because the signs shows there may be enough rain and the soil may have enough water to support good germination.",
       "spw_top_message": "Plant Now",
       "description_sw": "Panda sasa kwa sababu dalili zinaonyesha uwezekano wa kuwa na mvua ya kutosha na udongo kuwa na maji ya kutosha kuwezesha mbegu kumea vizuri."
     }
@@ -210,7 +210,7 @@
       "identifier": "KALRO 2025 B-Plant NOW Tier 1b",
       "tier": "1b",
       "is_plant_now": true,
-      "description": "Plant now because the signs shows there may be enough rain, and the soil may have enough water to support good germination.",
+      "description": "Plant now because the signs shows there may be enough rain and the soil may have enough water to support good germination.",
       "spw_top_message": "Plant Now",
       "description_sw": "Panda sasa kwa sababu dalili zinaonyesha uwezekano wa kuwa na mvua ya kutosha na udongo kuwa na maji ya kutosha kuwezesha mbegu kumea vizuri."
     }
@@ -222,7 +222,7 @@
       "identifier": "KALRO 2025 B-Plant NOW Tier 1c",
       "tier": "1c",
       "is_plant_now": true,
-      "description": "Plant now because the signs shows there may be enough rain, and the soil may have enough water to support good germination.",
+      "description": "Plant now because the signs shows there may be enough rain and the soil may have enough water to support good germination.",
       "spw_top_message": "Plant Now",
       "description_sw": "Panda sasa kwa sababu dalili zinaonyesha uwezekano wa kuwa na mvua ya kutosha na udongo kuwa na maji ya kutosha kuwezesha mbegu kumea vizuri."
     }
@@ -246,9 +246,9 @@
       "identifier": "KALRO 2025 B-Do NOT plant, WATCH Tier 3a",
       "tier": "3a",
       "is_plant_now": false,
-      "description": "Delay planting until the rains are steady. Prepare land, get inputs ready and wait for weekly updates.",
+      "description": "Delay planting until the rains are steady. Prepare land - get inputs ready and wait for weekly updates.",
       "spw_top_message": "Watch",
-      "description_sw": "Kawia kupanda mimea hadi mvua iwe ya kutosha.  Endelea kutayarisha shamba, weka tayari mbegu na mbolea huku ukisubiri kujulishwa kila wiki."
+      "description_sw": "Kawia kupanda mimea hadi mvua iwe ya kutosha. Endelea kutayarisha shamba - weka tayari mbegu na mbolea huku ukisubiri kujulishwa kila wiki."
     }
   },
   {
@@ -258,9 +258,9 @@
       "identifier": "KALRO 2025 B-Do NOT plant, WATCH Tier 3b",
       "tier": "3b",
       "is_plant_now": false,
-      "description": "Delay planting until the rains are steady. Prepare land, get inputs ready and wait for weekly updates.",
+      "description": "Delay planting until the rains are steady. Prepare land - get inputs ready and wait for weekly updates.",
       "spw_top_message": "Watch",
-      "description_sw": "Kawia kupanda mimea hadi mvua iwe ya kutosha.  Endelea kutayarisha shamba, weka tayari mbegu na mbolea huku ukisubiri kujulishwa kila wiki."
+      "description_sw": "Kawia kupanda mimea hadi mvua iwe ya kutosha. Endelea kutayarisha shamba - weka tayari mbegu na mbolea huku ukisubiri kujulishwa kila wiki."
     }
   },
   {
@@ -270,9 +270,9 @@
       "identifier": "KALRO 2025 B-Do NOT plant, out of season rain Tier 4a",
       "tier": "4a",
       "is_plant_now": false,
-      "description": "Delay planting. Not enough rain for germination. Prepare land, get inputs ready and wait for weekly updates.",
+      "description": "Delay planting. Not enough rain for germination. Prepare land - get inputs ready and wait for weekly updates.",
       "spw_top_message": "DO NOT PLANT",
-      "description_sw": "Kawia kupanda.Hakuna mvua ya kutosha kuwezesha mbegu kumea. Tayarisha shamba, weka tayari mbegu na mbolea huku ukisubiri kujulishwa kila wiki."
+      "description_sw": "Kawia kupanda. Hakuna mvua ya kutosha kuwezesha mbegu kumea. Tayarisha shamba - weka tayari mbegu na mbolea huku ukisubiri kujulishwa kila wiki."
     }
   },
   {
@@ -282,9 +282,9 @@
       "identifier": "KALRO 2025 B-Do NOT plant, DRY Tier 4b",
       "tier": "4b",
       "is_plant_now": false,
-      "description": "Delay planting. Not enough rain for germination. Prepare land, get inputs ready and wait for weekly updates.",
+      "description": "Delay planting. Not enough rain for germination. Prepare land - get inputs ready and wait for weekly updates.",
       "spw_top_message": "DO NOT PLANT",
-      "description_sw": "Kawia kupanda.Hakuna mvua ya kutosha kuwezesha mbegu kumea. Tayarisha shamba, weka tayari mbegu na mbolea huku ukisubiri kujulishwa kila wiki."
+      "description_sw": "Kawia kupanda. Hakuna mvua ya kutosha kuwezesha mbegu kumea. Tayarisha shamba - weka tayari mbegu na mbolea huku ukisubiri kujulishwa kila wiki."
     }
   }
 ]
