@@ -775,8 +775,16 @@ class CropInsightRequest(models.Model):
         else:
             raise FarmGroupIsNotSetException()
 
+        # debug: limit farms to 5
+        farms = farms[:5]
+        print(f'{timezone.now()} Total farms {farms.count()}')
+
         # get distinct grid from farms
-        grids = farms.values('grid').distinct()
+        # grids = farms.values('grid').distinct()
+        grids = self.farm_group.farms.filter(
+            id__in=farms
+        ).values('grid').distinct()
+        print(f'{timezone.now()} Total grids {grids.count()}')
         grid_ids = list(grids.values_list('grid', flat=True))
         chunks = list(self._chunk_list(grid_ids))
         ports = [8282, 8282, 8282, 8282]
@@ -833,6 +841,9 @@ class CropInsightRequest(models.Model):
         if has_tamsat_spw_column:
             tamsat_spw_df = self._init_tamsat_spw_reader()
 
+        # debug: limit farms to 5
+        farms = farms[:5]
+
         # Get farms
         for farm in farms:
             # If it has farm id, generate spw
@@ -849,7 +860,8 @@ class CropInsightRequest(models.Model):
                     'rainAccumulationSum', 'precipitationProbability',
                     'rainAccumulationType'
                 ],
-                tamsat_spw_df=tamsat_spw_df
+                tamsat_spw_df=tamsat_spw_df,
+                farm_group=self.farm_group
             ).data
 
             # Create header
