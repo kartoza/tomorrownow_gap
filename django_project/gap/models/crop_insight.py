@@ -219,6 +219,14 @@ class FarmSuitablePlantingWindowSignal(models.Model):
         help_text='The rain accumulationSum for today and tomorrow.',
         null=True, blank=True
     )
+    is_sent_before = models.BooleanField(
+        default=False,
+        help_text='Flag to indicate if the signal has been sent before.'
+    )
+    prev_reference_date = models.DateField(
+        null=True, blank=True,
+        help_text='The previous reference date used to check the same signal.'
+    )
 
     def __str__(self):
         return f'{self.farm.__str__()} - {self.generated_date}'
@@ -417,6 +425,16 @@ class CropPlanData:
         self.forecast_fields = forecast_fields
         self.forecast_days = forecast_days
 
+        # Get config from farm group
+        self.filter_same_tier_1_signal = False
+        if self.farm_group:
+            # This flag is used to filter out the farmers
+            # with same tier 1 signal from reference date
+            # from the csv file
+            self.filter_same_tier_1_signal = self.farm_group.get_config(
+                'filter_same_tier_1_signal', False
+            )
+
     @staticmethod
     def forecast_key(day_n, field):
         """Return key for forecast field."""
@@ -463,6 +481,11 @@ class CropPlanData:
             generated_date=self.generated_date
         ).first()
         if spw:
+            # if filter_same_tier_1_signal is True,
+            # then check is_sent_before
+            if self.filter_same_tier_1_signal and spw.is_sent_before:
+                return None
+
             try:
                 spw_output = SPWOutput.get_output_by_farm_group(
                     spw.signal, self.farm_group
@@ -852,6 +875,10 @@ class CropInsightRequest(models.Model):
                 tamsat_spw_df=tamsat_spw_df,
                 farm_group=self.farm_group
             ).data
+
+            # Skip if no data
+            if not data:
+                continue
 
             # Create header
             row_data = []
