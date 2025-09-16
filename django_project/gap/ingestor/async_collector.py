@@ -482,18 +482,7 @@ class AsyncCollector(BaseIngestor):
         # close redis connection
         await self.redis.aclose()
 
-    def _run(self):
-        """Run Async Collector."""
-        # init data source file
-        self._init_dataset_files()
-
-        con = self._get_connection(self.session.dataset_files.first())
-        self._init_table(con)
-
-        # check existing grid ids
-        existing_grid_ids = self._get_existing_grid_ids(con)
-
-        # query grids by countries
+    def _fetch_grids(self):
         countries = self.get_config(
             'countries', None
         )
@@ -507,11 +496,27 @@ class AsyncCollector(BaseIngestor):
             )
 
         _grids = _grids.annotate(
-                centroid=Centroid('geometry')
+            centroid=Centroid('geometry')
         ).annotate(
             lat=ST_Y('centroid'),
             lon=ST_X('centroid')
         ).values('id', 'lat', 'lon')
+
+        return _grids
+
+    def _run(self):
+        """Run Async Collector."""
+        # init data source file
+        self._init_dataset_files()
+
+        con = self._get_connection(self.session.dataset_files.first())
+        self._init_table(con)
+
+        # check existing grid ids
+        existing_grid_ids = self._get_existing_grid_ids(con)
+
+        # query grids by countries
+        _grids = self._fetch_grids()
         self.total_grid = _grids.count()
         grids = []
         for grid in _grids:
