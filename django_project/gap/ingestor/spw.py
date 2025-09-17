@@ -165,7 +165,11 @@ class SPWIngestor(BaseIngestor):
                 spw.last_2_days,
                 spw.last_4_days,
                 spw.today_tomorrow,
-                spw.too_wet_indicator
+                spw.too_wet_indicator,
+                spw.is_sent_before,
+                spw.prev_reference_date,
+                ST_Y(ST_Centroid(g.geometry)) AS grid_lat,
+                ST_X(ST_Centroid(g.geometry)) AS grid_lon
             FROM public.gap_farmsuitableplantingwindowsignal spw
             JOIN public.gap_farm f ON spw.farm_id = f.id
             LEFT JOIN public.gap_grid g ON f.grid_id = g.id
@@ -228,7 +232,11 @@ class SPWIngestor(BaseIngestor):
                 last_2_days DOUBLE,
                 last_4_days DOUBLE,
                 today_tomorrow DOUBLE,
-                too_wet_indicator VARCHAR
+                too_wet_indicator VARCHAR,
+                is_sent_before BOOLEAN,
+                prev_reference_date DATE,
+                grid_lat DOUBLE,
+                grid_lon DOUBLE
             )
             """
         )
