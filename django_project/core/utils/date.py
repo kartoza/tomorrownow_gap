@@ -5,7 +5,7 @@ Tomorrow Now GAP.
 .. note:: Utilities for date.
 """
 
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 import calendar
 
 
@@ -131,3 +131,40 @@ def closest_leap_year(year):
         if calendar.isleap(lower):
             return lower
         lower -= 1
+
+
+def get_previous_day(day_number, reference_date=None):
+    """
+    Get the previous occurrence of a specific day of the week.
+
+    Args:
+        day_number (int): Day of the week (0=Monday, 1=Tuesday, ..., 6=Sunday)
+        reference_date (datetime, optional): Reference date. Defaults to today.
+
+    Returns:
+        datetime: The date of the previous occurrence of the specified day
+
+    Example:
+        If today is Wednesday (Sep 17, 2025) and day_number=3 (Thursday),
+        returns Thursday Sep 11, 2025
+    """
+    if reference_date is None:
+        reference_date = datetime.now().date()
+    elif isinstance(reference_date, datetime):
+        reference_date = reference_date.date()
+
+    # Get the current day of the week (0=Monday, 6=Sunday)
+    current_day = reference_date.weekday()
+
+    # Calculate days to go back
+    days_back = (current_day - day_number + 7) % 7
+
+    # If the result is 0, it means today is the target day,
+    # so we want the previous occurrence (7 days back)
+    if days_back == 0:
+        days_back = 7
+
+    # Calculate the previous date
+    previous_date = reference_date - timedelta(days=days_back)
+
+    return previous_date
