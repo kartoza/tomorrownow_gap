@@ -607,7 +607,7 @@ class TestCropInsightGenerator(TestCase):
         # Create a previous tier 1 signal on the reference date
         FarmSuitablePlantingWindowSignal.objects.create(
             farm=self.farm,
-            generated_date=date(2023, 7, 7),
+            generated_date=date(2023, 7, 14),
             signal='Plant NOW Tier 1a'
         )
 
@@ -682,6 +682,9 @@ class TestCropInsightGenerator(TestCase):
         ).last()
         self.assertEqual(last_spw.signal, 'Plant NOW Tier 1b')
         self.assertTrue(last_spw.is_sent_before)
+        self.assertEqual(
+            last_spw.prev_reference_date, date(2023, 7, 14)
+        )
 
         # We mock the send email to get the attachments
         attachments = []

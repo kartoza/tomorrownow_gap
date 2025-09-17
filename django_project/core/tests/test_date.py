@@ -285,7 +285,7 @@ class TestGetPreviousDay(TestCase):
         """Set up test fixtures with known reference dates."""
         # Wednesday, September 17, 2025
         self.test_date_wed = date(2025, 9, 17)
-        # Monday, September 15, 2025  
+        # Monday, September 15, 2025
         self.test_date_mon = date(2025, 9, 15)
         # Sunday, September 21, 2025
         self.test_date_sun = date(2025, 9, 21)
@@ -302,7 +302,7 @@ class TestGetPreviousDay(TestCase):
         """Test finding all previous days from Wednesday."""
         test_cases = [
             (0, date(2025, 9, 15)),  # Previous Monday
-            (1, date(2025, 9, 16)),  # Previous Tuesday  
+            (1, date(2025, 9, 16)),  # Previous Tuesday
             (2, date(2025, 9, 10)),  # Previous Wednesday (7 days back)
             (3, date(2025, 9, 11)),  # Previous Thursday
             (4, date(2025, 9, 12)),  # Previous Friday
@@ -396,7 +396,7 @@ class TestGetPreviousDay(TestCase):
             self.assertEqual(result, expected_monday)
 
         with self.subTest("day_number=-1"):
-            # day_number -1 should behave like 6 (Sunday)  
+            # day_number -1 should behave like 6 (Sunday)
             result = get_previous_day(-1, self.test_date_wed)
             expected_sunday = get_previous_day(6, self.test_date_wed)
             self.assertEqual(result, expected_sunday)
