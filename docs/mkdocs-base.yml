@@ -56,6 +56,12 @@ nav:
         - Architecture: developer/architecture.md
         - Data model: developer/data-model.md
         - Hyrax Configuration: developer/hyrax-config.md
+        - API Guide:
+            - developer/api/guide/index.md
+            - API Keys: developer/api/guide/api-keys.md
+            - Measurements API: developer/api/guide/measurement.md
+            - Access API Using R: developer/api/guide/access-api-using-r.md
+            - Access API Using Jupyter Notebook: developer/api/guide/access-api-using-jupyter.md
     - Devops:
         - devops/index.md
         - Guide: devops/guide/index.md
