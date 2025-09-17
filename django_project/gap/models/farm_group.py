@@ -33,6 +33,12 @@ class FarmGroup(Definition):
         blank=True,
         max_length=255
     )
+    config = models.JSONField(
+        default=dict,
+        help_text='Configuration for the farm group',
+        null=True,
+        blank=True
+    )
 
     def email_recipients(self) -> list:
         """Return list of email addresses of farm recipients."""
@@ -164,6 +170,12 @@ class FarmGroup(Definition):
             field__in=['SPWDescription_sw'],
             active=True
         ).exists()
+
+    def get_config(self, key, default=None):
+        """Get configuration value by key."""
+        if self.config and key in self.config:
+            return self.config[key]
+        return default
 
 
 class FarmGroupCropInsightField(models.Model):

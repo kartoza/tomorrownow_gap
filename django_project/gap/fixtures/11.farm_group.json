@@ -68,7 +68,12 @@
     "pk": 9,
     "fields": {
       "name": "KALRO 2025 A",
-      "description": "Farm group for season from September 2025"
+      "description": "Farm group for season from September 2025",
+      "config": {
+          "check_same_tier_1_signal": true,
+          "tier_1_reference_date": "2025-09-10",
+          "filter_same_tier_1_signal": true
+      }
     }
   },
   {
@@ -76,7 +81,12 @@
     "pk": 10,
     "fields": {
       "name": "KALRO 2025 B",
-      "description": "Farm group for season from September 2025"
+      "description": "Farm group for season from September 2025",
+      "config": {
+          "check_same_tier_1_signal": true,
+          "tier_1_reference_date": "2025-09-10",
+          "filter_same_tier_1_signal": true
+      }
     }
   }
 ]

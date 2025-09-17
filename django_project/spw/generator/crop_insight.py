@@ -5,7 +5,7 @@ Tomorrow Now GAP.
 .. note:: Farm SPW Generator.
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 
 import pytz
 from django.db import transaction
@@ -41,6 +41,19 @@ class CropInsightFarmGenerator:
         self.port = port
         self.errors = []
 
+        # Get config from farm group
+        # This flag is used to enable the check for same tier 1 signal
+        # from previous reference date
+        self.check_same_tier_1_signal = self.farm_group.get_config(
+            'check_same_tier_1_signal', False
+        )
+        ref_date_str = self.farm_group.get_config(
+            'tier_1_reference_date', None
+        )
+        self.reference_date = (
+            date.fromisoformat(ref_date_str) if ref_date_str else None
+        )
+
     def return_float(self, value):
         """Return float value."""
         try:
@@ -48,9 +61,22 @@ class CropInsightFarmGenerator:
         except ValueError:
             return None
 
+    def check_previous_tier_1_signal(self):
+        """Check if previous tier 1 signal has been sent."""
+        if not self.check_same_tier_1_signal or not self.reference_date:
+            return False
+
+        previous_signal = FarmSuitablePlantingWindowSignal.objects.filter(
+            farm=self.farm,
+            generated_date=self.reference_date,
+            signal__icontains="Tier 1"
+        )
+
+        return previous_signal.exists()
+
     def save_spw(
             self, farm: Farm, signal, too_wet_indicator, last_4_days,
-            last_2_days, today_tomorrow
+            last_2_days, today_tomorrow, is_sent_before
     ):
         """Save spw data."""
         # Save SPW
@@ -62,7 +88,9 @@ class CropInsightFarmGenerator:
                 'too_wet_indicator': too_wet_indicator,
                 'last_4_days': self.return_float(last_4_days),
                 'last_2_days': self.return_float(last_2_days),
-                'today_tomorrow': self.return_float(today_tomorrow)
+                'today_tomorrow': self.return_float(today_tomorrow),
+                'is_sent_before': is_sent_before,
+                'prev_reference_date': self.reference_date
 
             }
         )
@@ -177,11 +205,13 @@ class CropInsightFarmGenerator:
                 grid=self.farm.grid
             )
 
+        # Check if previous Tier 1 signal exists
+        tier_1_exists = self.check_previous_tier_1_signal()
         for farm in farms:
             self.save_spw(
                 farm,
                 output.data.goNoGo, output.data.tooWet, output.data.last4Days,
-                output.data.last2Days, output.data.todayTomorrow
+                output.data.last2Days, output.data.todayTomorrow, tier_1_exists
             )
             self.save_shortterm_forecast(historical_dict, farm)
 
