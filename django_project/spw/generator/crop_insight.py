@@ -11,6 +11,7 @@ import pytz
 from django.db import transaction
 from django.utils import timezone
 
+from core.utils.date import get_previous_day
 from gap.models.crop_insight import (
     FarmSuitablePlantingWindowSignal, FarmShortTermForecast,
     FarmShortTermForecastData
@@ -53,6 +54,10 @@ class CropInsightFarmGenerator:
         self.reference_date = (
             date.fromisoformat(ref_date_str) if ref_date_str else None
         )
+        if self.reference_date:
+            self.reference_date = get_previous_day(
+                self.reference_date.weekday(), self.today
+            )
 
     def return_float(self, value):
         """Return float value."""
