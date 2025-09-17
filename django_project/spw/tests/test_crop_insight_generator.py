@@ -44,7 +44,7 @@ ltn_returns = {
 
 
 def always_retrying(
-    self
+    self, historical_dict: dict
 ):
     """Mock the function that always retry."""
     raise Exception('Test exception')
@@ -165,7 +165,8 @@ class TestCropInsightGenerator(TestCase):
         group.user_set.add(self.user_1, self.user_2)
         self.preferences = Preferences().load()
         self.preferences.crop_plan_config = {
-            'lat_lon_decimal_digits': 4
+            'lat_lon_decimal_digits': 4,
+            'use_tio_zarr': False
         }
         self.preferences.save()
 
@@ -571,3 +572,154 @@ class TestCropInsightGenerator(TestCase):
             ).count(),
             1
         )
+
+    @patch('gap.models.crop_insight.timezone')
+    @patch('spw.generator.crop_insight.timezone')
+    @patch('spw.generator.main.datetime')
+    @patch('prise.generator.generate_prise_message')
+    @patch('spw.generator.main.execute_spw_model')
+    @patch('spw.generator.gap_input.GapInput._fetch_timelines_data')
+    @patch('spw.generator.gap_input.GapInput._fetch_ltn_data')
+    def test_spw_generator_skip_tier1(
+        self, mock_fetch_ltn_data, mock_fetch_timelines_data,
+        mock_execute_spw_model, mock_prise, mock_now, mock_timezone,
+        mock_timezone_2
+    ):
+        """Test if spw is skipped when tier 1 has been sent before."""
+        mock_dt = datetime(
+            2023, 7, 18, 0, 0, 0, tzinfo=pytz.UTC
+        )
+        mock_now.now.return_value = mock_dt
+        mock_timezone.now.return_value = mock_dt
+        mock_timezone_2.now.return_value = mock_dt
+        last_day = self.today + timedelta(days=12)
+
+        self.farm_group.config = {
+            'check_same_tier_1_signal': True,
+            'tier_1_reference_date': '2023-07-07',
+            'filter_same_tier_1_signal': True
+        }
+        self.farm_group.save()
+        # only use farm 1
+        self.farm_group.farms.set(
+            [self.farm]
+        )
+        # Create a previous tier 1 signal on the reference date
+        FarmSuitablePlantingWindowSignal.objects.create(
+            farm=self.farm,
+            generated_date=date(2023, 7, 7),
+            signal='Plant NOW Tier 1a'
+        )
+
+        def create_timeline_data(
+                output, _date, evap, rain, max, min, prec_prob
+        ):
+            """Create time data."""
+            if last_day == _date:
+                return
+
+            output[_date.strftime('%m-%d')] = {
+                'date': _date.strftime('%Y-%m-%d'),
+                'evapotranspirationSum': evap,
+                'rainAccumulationSum': rain,
+                'temperatureMax': max,
+                'precipitationProbability': prec_prob,
+                'temperatureMin': min
+            }
+            create_timeline_data(
+                output, _date + timedelta(days=1),
+                evap, rain, max, min, prec_prob
+            )
+
+        # For farm 1
+        mock_execute_spw_model.return_value = (
+            True, {
+                'metadata': {
+                    'test': 'abcdef'
+                },
+                'goNoGo': ['Plant NOW Tier 1b'],
+                'nearDaysLTNPercent': [10.0],
+                'nearDaysCurPercent': [60.0],
+                'tooWet': ['Likely too wet to plant'],
+                'last4Days': [80],
+                'last2Days': [60],
+                'todayTomorrow': [40],
+            }
+        )
+        fetch_timelines_data_val = {}
+        create_timeline_data(
+            fetch_timelines_data_val, self.today - timedelta(days=6),
+            10, 10, 100, 0, 50
+        )
+        mock_fetch_timelines_data.return_value = fetch_timelines_data_val
+        generator = CropInsightFarmGenerator(self.farm, self.farm_group)
+
+        # ------------------------------------------------------------
+        # Check if _fetch_ltn_data always returns exception
+        with (
+            patch(
+                'spw.generator.gap_input.GapInput._fetch_ltn_data',
+                always_retrying
+            )
+        ):
+            with self.assertRaises(Exception):
+                generator.generate_spw()
+
+        # ------------------------------------------------------------
+        # Check if _fetch_ltn_data always returns exception
+        with (
+            patch(
+                'spw.generator.gap_input.GapInput._fetch_ltn_data',
+                retrying_2_times
+            )
+        ):
+            generator.generate_spw()
+        # ------------------------------------------------------------
+        # Since tier 1 has been sent before, the new spw should be skipped
+        last_spw = FarmSuitablePlantingWindowSignal.objects.filter(
+            farm=self.farm,
+            generated_date=date(2023, 7, 18)
+        ).last()
+        self.assertEqual(last_spw.signal, 'Plant NOW Tier 1b')
+        self.assertTrue(last_spw.is_sent_before)
+
+        # We mock the send email to get the attachments
+        attachments = []
+
+        def mock_send_fn(self, fail_silently=False):
+            """Mock send messages."""
+            for attachment in self.attachments:
+                attachments.append(attachment)
+            return 0
+
+        # mock prise message
+        mock_prise.return_value = ['prise pet 1', 'prise pet 2']
+
+        # Mock the send email
+        with patch("django.core.mail.EmailMessage.send", mock_send_fn):
+            # Crop insight report
+            self.request = CropInsightRequestFactory.create(
+                farm_group=self.farm_group,
+                requested_at=mock_dt
+            )
+            generate_insight_report(self.request.id)
+            self.request.refresh_from_db()
+
+            # Check the if of farm group in the path
+            print('filename ', self.request.file.name)
+            self.assertTrue(f'{self.farm_group.id}/' in self.request.file.name)
+
+            # Check the attachment on email
+            self.assertEqual(attachments[0][0], self.request.filename)
+
+            # Check the file content
+            with self.request.file.open(mode='r') as csv_file:
+                csv_reader = csv.reader(csv_file)
+                # assert empty rows for farm 1
+                row_num = 1
+                for row in csv_reader:
+                    # Header
+                    if row_num == 1:
+                        self.assertEqual(row, self.csv_headers)
+                    row_num += 1
+                self.assertEqual(row_num, 2)  # only header row
