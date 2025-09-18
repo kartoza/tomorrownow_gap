@@ -11,6 +11,7 @@ license: This program is free software; you can redistribute it and/or modify it
 
 # API user guide
 
+* **[API Keys:](./api-keys.md)** this section shows a tutorial to create and delete API keys.
 * **[Measurement API:](./measurement.md)** this section explains the measurement API guide for both GET and POST method.
 * **[Access API Using R:](./access-api-using-r.md)** this section shows a tutorial to access the API using R.
 * **[Access API in Jupyter Notebook:](./access-api-using-jupyter.md)** this section shows a tutorial to access the API in Jupyter Notebook.
