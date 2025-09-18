@@ -62,6 +62,11 @@ nav:
             - Measurements API: developer/api/guide/measurement.md
             - Access API Using R: developer/api/guide/access-api-using-r.md
             - Access API Using Jupyter Notebook: developer/api/guide/access-api-using-jupyter.md
+        - GAP Products:
+            - developer/geoparquet/index.md
+            - SPW: developer/geoparquet/spw.md
+            - SPW Tamsat: developer/geoparquet/spw-tamsat.md
+            - DCAS: developer/geoparquet/dcas.md
     - Devops:
         - devops/index.md
         - Guide: devops/guide/index.md
